@@ -21,6 +21,8 @@ window.EnglishNumerology = (function() {
   var MASTER_NUMBERS = { 11:true, 22:true, 33:true };
 
   function reduceNumber(num) {
+    // 防呆：非正整數或 0
+    if (!num || num <= 0 || !Number.isFinite(num)) return 0;
     // 如果是大師數字，保留
     if (MASTER_NUMBERS[num]) return num;
     // 如果已有含義（1-9），直接返回
@@ -32,6 +34,7 @@ window.EnglishNumerology = (function() {
       sum += n % 10;
       n = Math.floor(n / 10);
     }
+    if (sum === 0) return 0;
     return reduceNumber(sum);
   }
 
@@ -156,8 +159,9 @@ window.EnglishNumerology = (function() {
       9: { first: { age: '0-30歲', focus: '理想萌芽期', desc: '培養博愛精神，追尋人生的崇高意義。' }, second: { age: '31-50歲', focus: '奉獻實踐期', desc: '將理想轉化為行動，為社會做出貢獻。' }, third: { age: '51歲+', focus: '智慧圓滿期', desc: '以豐富的人生智慧，成為他人的燈塔。' } }
     };
 
-    var num = reduceNumber(destinyNumber);
+    var num = reduceNumber(destinyNumber) || 1;
     // 大師數字映射
+    if (num === 0) num = 1;
     if (num === 11) num = 2;
     if (num === 22) num = 4;
     if (num === 33) num = 6;
