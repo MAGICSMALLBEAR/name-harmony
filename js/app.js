@@ -125,7 +125,40 @@
       switchTab(btn.dataset.tab);
     });
 
+    // 金粉粒子
+    spawnParticles();
+    // 圖片下載按鈕
+    addDownloadImgBtn();
+
     showForm();
+  }
+
+  function spawnParticles() {
+    var container = document.createElement('div');
+    container.className = 'particles-container';
+    document.body.appendChild(container);
+    for (var i = 0; i < 30; i++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.animationDuration = (Math.random() * 8 + 6) + 's';
+      p.style.animationDelay = Math.random() * 8 + 's';
+      p.style.width = p.style.height = (Math.random() * 3 + 1) + 'px';
+      container.appendChild(p);
+    }
+  }
+
+  function addDownloadImgBtn() {
+    var actionBar = document.getElementById('actionBar');
+    var dlBtn = document.createElement('button');
+    dlBtn.className = 'btn-action';
+    dlBtn.innerHTML = '<span>🖼️</span> 圖片';
+    dlBtn.addEventListener('click', function() {
+      if (!currentData) return;
+      window.ShareCard.downloadImage(currentData);
+      toast('圖片已下載！');
+    });
+    actionBar.insertBefore(dlBtn, backBtn);
   }
 
   // ============ 新增/移除成員 ============
@@ -412,6 +445,30 @@
         html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:4px 0 0;">' + r.zodiac.zodiacNature + '</p>';
       }
       html += '</div>';
+
+      // MBTI
+      if (r.en && window.FunExtras) {
+        var mbti = window.FunExtras.getMBTI(r.en.destiny);
+        html += '<div class="mbti-card" style="margin-bottom:8px;">';
+        html += '<span class="mbti-type">' + mbti.mbti + '</span>';
+        html += '<span class="mbti-label">' + mbti.label + ' — ' + mbti.desc.substring(0,30) + '...</span>';
+        html += '</div>';
+      }
+
+      // 今日幸運
+      if (r.en && window.FunExtras) {
+        var el = r.cn ? r.cn.grids.ren.element : '?';
+        var df = window.FunExtras.getDailyFortune(r.en.destiny, el);
+        html += '<div class="daily-fortune">';
+        html += '<span class="fortune-stars" style="color:var(--color-gold-primary);">' + df.starDisplay + '</span>';
+        html += '<div class="fortune-items">';
+        html += '<span class="fortune-item">🎨 <strong>' + df.color + '</strong></span>';
+        html += '<span class="fortune-item">🧭 <strong>' + df.direction + '</strong></span>';
+        html += '<span class="fortune-item">🔢 <strong>' + df.number + '</strong></span>';
+        html += '</div>';
+        html += '<span style="font-size:0.7rem;color:var(--color-text-muted);margin-left:auto;">' + df.tip.substring(0,20) + '...</span>';
+        html += '</div>';
+      }
     }
 
     if (r.cn) {
@@ -522,9 +579,9 @@
       html += '<span class="analysis-mode-badge ' + entry.pair.modeClass + '">' + entry.pair.mode + '</span>';
       html += '</div>';
 
-      // 分數摘要
+      // 分數摘要（含動畫）
       html += '<div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm);">';
-      html += '<span style="font-family:var(--font-en);font-size:2rem;font-weight:900;color:' + scColor + ';">' + entry.pair.score + '</span>';
+      html += '<span class="score-animate" style="font-family:var(--font-en);font-size:2rem;font-weight:900;color:' + scColor + ';">' + entry.pair.score + '</span>';
       html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">/100</span>';
       html += '<span style="font-family:var(--font-heading);color:' + scColor + ';">' + entry.pair.tier + '</span>';
       html += '</div>';
