@@ -429,6 +429,9 @@
     // 結果摘要卡
     html += renderSummaryCard();
 
+    // 五行說明（可摺疊）
+    html += renderElementLegend();
+
     // 並排比較
     html += renderSideBySide();
 
@@ -858,6 +861,7 @@
       // 五行診斷
       html += '<div class="report-section">';
       html += '<div class="report-section-title">🌟 五行診斷</div>';
+      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">名字五格各有五行屬性，分佈越均衡越好。以下分析你名字中每個五行出現的次數與佔比：</p>';
       html += '<div style="text-align:center;margin-bottom:12px;">平衡度：<strong style="font-size:1.2rem;color:' + balanceColor + ';">' + diag.balanceScore + '%</strong>（' + diag.balanceLevel + '）</div>';
       html += '<div class="wuxing-ring">';
       var elInfo = { '木':{icon:'🌳',color:'var(--color-wuxing-wood)'}, '火':{icon:'🔥',color:'var(--color-wuxing-fire)'}, '土':{icon:'⛰️',color:'var(--color-wuxing-earth)'}, '金':{icon:'⚔️',color:'var(--color-wuxing-metal)'}, '水':{icon:'💧',color:'var(--color-wuxing-water)'} };
@@ -872,6 +876,11 @@
         html += '<div class="wuxing-ring-level">' + d.level + '</div>';
         html += '</div>';
       });
+
+      // 等級說明
+      html += '<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:0.7rem;color:var(--color-text-muted);margin-top:8px;">';
+      html += '<span>🟢 適中=五行均衡</span><span>🟡 偏弱=稍嫌不足</span><span>🔴 過強=太過旺盛</span><span>⚫ 缺失=完全沒有</span>';
+      html += '</div>';
 
       if (diag.issues.length && isProMode) {
         html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ ' + diag.issues.join('；') + '</p>';
@@ -1009,6 +1018,40 @@
     });
 
     html += '</div></div>';
+    return html;
+  }
+
+  // ============ 五行說明卡 ============
+  function renderElementLegend() {
+    var elInfo = {
+      '木': { icon:'🌳', nature:'生長、創意、仁慈', body:'肝膽', direction:'東方', season:'春天', color: 'var(--color-wuxing-wood)' },
+      '火': { icon:'🔥', nature:'熱情、行動、禮儀', body:'心臟', direction:'南方', season:'夏天', color: 'var(--color-wuxing-fire)' },
+      '土': { icon:'⛰️', nature:'穩定、誠信、包容', body:'脾胃', direction:'中央', season:'長夏', color: 'var(--color-wuxing-earth)' },
+      '金': { icon:'⚔️', nature:'果斷、正義、剛毅', body:'肺', direction:'西方', season:'秋天', color: 'var(--color-wuxing-metal)' },
+      '水': { icon:'💧', nature:'智慧、靈活、溝通', body:'腎', direction:'北方', season:'冬天', color: 'var(--color-wuxing-water)' }
+    };
+    var cycle = '🌳木生🔥火 → 🔥火生⛰️土 → ⛰️土生⚔️金 → ⚔️金生💧水 → 💧水生🌳木';
+    var clash = '🌳木剋⛰️土 → ⛰️土剋💧水 → 💧水剋🔥火 → 🔥火剋⚔️金 → ⚔️金剋🌳木';
+
+    var html = '<details style="margin:12px 0;font-size:0.85rem;">';
+    html += '<summary style="color:var(--color-gold-primary);cursor:pointer;font-weight:600;">📖 五行是什麼？點擊展開說明</summary>';
+    html += '<div style="margin-top:8px;padding:12px;background:rgba(212,168,67,0.05);border-radius:8px;">';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">姓名學中每個數字尾數對應一個五行屬性。五格（天/人/地/外/總）各有五行，組合起來可以看出你的命理特質。</p>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:8px;">';
+    Object.keys(elInfo).forEach(function(el) {
+      var info = elInfo[el];
+      html += '<div style="padding:6px 10px;background:rgba(0,0,0,0.1);border-radius:6px;">';
+      html += '<span style="font-size:1.1rem;">' + info.icon + '</span> ';
+      html += '<strong style="color:' + info.color + ';">' + el + '</strong>';
+      html += '<span style="font-size:0.7rem;color:var(--color-text-secondary);"> — ' + info.nature + '</span>';
+      html += '<div style="font-size:0.65rem;color:var(--color-text-muted);">臟腑:' + info.body + ' | 方位:' + info.direction + ' | 季節:' + info.season + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<p style="font-size:0.75rem;color:var(--color-fortune-good);">✅ <strong>相生（好）</strong>：' + cycle + '</p>';
+    html += '<p style="font-size:0.75rem;color:var(--color-fortune-bad);">⚠️ <strong>相剋（衝突）</strong>：' + clash + '</p>';
+    html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin-top:4px;">當你的名字五行分佈不均（某個過強或缺失），可以透過改名、配戴飾品、選擇有利方位來平衡。</p>';
+    html += '</div></details>';
     return html;
   }
 
