@@ -588,6 +588,14 @@
       html += '</div>';
     }
 
+    // 豐富解讀
+    if (p.reading && p.reading.summary) {
+      html += '<div class="harmony-advice" style="margin-top:var(--space-lg);">';
+      html += '<h3>📖 詳細解讀</h3>';
+      html += '<p style="font-size:0.9rem;line-height:2;white-space:pre-line;">' + p.reading.summary + '</p>';
+      html += '</div>';
+    }
+
     if (p.isSelf && p.selfResult) {
       var h = p.selfResult;
       html += '<div class="harmony-details">';
