@@ -138,10 +138,15 @@
           <span>＋</span> 新增成員（最多 5 人）
         </button>
 
-        <button id="analyzeBtn" class="btn-analyze">
-          <span class="btn-icon">🔮</span>
-          <span class="btn-text">開始團隊和盤分析</span>
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button id="analyzeBtn" class="btn-analyze" style="flex:3;">
+            <span class="btn-icon">🔮</span>
+            <span class="btn-text">開始團隊和盤分析</span>
+          </button>
+          <button id="demoBtn" class="btn-analyze" style="flex:1;opacity:0.7;font-size:0.9rem;" type="button">
+            <span>✨</span> 示範
+          </button>
+        </div>
 
         <!-- 錯誤提示區 -->
         <div id="formError" class="form-error hidden"></div>
@@ -245,6 +250,17 @@
         </button>
       </div>
     </section>
+
+    <!-- 載入動畫 -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-spinner">
+        <div class="taiji-spin"></div>
+        <p>分析中...</p>
+      </div>
+    </div>
+
+    <!-- 返回頂部 -->
+    <button id="scrollTopBtn" class="scroll-top-btn hidden" title="返回頂部">⬆</button>
 
     <!-- 分享預覽圖隱藏 canvas -->
     <canvas id="shareCanvas" style="display:none;"></canvas>

@@ -24,6 +24,9 @@
   var shareBtn = document.getElementById('shareBtn');
   var saveBtn = document.getElementById('saveBtn');
   var backBtn = document.getElementById('backBtn');
+  var demoBtn = document.getElementById('demoBtn');
+  var scrollTopBtn = document.getElementById('scrollTopBtn');
+  var loadingOverlay = document.getElementById('loadingOverlay');
   var historyBtn = null;
 
   // 模態框
@@ -53,7 +56,12 @@
     shareBtn.addEventListener('click', handleShare);
     saveBtn.addEventListener('click', handleSave);
     backBtn.addEventListener('click', handleBack);
+    demoBtn.addEventListener('click', loadDemo);
     addPersonBtn.addEventListener('click', addPerson);
+    scrollTopBtn.addEventListener('click', function() { window.scrollTo({top:0,behavior:'smooth'}); });
+    window.addEventListener('scroll', function() {
+      scrollTopBtn.classList.toggle('hidden', window.scrollY < 400);
+    });
 
     // 模態框關閉
     modalClose.addEventListener('click', function() { pairModal.classList.add('hidden'); });
@@ -198,6 +206,14 @@
   // ============ 分析 ============
   function handleAnalyze() {
     formError.classList.add('hidden');
+    showLoading();
+    setTimeout(function() {
+      doAnalyze();
+      hideLoading();
+    }, 100);
+  }
+
+  function doAnalyze() {
     var persons = collectInputs();
     var hasAny = persons.some(function(p) { return p.cn || p.en; });
     if (!hasAny) { showError('請至少輸入一組姓名'); return; }
@@ -352,6 +368,12 @@
   // ============ 成員分析（摺疊） ============
   function renderMembers() {
     var html = '';
+
+    // 結果摘要卡
+    html += renderSummaryCard();
+
+    // 姓名生成器
+    html += renderNameGeneratorUI();
     currentData.results.forEach(function(item, i) {
       var p = item.person;
       var r = item.result;
@@ -443,7 +465,7 @@
   // ============ 配對矩陣 ============
   function renderMatrix() {
     if (!currentData || !currentData.pairs.length) {
-      matrixContent.innerHTML = '<p class="text-center" style="color:var(--color-text-secondary);padding:2rem;">需要至少兩位成員有姓名才能產出配對矩陣</p>';
+      matrixContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💫</div><div class="empty-state-text">需要至少兩位成員輸入姓名</div><div class="empty-state-hint">才能產出配對矩陣</div></div>';
       return;
     }
 
@@ -557,7 +579,7 @@
   // ============ 團隊報告 ============
   function renderTeam() {
     if (!currentData || !currentData.pairs.length) {
-      teamContent.innerHTML = '<p class="text-center" style="color:var(--color-text-secondary);padding:2rem;">需要至少兩位成員才能產出團隊報告</p>';
+      teamContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">需要至少兩位成員</div><div class="empty-state-hint">才能產出團隊命理報告</div></div>';
       return;
     }
 
@@ -640,6 +662,63 @@
         if (names.length === 2) openPairDetail(names[0].trim(), names[1].trim());
       });
     });
+  }
+
+  // ============ 結果摘要卡 ============
+  function renderSummaryCard() {
+    if (!currentData || !currentData.results) return '';
+    var r = currentData.results;
+    if (r.length === 0) return '';
+
+    var html = '<div class="summary-card">';
+    html += '<h3>📊 分析摘要</h3>';
+    html += '<div class="summary-quick-stats">';
+    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + r.length + '</div><div class="summary-stat-label">成員數</div></div>';
+    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + currentData.pairs.length + '</div><div class="summary-stat-label">配對組數</div></div>';
+
+    if (currentData.pairs.length > 0) {
+      var avg = Math.round(currentData.pairs.reduce(function(a,b){return a+b.pair.score;},0) / currentData.pairs.length);
+      var ac = avg>=80?'var(--color-fortune-great)':avg>=60?'var(--color-fortune-good)':'var(--color-fortune-neutral)';
+      html += '<div class="summary-stat"><div class="summary-stat-val" style="color:'+ac+';">' + avg + '</div><div class="summary-stat-label">平均分數</div></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  // ============ 姓名生成器 UI ============
+  function renderNameGeneratorUI() {
+    if (!currentData || !currentData.results) return '';
+    // 找到第一個有中文姓名的成員的姓氏
+    var surname = '';
+    currentData.results.some(function(r) {
+      if (r.result.cn && r.result.cn.parsed) {
+        surname = r.result.cn.parsed.surname;
+        return true;
+      }
+      return false;
+    });
+    if (!surname || !window.NameGenerator) return '';
+
+    var names = window.NameGenerator.suggestNames(surname);
+    if (!names || !names.length || names[0].note) return '';
+
+    var html = '<div class="fortune-detail" style="margin-bottom:var(--space-lg);">';
+    html += '<h3>🎯 吉數姓名推薦（姓氏：' + surname + '）</h3>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">以下名字皆確保<strong>人格（主運）為吉數</strong>，僅供參考：</p>';
+    html += '<div class="generator-results">';
+
+    names.slice(0, 6).forEach(function(n) {
+      if (!n.name) return;
+      var fc = n.goodCount >= 4 ? 'var(--color-fortune-great)' : 'var(--color-fortune-good)';
+      html += '<div class="gen-name-card" onclick="document.getElementById(\'cnA\').value=\'' + n.name + '\';document.getElementById(\'cnB\').focus();window.scrollTo({top:0,behavior:\'smooth\'});var t=document.createElement(\'div\');t.className=\'share-toast\';t.textContent=\'已填入：' + n.name + '\';document.body.appendChild(t);setTimeout(function(){t.remove();},2000);">';
+      html += '<div class="gen-name-text">' + n.name + '</div>';
+      html += '<div class="gen-name-info">人格' + n.grids.ren + ' ' + n.element + ' <span style="color:' + fc + ';">' + n.goodCount + '吉</span></div>';
+      html += '<div class="gen-name-strokes">天' + n.grids.tian + ' 地' + n.grids.di + ' 外' + n.grids.wai + ' 總' + n.grids.zong + '</div>';
+      html += '</div>';
+    });
+
+    html += '</div></div>';
+    return html;
   }
 
   // ============ 團隊角色建議 ============
@@ -740,6 +819,22 @@
   function loadHistory() {
     try { return JSON.parse(localStorage.getItem('name-harmony-v3') || '[]'); } catch(e) { return []; }
   }
+
+  // ============ 示範資料 ============
+  function loadDemo() {
+    document.getElementById('cnA').value = '陳小明';
+    document.getElementById('enA').value = 'John Smith';
+    document.getElementById('cnB').value = '林小美';
+    document.getElementById('enB').value = 'Mary Jane';
+    // 生日示範
+    var inputs = document.querySelectorAll('.bday-input');
+    if (inputs[0]) inputs[0].value = '1990/6/15';
+    if (inputs[1]) inputs[1].value = '1992/3/20';
+    toast('示範資料已載入！點擊「開始團隊和盤分析」查看');
+  }
+
+  function showLoading() { loadingOverlay.classList.remove('hidden'); }
+  function hideLoading() { loadingOverlay.classList.add('hidden'); }
 
   function handleBack() {
     showForm();
