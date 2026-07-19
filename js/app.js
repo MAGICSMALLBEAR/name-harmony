@@ -27,6 +27,9 @@
   var demoBtn = document.getElementById('demoBtn');
   var scrollTopBtn = document.getElementById('scrollTopBtn');
   var loadingOverlay = document.getElementById('loadingOverlay');
+  var proModeToggle = document.getElementById('proModeToggle');
+  var reportContent = document.getElementById('reportContent');
+  var isProMode = false;
   var historyBtn = null;
 
   // 模態框
@@ -57,6 +60,10 @@
     saveBtn.addEventListener('click', handleSave);
     backBtn.addEventListener('click', handleBack);
     demoBtn.addEventListener('click', loadDemo);
+    proModeToggle.addEventListener('change', function() {
+      isProMode = this.checked;
+      if (currentData) { renderAll(); }
+    });
     addPersonBtn.addEventListener('click', addPerson);
     scrollTopBtn.addEventListener('click', function() { window.scrollTo({top:0,behavior:'smooth'}); });
     window.addEventListener('scroll', function() {
@@ -395,7 +402,7 @@
   function switchTab(tab) {
     tabNav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam' };
+    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport' };
     var panel = document.getElementById(m[tab] || 'panelMembers');
     if (panel) panel.classList.add('active');
   }
@@ -406,6 +413,7 @@
     renderMembers();
     renderMatrix();
     renderTeam();
+    renderProfessionalReports();
   }
 
   // ============ 成員分析（摺疊） ============
@@ -763,6 +771,128 @@
 
     html += '</div>';
     return html;
+  }
+
+  // ============ 專業鑑定報告 ============
+  function renderProfessionalReports() {
+    if (!currentData || !currentData.results) return;
+
+    var html = '';
+    currentData.results.forEach(function(item, idx) {
+      var r = item.result;
+      if (!r.cn) return;
+
+      var zodiac = r.zodiac;
+      var report = window.Professional.generateReport(item.person, r.cn, r.en, zodiac);
+      if (!report) return;
+
+      // 診斷資料
+      var diag = report.elementDiagnosis;
+      var balanceColor = diag.balanceScore >= 85 ? 'var(--color-fortune-great)' : diag.balanceScore >= 65 ? 'var(--color-fortune-good)' : 'var(--color-fortune-neutral)';
+
+      // 專業模式：完整報告書
+      html += '<div class="report-certificate" style="margin-bottom:var(--space-2xl);">';
+
+      // 標題
+      html += '<div class="report-cert-header">';
+      html += '<div class="report-cert-title">姓名鑑定書</div>';
+      html += '<div class="report-cert-subtitle">' + report.generatedAt + ' 鑑定</div>';
+      html += '</div>';
+
+      // 基本資料
+      html += '<div class="report-section">';
+      html += '<div class="report-section-title">📋 基本資料</div>';
+      html += '<table class="report-table"><tr><th>姓名</th><th>綜合評級</th>';
+      if (report.bazi) html += '<th>八字年柱</th><th>生肖</th><th>日主</th>';
+      if (report.numerology) html += '<th>命運數</th>';
+      html += '</tr><tr>';
+      html += '<td><strong style="font-size:1.2rem;">' + report.name + '</strong></td>';
+      var lvlColor = report.overallLevel==='上等'?'var(--color-fortune-great)':report.overallLevel==='中上'?'var(--color-fortune-good)':'var(--color-fortune-neutral)';
+      html += '<td><strong style="color:'+lvlColor+';">' + report.overallLevel + '</strong></td>';
+      if (report.bazi) {
+        html += '<td>' + report.bazi.year + '</td><td>' + report.bazi.zodiac + '</td><td class="element-' + report.bazi.dayMaster + '">' + report.bazi.dayMaster + '</td>';
+      }
+      if (report.numerology) html += '<td>' + report.numerology.destiny + '</td>';
+      html += '</tr></table></div>';
+
+      // 五格剖象表
+      html += '<div class="report-section">';
+      html += '<div class="report-section-title">📊 五格剖象</div>';
+      html += '<table class="report-table"><tr><th>格局</th><th>筆劃</th><th>五行</th><th>吉凶</th><th>數理解說</th><th>古籍參照</th></tr>';
+      report.gridDetails.forEach(function(g) {
+        var fc = g.fortune==='大吉'?'fortune-great':g.fortune==='吉'?'fortune-good':g.fortune==='中吉'||g.fortune==='半吉'?'fortune-neutral':g.fortune==='凶'?'fortune-bad':'fortune-terrible';
+        html += '<tr><td><strong>' + g.name + '</strong></td><td>' + g.number + '</td><td class="element-' + g.element + '">' + g.element + '</td><td><span class="wuge-fortune ' + fc + '">' + g.fortune + '</span></td><td style="text-align:left;font-size:0.8rem;">' + g.implication.substring(0,60) + '...</td><td class="quote-cell">' + (g.quote||'') + '</td></tr>';
+      });
+      html += '</table></div>';
+
+      // 三才
+      html += '<div class="report-section">';
+      html += '<div class="report-section-title">☯ 三才配置</div>';
+      html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">評級：<strong>' + report.sancai.level + '</strong></p>';
+      html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + report.sancai.description + '</p>';
+      if (report.sancai.quote) html += '<p class="quote-cell">📜 ' + report.sancai.quote + '</p>';
+      html += '</div>';
+
+      // 五行診斷
+      html += '<div class="report-section">';
+      html += '<div class="report-section-title">🌟 五行診斷</div>';
+      html += '<div style="text-align:center;margin-bottom:12px;">平衡度：<strong style="font-size:1.2rem;color:' + balanceColor + ';">' + diag.balanceScore + '%</strong>（' + diag.balanceLevel + '）</div>';
+      html += '<div class="wuxing-ring">';
+      var elInfo = { '木':{icon:'🌳',color:'var(--color-wuxing-wood)'}, '火':{icon:'🔥',color:'var(--color-wuxing-fire)'}, '土':{icon:'⛰️',color:'var(--color-wuxing-earth)'}, '金':{icon:'⚔️',color:'var(--color-wuxing-metal)'}, '水':{icon:'💧',color:'var(--color-wuxing-water)'} };
+      Object.keys(diag.diagnosis).forEach(function(el) {
+        var d = diag.diagnosis[el];
+        var info = elInfo[el];
+        var bg = d.level==='過強'?'rgba(255,215,0,0.08)':d.level==='缺失'?'rgba(158,158,158,0.08)':'rgba(0,0,0,0.05)';
+        html += '<div class="wuxing-ring-item">';
+        html += '<div class="wuxing-ring-circle" style="border-color:'+info.color+';background:'+bg+';">' + info.icon + '</div>';
+        html += '<div class="wuxing-ring-label element-' + el + '">' + el + '</div>';
+        html += '<div class="wuxing-ring-level">' + d.count + '次 (' + d.pct + '%)</div>';
+        html += '<div class="wuxing-ring-level">' + d.level + '</div>';
+        html += '</div>';
+      });
+
+      if (diag.issues.length && isProMode) {
+        html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ ' + diag.issues.join('；') + '</p>';
+      }
+      if (diag.strengths.length && isProMode) {
+        html += '<p style="font-size:0.8rem;color:var(--color-fortune-good);margin-top:4px;">✅ ' + diag.strengths.join('；') + '</p>';
+      }
+      html += '</div>';
+
+      // 喜用神（專業模式才有）
+      if (isProMode && report.xiYong) {
+        html += '<div class="report-section">';
+        html += '<div class="report-section-title">🔮 喜用神分析</div>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">日主：<strong class="element-' + report.xiYong.dayMaster + '">' + report.xiYong.dayMaster + '</strong></p>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">喜神：<strong class="element-' + report.xiYong.xiShen + '">' + report.xiYong.xiShen + '</strong></p>';
+        if (report.xiYong.jiShen) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">忌神：<strong class="element-' + report.xiYong.jiShen + '">' + report.xiYong.jiShen + '</strong></p>';
+        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + report.xiYong.analysis + '</p>';
+        html += '</div>';
+      }
+
+      // 綜合評語
+      html += '<div class="report-overall">';
+      html += '<div class="report-overall-badge" style="color:' + lvlColor + ';border:2px solid ' + lvlColor + ';">' + report.overallLevel + '</div>';
+      html += '<p style="font-size:0.95rem;color:var(--color-text-secondary);margin-top:12px;line-height:2;">' + report.overallSummary + '</p>';
+      html += '</div>';
+
+      // 操作按鈕
+      html += '<div class="report-actions">';
+      html += '<button class="btn-download-img" onclick="var t=document.createElement(\'textarea\');t.value=window.Professional.reportToText(window.Professional.generateReport({cn:(window._cr||{}).cn},window._cr||{},(window._cr||{}).en,(window._cr||{}).zodiac));t.style.cssText=\'position:fixed;opacity:0\';document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);var d=document.createElement(\'div\');d.className=\'share-toast\';d.textContent=\'報告已複製！\';document.body.appendChild(d);setTimeout(function(){d.remove();},2000);">📋 複製報告</button>';
+      html += '</div>';
+
+      // 印章
+      html += '<div class="report-cert-stamp">姓名和盤<br>命理鑑定</div>';
+
+      html += '</div>';
+
+      // 存最後一個人的結果給複製按鈕用
+      if (idx === 0) window._cr = r;
+    });
+
+    if (!html) html = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">需要輸入中文姓名</div><div class="empty-state-hint">才能產生命理鑑定書</div></div>';
+
+    reportContent.innerHTML = html;
   }
 
   // ============ 結果摘要卡 ============

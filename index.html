@@ -149,6 +149,15 @@
           </button>
         </div>
 
+        <!-- 專業模式開關 -->
+        <div class="pro-toggle-row">
+          <span class="pro-toggle-label">📜 專業模式</span>
+          <label class="pro-toggle">
+            <input type="checkbox" id="proModeToggle">
+            <span class="pro-toggle-slider"></span>
+          </label>
+        </div>
+
         <!-- 錯誤提示區 -->
         <div id="formError" class="form-error hidden"></div>
       </div>
@@ -215,6 +224,10 @@
           <span class="tab-icon">📊</span>
           <span class="tab-label">團隊報告</span>
         </button>
+        <button class="tab-btn" data-tab="report">
+          <span class="tab-icon">📜</span>
+          <span class="tab-label">鑑定書</span>
+        </button>
       </nav>
 
       <!-- 成員分析面板 -->
@@ -236,6 +249,11 @@
           <h2 class="card-title"><span class="title-icon">📊</span>團隊命理報告</h2>
           <div id="teamContent"></div>
         </div>
+      </div>
+
+      <!-- 專業鑑定書面板 -->
+      <div class="tab-panel" id="panelReport">
+        <div id="reportContent"></div>
       </div>
 
       <!-- 分享與操作區 -->
@@ -303,6 +321,7 @@
   <script src="js/name-generator.js"></script>
   <script src="js/share-card.js"></script>
   <script src="js/fun-extras.js"></script>
+  <script src="js/professional.js"></script>
   <script src="js/data/english-names.js"></script>
   <script src="js/data/english-number-meanings.js"></script>
   <script src="js/chinese-numerology.js"></script>
