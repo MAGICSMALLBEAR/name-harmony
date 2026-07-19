@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8B1A1A">
+  <meta name="description" content="結合中國五格剖象法與西洋靈數的中英文姓名命理分析工具">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="姓名和盤">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <title>姓名和盤 — 中英文姓名命理分析</title>
+</head>
+<body>
+
+  <!-- 八卦背景裝飾 -->
+  <div class="bg-ornaments" aria-hidden="true">
+    <div class="ornament bagua-top-left"></div>
+    <div class="ornament bagua-bottom-right"></div>
+    <div class="ornament cloud-1"></div>
+    <div class="ornament cloud-2"></div>
+  </div>
+
+  <!-- 主容器 -->
+  <div class="app-container">
+
+    <!-- 頂部標題區 -->
+    <header class="app-header">
+      <div class="header-decoration">
+        <span class="deco-line"></span>
+        <span class="deco-diamond">◆</span>
+        <span class="deco-line"></span>
+      </div>
+      <div class="taiji-icon" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="64" height="64">
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#D4A843" stroke-width="2"/>
+          <path d="M50,2 A48,48 0 0,1 50,98 A24,24 0 0,1 50,50 A24,24 0 0,0 50,2Z" fill="#2C1810"/>
+          <path d="M50,98 A48,48 0 0,1 50,2 A24,24 0 0,1 50,50 A24,24 0 0,0 50,98Z" fill="#D4A843"/>
+          <circle cx="50" cy="26" r="7" fill="#D4A843"/>
+          <circle cx="50" cy="74" r="7" fill="#2C1810"/>
+        </svg>
+      </div>
+      <h1 class="app-title">姓名和盤</h1>
+      <p class="app-subtitle">中英文姓名命理分析</p>
+      <div class="header-decoration">
+        <span class="deco-line"></span>
+        <span class="deco-diamond">◆</span>
+        <span class="deco-line"></span>
+      </div>
+    </header>
+
+    <!-- 輸入表單區 -->
+    <section class="form-section" id="formSection">
+      <div class="card form-card">
+        <h2 class="card-title">
+          <span class="title-icon">📝</span>
+          輸入雙方姓名
+        </h2>
+        <p class="card-subtitle">可填一或多個欄位，系統自動判斷分析模式</p>
+
+        <!-- Person A -->
+        <div class="person-section">
+          <div class="person-header">
+            <span class="person-badge">甲方</span>
+            <span class="person-title">Person A</span>
+          </div>
+          <div class="person-fields">
+            <div class="form-group">
+              <label for="cnA" class="form-label">中文姓名</label>
+              <div class="input-wrapper">
+                <span class="input-icon">姓</span>
+                <input type="text" id="cnA" class="form-input" placeholder="姓+名" autocomplete="off" maxlength="12">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="enA" class="form-label">英文姓名</label>
+              <div class="input-wrapper">
+                <span class="input-icon">A</span>
+                <input type="text" id="enA" class="form-input" placeholder="English name" autocomplete="off" maxlength="60">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中間分隔「和」 -->
+        <div class="harmony-divider">
+          <span class="divider-line"></span>
+          <span class="divider-symbol">和</span>
+          <span class="divider-line"></span>
+        </div>
+
+        <!-- Person B -->
+        <div class="person-section">
+          <div class="person-header">
+            <span class="person-badge person-badge-b">乙方</span>
+            <span class="person-title">Person B</span>
+          </div>
+          <div class="person-fields">
+            <div class="form-group">
+              <label for="cnB" class="form-label">中文姓名</label>
+              <div class="input-wrapper">
+                <span class="input-icon">姓</span>
+                <input type="text" id="cnB" class="form-input" placeholder="姓+名" autocomplete="off" maxlength="12">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="enB" class="form-label">英文姓名</label>
+              <div class="input-wrapper">
+                <span class="input-icon">B</span>
+                <input type="text" id="enB" class="form-input" placeholder="English name" autocomplete="off" maxlength="60">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 額外成員容器 -->
+        <div id="extraPersons"></div>
+
+        <!-- 新增成員按鈕 -->
+        <button id="addPersonBtn" class="btn-add-person" type="button">
+          <span>＋</span> 新增成員（最多 5 人）
+        </button>
+
+        <button id="analyzeBtn" class="btn-analyze">
+          <span class="btn-icon">🔮</span>
+          <span class="btn-text">開始團隊和盤分析</span>
+        </button>
+
+        <!-- 錯誤提示區 -->
+        <div id="formError" class="form-error hidden"></div>
+      </div>
+
+      <!-- 手動輸入筆劃區 -->
+      <div id="manualStrokeCard" class="card form-card hidden">
+        <h2 class="card-title">
+          <span class="title-icon">✏️</span>
+          手動輸入筆劃
+        </h2>
+        <p style="color:var(--color-text-secondary);margin-bottom:1rem;font-size:0.9rem;">
+          以下漢字不在筆劃資料庫中，請手動輸入康熙字典筆劃數：
+        </p>
+        <div id="manualStrokeFields"></div>
+        <div id="manualStrokeError" class="form-error hidden"></div>
+        <button id="manualStrokeBtn" class="btn-analyze" style="margin-top:1rem;">
+          <span class="btn-icon">🔮</span>
+          <span class="btn-text">重新分析</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 隱藏模板：額外成員 -->
+    <template id="personTemplate">
+      <div class="person-section extra-person">
+        <div class="person-header">
+          <span class="person-badge person-badge-extra">成員N</span>
+          <button class="btn-remove-person" type="button" title="移除">✕</button>
+        </div>
+        <div class="person-fields">
+          <div class="form-group">
+            <div class="input-wrapper">
+              <span class="input-icon">姓</span>
+              <input type="text" class="form-input cn-input" placeholder="中文姓名" autocomplete="off" maxlength="12">
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="input-wrapper">
+              <span class="input-icon">E</span>
+              <input type="text" class="form-input en-input" placeholder="English name" autocomplete="off" maxlength="60">
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- 結果區（初始隱藏） -->
+    <section class="results-section hidden" id="resultsSection">
+
+      <!-- 分頁導航 -->
+      <nav class="tab-nav" id="tabNav">
+        <button class="tab-btn active" data-tab="members">
+          <span class="tab-icon">👥</span>
+          <span class="tab-label">成員分析</span>
+        </button>
+        <button class="tab-btn" data-tab="matrix">
+          <span class="tab-icon">💫</span>
+          <span class="tab-label">配對矩陣</span>
+        </button>
+        <button class="tab-btn" data-tab="team">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">團隊報告</span>
+        </button>
+      </nav>
+
+      <!-- 成員分析面板 -->
+      <div class="tab-panel active" id="panelMembers">
+        <div id="membersContent"></div>
+      </div>
+
+      <!-- 配對矩陣面板 -->
+      <div class="tab-panel" id="panelMatrix">
+        <div class="card">
+          <h2 class="card-title"><span class="title-icon">💫</span>配對矩陣</h2>
+          <div id="matrixContent"></div>
+        </div>
+      </div>
+
+      <!-- 團隊報告面板 -->
+      <div class="tab-panel" id="panelTeam">
+        <div class="card">
+          <h2 class="card-title"><span class="title-icon">📊</span>團隊命理報告</h2>
+          <div id="teamContent"></div>
+        </div>
+      </div>
+
+      <!-- 分享與操作區 -->
+      <div class="action-bar" id="actionBar">
+        <button id="shareBtn" class="btn-action">
+          <span>📤</span> 分享結果
+        </button>
+        <button id="saveBtn" class="btn-action">
+          <span>💾</span> 儲存記錄
+        </button>
+        <button id="backBtn" class="btn-action btn-action-secondary">
+          <span>🔄</span> 重新查詢
+        </button>
+      </div>
+    </section>
+
+    <!-- 分享預覽圖隱藏 canvas -->
+    <canvas id="shareCanvas" style="display:none;"></canvas>
+
+    <!-- 配對詳情模態框 -->
+    <div id="pairModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="modalTitle" class="card-title"></h2>
+          <button id="modalClose" class="btn-modal-close">✕</button>
+        </div>
+        <div id="modalBody"></div>
+      </div>
+    </div>
+
+    <!-- 歷史記錄模態框 -->
+    <div id="historyModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="card-title"><span class="title-icon">📋</span>歷史記錄</h2>
+          <button id="historyClose" class="btn-modal-close">✕</button>
+        </div>
+        <div id="historyList"></div>
+        <button id="historyClear" class="btn-action btn-action-secondary" style="margin-top:1rem;width:100%;">🗑️ 清除全部記錄</button>
+      </div>
+    </div>
+
+    <!-- 底部 -->
+    <footer class="app-footer">
+      <p>僅供娛樂參考，請勿過度迷信</p>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/data/stroke-db.js"></script>
+  <script src="js/data/s2t-map.js"></script>
+  <script src="js/data/fortune-81.js"></script>
+  <script src="js/data/english-number-meanings.js"></script>
+  <script src="js/chinese-numerology.js"></script>
+  <script src="js/english-numerology.js"></script>
+  <script src="js/harmony.js"></script>
+  <script src="js/pair-harmony.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- PWA Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js').catch(function() {});
+      });
+    }
+  </script>
+</body>
+</html>
