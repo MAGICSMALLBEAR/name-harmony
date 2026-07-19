@@ -143,32 +143,35 @@
   // ============ 收集全部輸入 ============
   function collectInputs() {
     var persons = [];
-
     // Person A
+    var aBday = document.querySelector('#formSection .person-section:nth-of-type(1) .bday-input');
     persons.push({
       id: 'A', label: '甲方',
       cn: document.getElementById('cnA').value.trim(),
-      en: document.getElementById('enA').value.trim()
+      en: document.getElementById('enA').value.trim(),
+      birthday: (aBday ? aBday.value.trim() : '') || ''
     });
     // Person B
+    var bBday = document.querySelector('#formSection .person-section:nth-of-type(2) .bday-input');
     persons.push({
       id: 'B', label: '乙方',
       cn: document.getElementById('cnB').value.trim(),
-      en: document.getElementById('enB').value.trim()
+      en: document.getElementById('enB').value.trim(),
+      birthday: (bBday ? bBday.value.trim() : '') || ''
     });
-
     // Extra persons
     var extraDivs = extraPersons.querySelectorAll('.extra-person');
     var labels = ['C','D','E'];
     extraDivs.forEach(function(div, i) {
+      var bdInput = div.querySelector('.bday-input');
       persons.push({
         id: labels[i],
         label: '成員' + (i + 3),
         cn: div.querySelector('.cn-input').value.trim(),
-        en: div.querySelector('.en-input').value.trim()
+        en: div.querySelector('.en-input').value.trim(),
+        birthday: (bdInput ? bdInput.value.trim() : '') || ''
       });
     });
-
     return persons;
   }
 
@@ -191,7 +194,12 @@
         showManualInput(r.unknownChars);
         return;
       }
-      results.push({ person: persons[i], result: r });
+      // 生日分析
+      var bday = parseBirthday(persons[i].birthday);
+      var zodiac = bday ? window.ZodiacBazi.fullAnalysis(bday.year, bday.month, bday.day) : null;
+      r.zodiac = zodiac;
+
+      results.push({ person: persons[i], result: r, birthday: bday });
     }
 
     // 生成所有配對
@@ -202,11 +210,23 @@
         var b = results[j].result;
         var labelA = results[i].person.label;
         var labelB = results[j].person.label;
+        var bdA = results[i].birthday;
+        var bdB = results[j].birthday;
 
         // 中中和盤
         if (a.cn && b.cn) {
           var p = window.PairHarmony.cncnHarmony(a.cn, b.cn);
-          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-cn' });
+          if (p) {
+            // 加入生肖配對
+            if (bdA && bdB && a.zodiac && b.zodiac && a.zodiac.zodiac && b.zodiac.zodiac) {
+              var zc = window.ZodiacBazi.zodiacCompatibility(a.zodiac.zodiac, b.zodiac.zodiac);
+              if (zc) {
+                p.dimensions.push({ label: '🐉 生肖配對', score: zc.score, max: 100, detail: zc.detail });
+                if (p.reading && p.reading.summary) p.reading.summary += '\n\n【生肖加成】' + zc.detail;
+              }
+            }
+            pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-cn' });
+          }
         }
         // 英英和盤
         if (a.en && b.en) {
@@ -251,6 +271,17 @@
   function showError(msg) {
     formError.textContent = msg;
     formError.classList.remove('hidden');
+  }
+
+  function parseBirthday(str) {
+    if (!str) return null;
+    var parts = str.split(/[\/\-\.\s]+/);
+    if (parts.length < 2) return null;
+    var y = parseInt(parts[0]);
+    var m = parseInt(parts[1]);
+    var d = parts.length >= 3 ? parseInt(parts[2]) : 1;
+    if (isNaN(y) || isNaN(m) || y < 1900 || y > 2100 || m < 1 || m > 12) return null;
+    return { year: y, month: m, day: d || 1 };
   }
 
   // ============ 手動筆劃 ============
@@ -318,6 +349,29 @@
 
   function renderPersonDetail(r) {
     var html = '';
+
+    // 生日資訊
+    if (r.zodiac && r.zodiac.hasData) {
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:rgba(212,168,67,0.06);border-radius:8px;">';
+      if (r.zodiac.zodiac) {
+        var ze = window.ZodiacBazi.zodiacElement(r.zodiac.zodiac);
+        html += '<span style="font-size:0.85rem;">🐉 生肖：<strong class="element-' + (ze||'earth') + '">' + r.zodiac.zodiac + '</strong></span>';
+      }
+      if (r.zodiac.yearPillar) {
+        html += '<span style="font-size:0.85rem;">📜 ' + r.zodiac.yearPillar.tianGan + r.zodiac.yearPillar.diZhi + '年</span>';
+      }
+      if (r.zodiac.dayMaster) {
+        html += '<span style="font-size:0.85rem;">☀ 五行：<strong class="element-' + r.zodiac.dayMaster + '">' + r.zodiac.dayMaster + '</strong></span>';
+      }
+      if (r.zodiac.starSign) {
+        html += '<span style="font-size:0.85rem;">' + r.zodiac.starSign.emoji + ' ' + r.zodiac.starSign.name + '</span>';
+      }
+      if (r.zodiac.zodiacNature) {
+        html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:4px 0 0;">' + r.zodiac.zodiacNature + '</p>';
+      }
+      html += '</div>';
+    }
+
     if (r.cn) {
       html += '<div class="letter-grid">';
       var allS = r.cn.wuge.strokeDetails.surname.concat(r.cn.wuge.strokeDetails.givenName);

@@ -560,6 +560,22 @@ body {
 }
 
 /* === 雙人表單 === */
+.form-optional {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  margin-left: 4px;
+  font-weight: normal;
+}
+
+.form-group-sm {
+  margin-bottom: 0;
+}
+
+.form-group-sm .form-input {
+  font-size: 0.85rem;
+  padding: 8px 12px;
+}
 .card-subtitle {
   text-align: center;
   font-size: 0.85rem;
