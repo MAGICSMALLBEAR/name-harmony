@@ -406,6 +406,17 @@
       html += '</div>';
       html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">三才：'+r.cn.sancai.level+' | 整體：'+r.cn.overall+'</p>';
     }
+    // 英文名含義
+    if (r.enReport && window.englishNameMeanings) {
+      var nameParts = r.enReport.name.toUpperCase().split(/\s+/);
+      nameParts.forEach(function(np) {
+        var meaning = window.englishNameMeanings[np];
+        if (meaning) {
+          html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + '：' + meaning + '</p>';
+        }
+      });
+    }
+
     if (r.enReport) {
       var enData = r.enReport;
       html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(212,168,67,0.1);"><strong style="color:var(--color-gold-primary);">🔢 英文靈數</strong></div>';
@@ -616,6 +627,9 @@
     });
     html += '</div>';
 
+    // 團隊角色建議
+    html += renderTeamRoles();
+
     teamContent.innerHTML = html;
 
     // 點擊配對卡片
@@ -626,6 +640,53 @@
         if (names.length === 2) openPairDetail(names[0].trim(), names[1].trim());
       });
     });
+  }
+
+  // ============ 團隊角色建議 ============
+  function renderTeamRoles() {
+    if (!currentData || currentData.results.length < 2) return '';
+
+    var roles = {
+      '木': { role: '🌳 創新策劃', desc: '木屬性成員適合擔任創意發想、策略規劃的角色。他們有遠見、敢創新，能為團隊開創新局。' },
+      '火': { role: '🔥 行動推動', desc: '火屬性成員是天生的行動派與激勵者。適合帶領執行、對外發言、凝聚士氣。' },
+      '土': { role: '⛰️ 穩定執行', desc: '土屬性成員是最可靠的執行者。適合負責專案管理、品質控管、後勤支援。' },
+      '金': { role: '⚔️ 決策判斷', desc: '金屬性成員果斷明快，適合做關鍵決策、資源分配、風險評估。' },
+      '水': { role: '💧 溝通協調', desc: '水屬性成員善於溝通與傾聽。適合擔任對內對外的協調者、資訊整合者。' }
+    };
+
+    // 收集每個成員的五行角色
+    var memberRoles = [];
+    currentData.results.forEach(function(item) {
+      var el = item.result.cn ? item.result.cn.grids.ren.element : null;
+      if (el && roles[el]) {
+        memberRoles.push({ label: item.person.label, element: el, role: roles[el] });
+      }
+    });
+
+    if (memberRoles.length < 2) return '';
+
+    var html = '<div class="fortune-detail" style="margin-top:var(--space-lg);">';
+    html += '<h3>👥 團隊角色建議</h3>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;">根據每位成員的五行屬性，以下是建議的團隊分工：</p>';
+
+    memberRoles.forEach(function(mr) {
+      html += '<div class="team-pair-card" style="border-left-color:var(--color-wuxing-' + mr.element + ');cursor:default;">';
+      html += '<div class="team-pair-rank element-' + mr.element + '">' + mr.element + '</div>';
+      html += '<div class="team-pair-info"><div class="team-pair-names">' + mr.label + '：' + mr.role.role + '</div>';
+      html += '<div class="team-pair-detail">' + mr.role.desc + '</div></div></div>';
+    });
+
+    // 缺失元素提醒
+    var presentElements = {};
+    memberRoles.forEach(function(mr) { presentElements[mr.element] = true; });
+    var allElements = ['木','火','土','金','水'];
+    var missing = allElements.filter(function(el) { return !presentElements[el]; });
+    if (missing.length > 0) {
+      html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ 團隊缺少 ' + missing.join('、') + ' 屬性，可考慮招募具備這些特質的成員來補足。</p>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   // ============ 分享 ============
