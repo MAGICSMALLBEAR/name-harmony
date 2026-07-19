@@ -392,6 +392,57 @@
     }
     html += '</tbody></table></div>';
 
+    // 每組配對的詳細解讀（直接顯示）
+    html += '<div style="margin-top:var(--space-xl);">';
+    html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-md);">📖 各組配對詳細解讀</h3>';
+
+    currentData.pairs.forEach(function(entry) {
+      scColor = entry.pair.score>=80?'var(--color-fortune-great)':entry.pair.score>=60?'var(--color-fortune-good)':entry.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
+      html += '<div class="fortune-detail" style="margin-bottom:var(--space-lg);cursor:pointer;" onclick="var e=arguments[0]||window.event;e.stopPropagation();">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">';
+      html += '<strong style="color:var(--color-gold-light);">' + entry.a + ' ↔ ' + entry.b + '</strong>';
+      html += '<span class="analysis-mode-badge ' + entry.pair.modeClass + '">' + entry.pair.mode + '</span>';
+      html += '</div>';
+
+      // 分數摘要
+      html += '<div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm);">';
+      html += '<span style="font-family:var(--font-en);font-size:2rem;font-weight:900;color:' + scColor + ';">' + entry.pair.score + '</span>';
+      html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">/100</span>';
+      html += '<span style="font-family:var(--font-heading);color:' + scColor + ';">' + entry.pair.tier + '</span>';
+      html += '</div>';
+
+      // 各維度分數條
+      if (entry.pair.dimensions) {
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--space-sm);">';
+        entry.pair.dimensions.forEach(function(d) {
+          var pct = Math.round(d.score/d.max*100);
+          var fc = pct>=80?'var(--color-fortune-great)':pct>=60?'var(--color-fortune-good)':pct>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
+          html += '<div style="font-size:0.8rem;"><span style="color:var(--color-text-secondary);">' + d.label + '</span>';
+          html += '<div class="pair-dim-bar" style="margin-top:2px;"><div class="pair-dim-fill" style="width:' + pct + '%;background:' + fc + ';"></div></div>';
+          html += '<span style="float:right;color:var(--color-text-secondary);font-size:0.7rem;">' + d.score + '/' + d.max + '</span></div>';
+        });
+        html += '</div>';
+      }
+
+      // 每個維度的詳細說明
+      if (entry.pair.dimensions) {
+        entry.pair.dimensions.forEach(function(d) {
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">' + d.label + '：' + d.score + '/' + d.max + '</summary>';
+          html += '<p style="color:var(--color-text-secondary);margin:4px 0 8px 16px;line-height:1.8;">' + d.detail + '</p></details>';
+        });
+      }
+
+      // 綜合解讀
+      if (entry.pair.reading && entry.pair.reading.summary) {
+        html += '<div style="margin-top:var(--space-sm);padding-top:var(--space-sm);border-top:1px solid rgba(212,168,67,0.15);">';
+        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);line-height:2;white-space:pre-line;">' + entry.pair.reading.summary + '</p>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+    });
+    html += '</div>';
+
     matrixContent.innerHTML = html;
 
     // 點擊矩陣儲存格查看詳情
