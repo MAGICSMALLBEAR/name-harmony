@@ -1690,11 +1690,23 @@ body {
   body { background: white !important; color: black !important; }
   .app-container { max-width: 100%; }
   .bg-ornaments, .btn-add-person, .btn-remove-person, .action-bar,
-  .tab-nav, .form-section, .app-footer, .share-toast { display: none !important; }
+  .tab-nav, .form-section, .app-footer, .share-toast, .theme-toggle,
+  .scroll-top-btn, .particles-container, .pro-toggle-row,
+  .report-actions, .btn-download-img { display: none !important; }
   .card { border: 1px solid #999 !important; box-shadow: none !important; break-inside: avoid; }
   .results-section { display: block !important; }
-  .tab-panel { display: block !important; page-break-before: always; }
+  .tab-panel { display: block !important; page-break-before: always; opacity: 1 !important; transform: none !important; }
   .tab-panel:first-of-type { page-break-before: avoid; }
+  .report-certificate { border: 2px solid #333 !important; max-width: 100% !important; padding: 1cm !important; }
+  .report-certificate::before { display: none; }
+  .report-cert-stamp { color: #C41E3A !important; border-color: #C41E3A !important; opacity: 0.5 !important; }
+  .report-table th { background: #f0f0f0 !important; color: #333 !important; }
+  .report-table td, .report-table th { border-color: #ccc !important; color: #333 !important; }
+  .report-section-title { color: #333 !important; }
+  .fortune-great { color: #B8860B !important; }
+  .fortune-good { color: #2E7D32 !important; }
+  .wuxing-ring-circle { background: #fafafa !important; }
+  .member-accordion-body { display: block !important; }
 }
 
 /* === 五行雷達/圖 === */
@@ -1828,11 +1840,21 @@ body {
 /* === 分頁面板 === */
 .tab-panel {
   display: none;
-  animation: fadeUp 0.4s ease;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .tab-panel.active {
   display: block;
+  opacity: 1;
+  transform: translateY(0);
+  animation: tabIn 0.3s ease;
+}
+
+@keyframes tabIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* === 五格表格 === */

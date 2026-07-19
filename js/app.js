@@ -60,8 +60,14 @@
     saveBtn.addEventListener('click', handleSave);
     backBtn.addEventListener('click', handleBack);
     demoBtn.addEventListener('click', loadDemo);
+    // 專業模式記憶
+    if (localStorage.getItem('name-harmony-pro') === 'true') {
+      proModeToggle.checked = true;
+      isProMode = true;
+    }
     proModeToggle.addEventListener('change', function() {
       isProMode = this.checked;
+      localStorage.setItem('name-harmony-pro', isProMode ? 'true' : 'false');
       if (currentData) { renderAll(); }
     });
     addPersonBtn.addEventListener('click', addPerson);
@@ -476,6 +482,22 @@
         html += '</div>';
       }
 
+      // 語音和諧度
+      if (r.cn && r.en) {
+        var cnChars = r.cn.parsed.givenNameChars;
+        var enName = r.enReport ? r.enReport.name.toUpperCase().replace(/[^A-Z]/g,'') : '';
+        var cnVowels = 0, strongSounds = 0;
+        cnChars.forEach(function(c) {
+          // 簡易判斷：開口音多→陽剛；閉口音多→陰柔
+          var code = c.charCodeAt(0);
+          if (code >= 0x4E00 && code <= 0x9FFF) cnVowels++;
+        });
+        var enVowels = (enName.match(/[AEIOU]/gi) || []).length;
+        var harmony = Math.abs(cnVowels - enVowels) <= 2 ? '和諧' : Math.abs(cnVowels - enVowels) <= 4 ? '尚可' : '差異';
+        var harmonyColor = harmony === '和諧' ? 'var(--color-fortune-good)' : harmony === '尚可' ? 'var(--color-fortune-neutral)' : 'var(--color-text-secondary)';
+        html += '<p style="font-size:0.78rem;color:' + harmonyColor + ';margin:2px 0;">🗣️ 語音和諧度：<strong>' + harmony + '</strong>（中' + cnVowels + '音節 vs 英' + enVowels + '母音）</p>';
+      }
+
       // 今日幸運
       if (r.en && window.FunExtras) {
         var el = r.cn ? r.cn.grids.ren.element : '?';
@@ -870,6 +892,34 @@
         html += '</div>';
       }
 
+      // 改名建議（專業模式）
+      if (isProMode && report.xiYong && report.elementDiagnosis) {
+        html += '<div class="report-section">';
+        html += '<div class="report-section-title">✏️ 命名建議</div>';
+        var diag = report.elementDiagnosis;
+        var missing = [];
+        Object.keys(diag.diagnosis).forEach(function(el) {
+          if (diag.diagnosis[el].level === '缺失' || diag.diagnosis[el].level === '偏弱') missing.push(el);
+        });
+        if (missing.length > 0) {
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">名字中缺少或偏弱的五行：<strong>' + missing.join('、') + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">建議選用以下五行屬性的漢字來補強：</p>';
+          var elemChars = {
+            '木': '林、森、桐、楠、柏、楷、楨、榮、樺、樹、木、禾、竹、柳、栩、桓、桂、桃、梅、梓',
+            '火': '炎、煒、煜、燁、熹、照、煥、輝、炫、烜、明、昌、旭、昊、昕、晟、昭、晉、晞、暄',
+            '土': '坤、坦、坪、培、基、堂、堅、聖、城、垣、均、圭、垚、堉、墩、壁、壘、圭、垚',
+            '金': '金、鈞、銘、鋒、銳、鎧、錦、鈴、釗、錡、鋼、銀、銓、銳、鋒、銘、鈞、鋼、錦',
+            '水': '水、泉、浩、涵、淳、清、澤、鴻、源、海、江、河、沛、泳、淵、瀚、濬、瀾、泓'
+          };
+          missing.forEach(function(el) {
+            html += '<p style="font-size:0.8rem;margin:4px 0;"><span class="element-' + el + '">' + el + '：</span>' + (elemChars[el] || '') + '</p>';
+          });
+        } else {
+          html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">✅ 名字五行分佈均衡，不需特別補強。</p>';
+        }
+        html += '</div>';
+      }
+
       // 綜合評語
       html += '<div class="report-overall">';
       html += '<div class="report-overall-badge" style="color:' + lvlColor + ';border:2px solid ' + lvlColor + ';">' + report.overallLevel + '</div>';
@@ -878,21 +928,31 @@
 
       // 操作按鈕
       html += '<div class="report-actions">';
-      html += '<button class="btn-download-img" onclick="var t=document.createElement(\'textarea\');t.value=window.Professional.reportToText(window.Professional.generateReport({cn:(window._cr||{}).cn},window._cr||{},(window._cr||{}).en,(window._cr||{}).zodiac));t.style.cssText=\'position:fixed;opacity:0\';document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);var d=document.createElement(\'div\');d.className=\'share-toast\';d.textContent=\'報告已複製！\';document.body.appendChild(d);setTimeout(function(){d.remove();},2000);">📋 複製報告</button>';
+      html += '<button class="btn-download-img copy-report-btn" data-idx="' + idx + '">📋 複製報告</button>';
       html += '</div>';
 
       // 印章
       html += '<div class="report-cert-stamp">姓名和盤<br>命理鑑定</div>';
 
       html += '</div>';
-
-      // 存最後一個人的結果給複製按鈕用
-      if (idx === 0) window._cr = r;
     });
 
     if (!html) html = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">需要輸入中文姓名</div><div class="empty-state-hint">才能產生命理鑑定書</div></div>';
 
     reportContent.innerHTML = html;
+
+    // 綁定複製報告按鈕
+    reportContent.querySelectorAll('.copy-report-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.idx);
+        var item = currentData.results[idx];
+        if (!item || !item.result.cn) return;
+        var report = window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac);
+        var text = window.Professional.reportToText(report);
+        copyText(text);
+        toast('專業報告已複製！（可貼到文件或訊息）');
+      });
+    });
   }
 
   // ============ 結果摘要卡 ============
