@@ -68,6 +68,26 @@
       }
     });
 
+    // 主題切換
+    var themeToggle = document.getElementById('themeToggle');
+    var savedTheme = localStorage.getItem('name-harmony-theme');
+    if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeToggle.textContent = '🌙';
+    }
+    themeToggle.addEventListener('click', function() {
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        themeToggle.textContent = '☀️';
+        localStorage.setItem('name-harmony-theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeToggle.textContent = '🌙';
+        localStorage.setItem('name-harmony-theme', 'light');
+      }
+    });
+
     // 動態插入歷史和匯出按鈕
     var actionBar = document.getElementById('actionBar');
     historyBtn = document.createElement('button');
