@@ -387,13 +387,24 @@
       html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">三才：'+r.cn.sancai.level+' | 整體：'+r.cn.overall+'</p>';
     }
     if (r.enReport) {
-      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(212,168,67,0.1);"><strong style="color:var(--color-gold-primary);">英文靈數</strong></div>';
+      var enData = r.enReport;
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(212,168,67,0.1);"><strong style="color:var(--color-gold-primary);">🔢 英文靈數</strong></div>';
       html += '<div class="numerology-grid">';
-      r.enReport.coreNumbers.forEach(function(n) {
+      enData.coreNumbers.forEach(function(n) {
         var isM = (n.number===11||n.number===22||n.number===33);
         html += '<div class="number-card"><div class="'+(isM?'number-circle master-number':'number-circle')+'">'+n.number+'</div><div class="number-info"><div class="number-name">'+n.name+'</div><div class="number-desc">'+ (n.meaning.title||'') +'</div></div></div>';
       });
       html += '</div>';
+
+      // 進階靈數
+      var adv = window.EnglishNumerology.getAdvancedNumbers(r.en);
+      if (adv) {
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">';
+        if (adv.challenge) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">⚔️ 挑戰:' + adv.challenge.primary + '/' + adv.challenge.secondary + '</span>';
+        if (adv.maturity) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">🌟 成熟:' + adv.maturity + '</span>';
+        if (adv.balance) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">⚖️ 平衡:' + adv.balance + '</span>';
+        html += '</div>';
+      }
     }
     return html;
   }

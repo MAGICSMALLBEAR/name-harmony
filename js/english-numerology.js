@@ -196,12 +196,56 @@ window.EnglishNumerology = (function() {
       desc: (meanings[personalYear] || {}).desc || ''
     };
   }
+
+  // ============ 衍生數字 ============
+
+  function getChallengeNumbers(fullName) {
+    if (!fullName) return null;
+    var name = fullName.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    if (name.length < 2) return null;
+    var first = letterToNumber(name[0]);
+    var last = letterToNumber(name[name.length - 1]);
+    return {
+      primary: reduceNumber(Math.abs(first - last)),
+      secondary: reduceNumber(Math.abs(first - last) + 1),
+      description: '挑戰數字代表此生需克服的主要障礙'
+    };
+  }
+
+  function getMaturityNumber(analysis) {
+    if (!analysis) return null;
+    return reduceNumber(analysis.destiny + analysis.totalSum);
+  }
+
+  function getBalanceNumber(fullName) {
+    if (!fullName) return null;
+    var parts = fullName.trim().toUpperCase().replace(/[^A-Z\s]/g, '').split(/\s+/);
+    if (parts.length < 1) return null;
+    var initials = parts.map(function(p) { return p[0] || ''; }).join('');
+    var sum = 0;
+    for (var i = 0; i < initials.length; i++) sum += letterToNumber(initials[i]);
+    return reduceNumber(sum);
+  }
+
+  function getAdvancedNumbers(analysis, birthMonth, birthDay) {
+    if (!analysis) return null;
+    return {
+      challenge: getChallengeNumbers(analysis.name),
+      maturity: getMaturityNumber(analysis),
+      balance: getBalanceNumber(analysis.name)
+    };
+  }
+
   return {
     analyze: analyzeName,
     getMeaning: getNumberMeaning,
     getFullReport: getFullReport,
     getLifeCycleNumbers: getLifeCycleNumbers,
     getPersonalYear: getPersonalYear,
+    getChallengeNumbers: getChallengeNumbers,
+    getMaturityNumber: getMaturityNumber,
+    getBalanceNumber: getBalanceNumber,
+    getAdvancedNumbers: getAdvancedNumbers,
     letterToNumber: letterToNumber,
     reduceNumber: reduceNumber,
     PYTHAGOREAN_MAP: PYTHAGOREAN_MAP
