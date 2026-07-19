@@ -576,6 +576,75 @@ body {
   font-size: 0.85rem;
   padding: 8px 12px;
 }
+
+.form-bday-hint {
+  font-size: 0.7rem;
+  color: var(--color-gold-dark);
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+/* === 並排比較 === */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.compare-card {
+  background: var(--color-bg-mid);
+  border: 1px solid rgba(212,168,67,0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.compare-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid rgba(212,168,67,0.15);
+}
+
+.compare-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--color-gold-light);
+  font-weight: 700;
+}
+
+.compare-mini-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 4px 8px;
+  font-size: 0.8rem;
+  align-items: center;
+}
+
+.compare-mini-label {
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+}
+
+.compare-mini-val {
+  font-family: var(--font-en);
+  font-weight: 600;
+  color: var(--color-gold-light);
+  font-size: 0.85rem;
+}
+
+.compare-mini-tag {
+  font-size: 0.65rem;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+@media (max-width: 599px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
 .card-subtitle {
   text-align: center;
   font-size: 0.85rem;
@@ -612,6 +681,23 @@ body {
 .person-badge-b {
   background: var(--color-gold-dark);
   color: var(--color-bg-deep);
+}
+
+.person-label {
+  cursor: text;
+  transition: all 0.2s;
+  min-width: 40px;
+  text-align: center;
+}
+
+.person-label:focus {
+  outline: 2px solid var(--color-gold-primary);
+  outline-offset: 2px;
+  background: var(--color-red-primary);
+}
+
+.person-label:hover:not(:focus) {
+  filter: brightness(1.2);
 }
 
 .person-title {

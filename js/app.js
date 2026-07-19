@@ -203,11 +203,20 @@
 
   // ============ 收集全部輸入 ============
   function collectInputs() {
+    // 讀取自訂標籤
+    var labels = document.querySelectorAll('.person-label');
+    var defaultLabels = ['甲方','乙方'];
+    var customLabels = [];
+    labels.forEach(function(el) {
+      var txt = el.textContent.trim();
+      customLabels.push(txt && txt !== el.dataset.default ? txt : null);
+    });
+
     var persons = [];
     // Person A
     var aBday = document.querySelector('#formSection .person-section:nth-of-type(1) .bday-input');
     persons.push({
-      id: 'A', label: '甲方',
+      id: 'A', label: customLabels[0] || '甲方',
       cn: document.getElementById('cnA').value.trim(),
       en: document.getElementById('enA').value.trim(),
       birthday: (aBday ? aBday.value.trim() : '') || ''
@@ -215,7 +224,7 @@
     // Person B
     var bBday = document.querySelector('#formSection .person-section:nth-of-type(2) .bday-input');
     persons.push({
-      id: 'B', label: '乙方',
+      id: 'B', label: customLabels[1] || '乙方',
       cn: document.getElementById('cnB').value.trim(),
       en: document.getElementById('enB').value.trim(),
       birthday: (bBday ? bBday.value.trim() : '') || ''
@@ -316,7 +325,8 @@
 
     currentData = { results: results, pairs: pairs };
     renderAll();
-    switchTab(results.length >= 3 ? 'matrix' : 'members');
+    // 2人模式直接顯示配對；3人以上顯示成員
+    switchTab(results.length === 2 && pairs.length > 0 ? 'matrix' : 'members');
     showResults();
   }
 
@@ -404,6 +414,9 @@
 
     // 結果摘要卡
     html += renderSummaryCard();
+
+    // 並排比較
+    html += renderSideBySide();
 
     // 姓名生成器
     html += renderNameGeneratorUI();
@@ -719,6 +732,37 @@
         if (names.length === 2) openPairDetail(names[0].trim(), names[1].trim());
       });
     });
+  }
+
+  // ============ 並排比較五格 ============
+  function renderSideBySide() {
+    if (!currentData || !currentData.results || currentData.results.length < 2) return '';
+    // 只顯示有中文名的
+    var withCN = currentData.results.filter(function(r) { return r.result.cn; });
+    if (withCN.length < 2) return '';
+
+    var html = '<h3 style="color:var(--color-gold-primary);margin:1rem 0;font-size:1rem;">⚖️ 五格並排比較</h3>';
+    html += '<div class="compare-grid">';
+
+    withCN.forEach(function(item) {
+      var cn = item.result.cn;
+      var g = cn.grids;
+      html += '<div class="compare-card">';
+      html += '<div class="compare-card-header"><span class="compare-name">' + item.person.label + '</span>';
+      html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">' + (cn.parsed.surname + cn.parsed.givenName) + '</span></div>';
+      html += '<div class="compare-mini-grid">';
+      ['tian','ren','di','wai','zong'].forEach(function(k) {
+        var v = g[k];
+        var fc = v.fortune ? 'fortune-'+(v.fortune.glory==='大吉'?'great':v.fortune.glory==='吉'?'good':v.fortune.glory==='中吉'||v.fortune.glory==='半吉'?'neutral':v.fortune.glory==='凶'?'bad':'terrible') : '';
+        html += '<span class="compare-mini-label">' + v.name + '</span>';
+        html += '<span class="compare-mini-val">' + v.number + ' <span class="element-' + v.element + '" style="font-size:0.7rem;">' + v.element + '</span></span>';
+        html += '<span class="compare-mini-tag ' + fc + '">' + (v.fortune ? v.fortune.glory : '?') + '</span>';
+      });
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    return html;
   }
 
   // ============ 結果摘要卡 ============
