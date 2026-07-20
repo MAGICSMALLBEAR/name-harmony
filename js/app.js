@@ -408,7 +408,7 @@
   function switchTab(tab) {
     tabNav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport' };
+    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport', history: 'panelHistory' };
     var panel = document.getElementById(m[tab] || 'panelMembers');
     if (panel) panel.classList.add('active');
   }
@@ -420,6 +420,7 @@
     renderMatrix();
     renderTeam();
     renderProfessionalReports();
+    renderHistoryPanel();
   }
 
   // ============ 成員分析（摺疊） ============
@@ -960,6 +961,76 @@
         var text = window.Professional.reportToText(report);
         copyText(text);
         toast('專業報告已複製！（可貼到文件或訊息）');
+      });
+    });
+  }
+
+  // ============ 歷史面板 ============
+  var historyPanelContent = document.getElementById('historyPanelContent');
+
+  function renderHistoryPanel() {
+    if (!historyPanelContent) return;
+    var hist = loadHistory();
+    if (!hist.length) {
+      historyPanelContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">尚無歷史記錄</div><div class="empty-state-hint">分析和盤後到下方點「💾 儲存記錄」即可保存，之後可在此頁籤查看</div></div>';
+      return;
+    }
+
+    var html = '';
+    hist.forEach(function(entry, idx) {
+      var time = entry.time ? new Date(entry.time).toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      var members = (entry.persons||[]).map(function(p){return (p.cn||'')+(p.cn&&p.en?' / ':'')+(p.en||'');}).filter(function(s){return s;}).join('、');
+      var avg = (entry.pairs||[]).length ? Math.round(entry.pairs.reduce(function(a,b){return a+b.score;},0)/entry.pairs.length) : 0;
+      var sc = avg>=80?'var(--color-fortune-great)':avg>=60?'var(--color-fortune-good)':avg>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
+
+      html += '<div style="background:var(--color-bg-mid);border:1px solid rgba(212,168,67,0.15);border-radius:8px;padding:12px;margin-bottom:8px;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html += '<span style="font-size:0.8rem;color:var(--color-text-muted);">' + time + '</span>';
+      html += '<span style="font-family:var(--font-en);font-size:1.2rem;font-weight:700;color:' + sc + ';">' + avg + '分</span>';
+      html += '</div>';
+      html += '<div style="font-size:0.9rem;color:var(--color-gold-light);margin-bottom:8px;">' + members + '</div>';
+
+      // 顯示配對
+      if (entry.pairs && entry.pairs.length) {
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+        entry.pairs.forEach(function(p) {
+          var c = p.score>=80?'var(--color-fortune-great)':p.score>=60?'var(--color-fortune-good)':p.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
+          html += '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(0,0,0,0.15);border-radius:10px;">' + p.a + '↔' + p.b + ' <strong style="color:'+c+';">' + p.score + '</strong> ' + (p.mode||'') + '</span>';
+        });
+        html += '</div>';
+      }
+
+      // 載入按鈕
+      html += '<button class="btn-download-img" style="margin-top:8px;font-size:0.75rem;" data-load-idx="' + idx + '">📥 載入此記錄重新分析</button>';
+      html += '</div>';
+    });
+
+    historyPanelContent.innerHTML = html;
+
+    // 載入按鈕事件
+    historyPanelContent.querySelectorAll('[data-load-idx]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.loadIdx);
+        var entry = loadHistory()[idx];
+        if (!entry || !entry.persons) return;
+        var ids = [['cnA','enA'],['cnB','enB']];
+        entry.persons.forEach(function(p, i) {
+          if (i < 2) {
+            document.getElementById(ids[i][0]).value = p.cn || '';
+            document.getElementById(ids[i][1]).value = p.en || '';
+          } else {
+            while (extraCount + 2 <= i) addPerson();
+            var extras = extraPersons.querySelectorAll('.extra-person');
+            var div = extras[i - 2];
+            if (div) {
+              div.querySelector('.cn-input').value = p.cn || '';
+              div.querySelector('.en-input').value = p.en || '';
+            }
+          }
+        });
+        handleAnalyze();
+        switchTab('members');
+        toast('已載入並重新分析！');
       });
     });
   }
