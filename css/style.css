@@ -2405,6 +2405,27 @@ body {
   box-shadow: var(--shadow-glow-gold);
 }
 
+/* === 浮動專業開關 === */
+.pro-fixed-toggle {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-gold-primary);
+  border-radius: 20px;
+  padding: 8px 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.pro-fixed-label {
+  font-size: 0.9rem;
+}
+
 /* ============================================================
    響應式設計 — Mobile First（手機優先）
    斷點: 480px / 640px / 900px / 1200px

@@ -19,8 +19,15 @@
 </head>
 <body>
 
-  <!-- 主題切換 -->
+  <!-- 主題切換 + 專業模式 -->
   <button class="theme-toggle" id="themeToggle" title="切換淺色/深色主題" aria-label="主題切換">☀️</button>
+  <div class="pro-fixed-toggle" id="proFixedToggle">
+    <span class="pro-fixed-label">📜</span>
+    <label class="pro-toggle">
+      <input type="checkbox" id="proModeToggle">
+      <span class="pro-toggle-slider"></span>
+    </label>
+  </div>
 
   <!-- 八卦背景裝飾 -->
   <div class="bg-ornaments" aria-hidden="true">
@@ -149,14 +156,6 @@
           </button>
         </div>
 
-        <!-- 專業模式開關 -->
-        <div class="pro-toggle-row">
-          <span class="pro-toggle-label">📜 專業模式</span>
-          <label class="pro-toggle">
-            <input type="checkbox" id="proModeToggle">
-            <span class="pro-toggle-slider"></span>
-          </label>
-        </div>
 
         <!-- 錯誤提示區 -->
         <div id="formError" class="form-error hidden"></div>
