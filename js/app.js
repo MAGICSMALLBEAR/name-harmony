@@ -651,7 +651,7 @@
     html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-md);">📖 各組配對詳細解讀</h3>';
 
     currentData.pairs.forEach(function(entry) {
-      scColor = entry.pair.score>=80?'var(--color-fortune-great)':entry.pair.score>=60?'var(--color-fortune-good)':entry.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
+      var scColor = entry.pair.score>=80?'var(--color-fortune-great)':entry.pair.score>=60?'var(--color-fortune-good)':entry.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
       html += '<div class="fortune-detail" style="margin-bottom:var(--space-lg);cursor:pointer;" onclick="var e=arguments[0]||window.event;e.stopPropagation();">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">';
       html += '<strong style="color:var(--color-gold-light);">' + entry.a + ' ↔ ' + entry.b + '</strong>';
