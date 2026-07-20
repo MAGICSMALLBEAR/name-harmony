@@ -287,7 +287,7 @@
       }
       // 生日分析
       var bday = parseBirthday(persons[i].birthday);
-      var zodiac = bday ? window.ZodiacBazi.fullAnalysis(bday.year, bday.month, bday.day) : null;
+      var zodiac = bday ? window.ZodiacBazi.fullAnalysis(bday.year, bday.month, bday.day, bday.hour) : null;
       r.zodiac = zodiac;
 
       results.push({ person: persons[i], result: r, birthday: bday });
@@ -372,8 +372,9 @@
     var y = parseInt(parts[0]);
     var m = parseInt(parts[1]);
     var d = parts.length >= 3 ? parseInt(parts[2]) : 1;
+    var h = parts.length >= 4 ? parseInt(parts[3]) : null;
     if (isNaN(y) || isNaN(m) || y < 1900 || y > 2100 || m < 1 || m > 12) return null;
-    return { year: y, month: m, day: d || 1 };
+    return { year: y, month: m, day: d || 1, hour: (h != null && h >= 0 && h <= 23) ? h : null };
   }
 
   // ============ 手動筆劃 ============
@@ -472,6 +473,34 @@
       if (r.zodiac.starSign) {
         html += '<span style="font-size:0.85rem;">' + r.zodiac.starSign.emoji + ' ' + r.zodiac.starSign.name + '</span>';
       }
+      // 完整四柱
+      if (r.zodiac.bazi && r.zodiac.bazi.pillars) {
+        html += '<div style="margin-top:4px;overflow-x:auto;"><table style="width:100%;font-size:0.75rem;border-collapse:collapse;">';
+        html += '<tr style="color:var(--color-text-muted);">';
+        r.zodiac.bazi.pillars.forEach(function(p) {
+          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + p.name + '</td>';
+        });
+        html += '</tr><tr style="font-weight:700;font-size:0.85rem;">';
+        r.zodiac.bazi.pillars.forEach(function(p) {
+          var c = p.isDayMaster ? 'color:var(--color-gold-primary);' : '';
+          html += '<td style="text-align:center;padding:4px 6px;border:1px solid rgba(212,168,67,0.1);'+c+'">' + p.tg + p.dz + '</td>';
+        });
+        html += '</tr><tr style="color:var(--color-text-muted);">';
+        r.zodiac.bazi.pillars.forEach(function(p) {
+          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + p.tgEle + p.dzEle + '</td>';
+        });
+        html += '</tr>';
+        if (r.zodiac.bazi.hasHour) {
+          html += '<tr style="color:var(--color-text-muted);font-size:0.65rem;">';
+          r.zodiac.bazi.pillars.forEach(function(p) {
+            html += '<td style="text-align:center;padding:2px 6px;">' + (p.shiShen || '') + '</td>';
+          });
+          html += '</tr>';
+        }
+        html += '</table></div>';
+        html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:2px 0;">☀ 日主：<strong class="element-' + r.zodiac.bazi.dayMaster + '">' + r.zodiac.bazi.dayMaster + '</strong>（' + r.zodiac.bazi.dayMasterTG + '） — 代表你的核心本質</p>';
+      }
+
       if (r.zodiac.zodiacNature) {
         html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:4px 0 0;">' + r.zodiac.zodiacNature + '</p>';
       }
@@ -890,6 +919,26 @@
         html += '<p style="font-size:0.8rem;color:var(--color-fortune-good);margin-top:4px;">✅ ' + diag.strengths.join('；') + '</p>';
       }
       html += '</div>';
+
+      // 八字 vs 姓名比對
+      if (isProMode && r.zodiac && r.zodiac.bazi && r.cn) {
+        var compare = window.ZodiacBazi.baziNameCompare(r.zodiac.bazi, r.cn);
+        if (compare) {
+          var cScore = compare.score >= 85 ? 'var(--color-fortune-great)' : compare.score >= 65 ? 'var(--color-fortune-good)' : compare.score >= 45 ? 'var(--color-fortune-neutral)' : 'var(--color-fortune-bad)';
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">🔗 八字 × 姓名比對</div>';
+          html += '<div style="text-align:center;margin-bottom:8px;">互補度：<strong style="font-size:1.2rem;color:' + cScore + ';">' + compare.score + '%</strong>（' + compare.level + '）</div>';
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);line-height:1.8;">' + compare.reading + '</p>';
+          html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:0.75rem;">';
+          var elKeys = ['木','火','土','金','水'];
+          elKeys.forEach(function(el) {
+            html += '<span style="padding:2px 8px;background:rgba(0,0,0,0.1);border-radius:8px;">' + el + ' 命盤:' + compare.baziElements[el] + ' 名字:' + compare.nameElements[el] + '</span>';
+          });
+          html += '</div>';
+          if (compare.baziMissing.length) html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);margin-top:4px;">⚠️ 命盤缺：' + compare.baziMissing.join('、') + '</p>';
+          html += '</div>';
+        }
+      }
 
       // 喜用神（專業模式才有）
       if (isProMode && report.xiYong) {
