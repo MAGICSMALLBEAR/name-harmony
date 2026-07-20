@@ -262,10 +262,13 @@
   function handleAnalyze() {
     formError.classList.add('hidden');
     showLoading();
-    setTimeout(function() {
+    try {
       doAnalyze();
-      hideLoading();
-    }, 100);
+    } catch(e) {
+      console.error('Analysis error:', e);
+      showError('分析時發生錯誤：' + (e.message || '未知錯誤'));
+    }
+    hideLoading();
   }
 
   function doAnalyze() {
