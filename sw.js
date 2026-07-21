@@ -45,12 +45,29 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
-// Fetch: Cache-First, Network Fallback
+// Fetch: Cache-First with font caching
 self.addEventListener('fetch', function(event) {
+  // Google Fonts: cache for offline
+  if (event.request.url.indexOf('fonts.googleapis.com') >= 0 ||
+      event.request.url.indexOf('fonts.gstatic.com') >= 0) {
+    event.respondWith(
+      caches.match(event.request).then(function(cached) {
+        return cached || fetch(event.request).then(function(response) {
+          var responseClone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Static assets: cache-first
   event.respondWith(
     caches.match(event.request).then(function(cached) {
       return cached || fetch(event.request).then(function(response) {
-        // 快取新資源（排除 Google Fonts 等外部資源）
         if (response.status === 200 && event.request.url.indexOf(location.origin) === 0) {
           var responseClone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) {

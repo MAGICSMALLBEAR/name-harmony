@@ -35,15 +35,16 @@ window.ZodiacBazi = (function() {
     return { tg: tg, dz: dz, tgEle: TIAN_GAN_ELE[TIAN_GAN.indexOf(tg)], dzEle: DI_ZHI_ELE[DI_ZHI.indexOf(dz)] };
   }
 
-  /** 日柱：以1900/1/1為甲戌日基準推算 */
+  /** 日柱：基準日推算（1900-01-01 = 甲戌日，驗證準確） */
   function dayPillar(year, month, day) {
-    var base = new Date(1900, 0, 1); // 1900-01-01 = 甲戌日 (tg=0, dz=10)
-    var target = new Date(year, month - 1, day);
-    var days = Math.floor((target - base) / 86400000);
-    if (days < 0) days += 60; // adjust
-    var tg = TIAN_GAN[((days % 10) + 10) % 10]; // 甲=0
-    var dz = DI_ZHI[((days % 12) + 10) % 12]; // 戌=10
-    return { tg: tg, dz: dz, tgEle: TIAN_GAN_ELE[TIAN_GAN.indexOf(tg)], dzEle: DI_ZHI_ELE[DI_ZHI.indexOf(dz)] };
+    // 用 UTC 避免時區影響
+    var base = Date.UTC(1900, 0, 1);
+    var target = Date.UTC(year, month - 1, day);
+    var days = Math.round((target - base) / 86400000);
+    // 1900-01-01 = 甲戌: tgIdx=0(甲), dzIdx=10(戌)
+    var tgIdx = ((days % 10) + 10) % 10;
+    var dzIdx = ((days % 12) + 10 + 12) % 12;
+    return { tg: TIAN_GAN[tgIdx], dz: DI_ZHI[dzIdx], tgEle: TIAN_GAN_ELE[tgIdx], dzEle: DI_ZHI_ELE[dzIdx] };
   }
 
   /** 時辰 */
