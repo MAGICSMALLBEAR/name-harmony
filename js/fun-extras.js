@@ -82,9 +82,30 @@ window.FunExtras = (function() {
     };
   }
 
+  // ========== 塔羅 ==========
+  var TAROT = {
+    1:{card:'I 魔術師',e:'🪄',desc:'創造力、意志力、新開始。你擁有將想法化為現實的力量。'},
+    2:{card:'II 女祭司',e:'🔮',desc:'直覺、智慧、潛意識。相信直覺，答案在內心。'},
+    3:{card:'III 皇后',e:'👑',desc:'豐盛、創造、滋養。享受生命的美好。'},
+    4:{card:'IV 皇帝',e:'🏛️',desc:'權威、結構、穩定。建立秩序，掌控方向。'},
+    5:{card:'V 教皇',e:'📖',desc:'信仰、傳統、教導。尋求指引，傳承智慧。'},
+    6:{card:'VI 戀人',e:'💕',desc:'愛、和諧、選擇。重要關係的決定時刻。'},
+    7:{card:'VII 戰車',e:'🛡️',desc:'勝利、行動、克服障礙。勇往直前。'},
+    8:{card:'VIII 力量',e:'🦁',desc:'勇氣、內在力量。以柔克剛。'},
+    9:{card:'IX 隱者',e:'🏔️',desc:'內省、智慧、獨處。找到內心的光。'},
+    11:{card:'XI 正義',e:'⚖️',desc:'公正、因果。誠實面對，種因得果。'},
+    22:{card:'XXI 世界',e:'🌍',desc:'完成、圓滿。一個循環的結束與新開始。'},
+    33:{card:'0 愚者',e:'🌟',desc:'新的旅程、無限可能。勇敢出發吧。'}
+  };
+  function getTarot(d) {
+    if(TAROT[d])return TAROT[d];
+    var r=window.EnglishNumerology?window.EnglishNumerology.reduceNumber(d):(d%9||9);
+    return TAROT[r]||TAROT[1];
+  }
+
   return {
-    getMBTI: getMBTI,
-    MBTI_DESC: MBTI_DESC,
-    getDailyFortune: getDailyFortune
+    getMBTI:getMBTI, MBTI_DESC:MBTI_DESC,
+    getDailyFortune:getDailyFortune,
+    getTarot:getTarot, TAROT:TAROT
   };
 })();
