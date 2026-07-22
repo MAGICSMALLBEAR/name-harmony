@@ -487,6 +487,9 @@
   function renderMembers() {
     var html = '';
 
+    // 智能總結卡
+    html += renderSmartSummary();
+
     // 結果摘要卡
     html += renderSummaryCard();
 
@@ -755,6 +758,21 @@
           html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">' + d.label + '：' + d.score + '/' + d.max + '</summary>';
           html += '<p style="color:var(--color-text-secondary);margin:4px 0 8px 16px;line-height:1.8;">' + d.detail + '</p></details>';
         });
+      }
+
+      // 關係一句話
+      if (window.SmartInsights) {
+        var rl = window.SmartInsights.relationshipOneLiner(entry.pair);
+        var rtips = window.SmartInsights.relationshipTips(entry.pair);
+        html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin:4px 0;">💬 ' + rl + '</p>';
+        if (rtips.length) {
+          html += '<div style="margin:4px 0;">';
+          rtips.forEach(function(t) {
+            var isGood = t.indexOf('保持') === 0;
+            html += '<p style="font-size:0.75rem;color:' + (isGood?'var(--color-fortune-good)':'var(--color-fortune-neutral)') + ';margin:1px 0;">' + (isGood?'✅ ':'🔧 ') + t + '</p>';
+          });
+          html += '</div>';
+        }
       }
 
       // 綜合解讀
@@ -1189,6 +1207,47 @@
         toast('已載入並重新分析！');
       });
     });
+  }
+
+  // ============ 智能總結 ============
+  function renderSmartSummary() {
+    if (!currentData || !window.SmartInsights) return '';
+    var html = '';
+    currentData.results.forEach(function(item) {
+      var r = item.result;
+      var one = window.SmartInsights.oneLiner(r.cn, r.en, r.zodiac);
+      var pc = window.SmartInsights.prosAndCons(r.cn);
+
+      html += '<div class="fortune-detail" style="margin-bottom:var(--space-md);border-left:3px solid var(--color-gold-primary);">';
+      html += '<h3 style="margin-bottom:4px;">' + item.person.label + '</h3>';
+      html += '<p style="font-size:0.9rem;color:var(--color-gold-light);line-height:1.8;">💬 ' + one + '</p>';
+
+      if (pc) {
+        if (pc.pros.length) {
+          html += '<div style="margin-top:8px;">';
+          pc.pros.forEach(function(p) {
+            html += '<p style="font-size:0.8rem;color:var(--color-fortune-good);margin:2px 0;">✅ ' + p + '</p>';
+          });
+          html += '</div>';
+        }
+        if (pc.cons.length) {
+          html += '<div style="margin-top:4px;">';
+          pc.cons.forEach(function(c) {
+            html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin:2px 0;">⚠️ ' + c + '</p>';
+          });
+          html += '</div>';
+        }
+      }
+
+      // 行動建議
+      var actions = window.SmartInsights.actionCard(r.cn, r.zodiac);
+      if (actions.length) {
+        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">💡 建議：' + actions.slice(0,3).join('；') + '</p>';
+      }
+
+      html += '</div>';
+    });
+    return html;
   }
 
   // ============ 結果摘要卡 ============
