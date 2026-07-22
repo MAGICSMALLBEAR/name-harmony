@@ -574,16 +574,19 @@
         html += '</div>';
       }
 
-      // 塔羅
-      if (r.en && window.FunExtras) {
-        var tarot = window.FunExtras.getTarot(r.en.destiny);
-        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin:2px 0;">🃏 塔羅：<strong>' + tarot.e + ' ' + tarot.card + '</strong> — ' + tarot.desc.substring(0,40) + '...</p>';
+      // 塔羅深度詳解
+      if (r.en && window.FunExtras && window.DeepReadings) {
+        var tarotDeep = window.DeepReadings.getTarotDeepReading(r.en.destiny, r.en);
+        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🃏 塔羅解析</summary>';
+        html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + tarotDeep + '</p></details>';
       }
 
-      // 卡巴拉
-      if (r.en && window.EnglishNumerology) {
+      // 卡巴拉深度
+      if (r.en && window.EnglishNumerology && window.DeepReadings) {
         var chal = window.EnglishNumerology.chaldeanNumber(r.en.name || r.enReport.name);
-        html += '<p style="font-size:0.78rem;color:var(--color-text-muted);margin:2px 0;">🔯 卡巴拉靈數：' + chal + '</p>';
+        var kabReading = window.DeepReadings.getKabbalahReading(chal);
+        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔯 卡巴拉生命樹</summary>';
+        html += '<p style="color:var(--color-text-secondary);line-height:1.8;">' + kabReading + '</p></details>';
       }
 
       // 語音和諧度
@@ -1069,6 +1072,18 @@
           html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">✅ 名字五行分佈均衡，不需特別補強。</p>';
         }
         html += '</div>';
+      }
+
+      // 易經卦象（專業模式）
+      if (isProMode && r.cn && window.IChing && window.DeepReadings) {
+        var hex = window.IChing.nameToHexagram(r.cn);
+        if (hex) {
+          var hexReading = window.DeepReadings.getHexagramDeepReading(hex, r.cn);
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">🔮 易經卦象 ' + hex.hexUnicode + '</div>';
+          html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);line-height:2;white-space:pre-line;">' + hexReading + '</p>';
+          html += '</div>';
+        }
       }
 
       // 綜合評語
