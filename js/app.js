@@ -121,6 +121,23 @@
     });
     actionBar.insertBefore(linkBtn, backBtn);
 
+    // TTS 語音朗讀
+    var ttsBtn = document.createElement('button');
+    ttsBtn.className = 'btn-action';
+    ttsBtn.innerHTML = '<span>🔊</span> 朗讀';
+    ttsBtn.addEventListener('click', function() {
+      if (!currentData) return;
+      var text = buildShareText().replace(/[🔮💫🀄🔢🐉📜]/g,'');
+      if ('speechSynthesis' in window) {
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-TW'; u.rate = 0.9;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+        toast('🔊 正在朗讀分析結果...');
+      } else { toast('您的瀏覽器不支援語音朗讀'); }
+    });
+    actionBar.insertBefore(ttsBtn, backBtn);
+
     // 動態插入歷史和匯出按鈕
     var actionBar = document.getElementById('actionBar');
     historyBtn = document.createElement('button');
