@@ -292,11 +292,61 @@ window.Professional = (function() {
     return lines.join('\n');
   }
 
+  // ========== 改名對比 + 行業/幸運建議 ==========
+  function compareNames(oldName, newName) {
+    if (!oldName || !newName) return null;
+    var oR = window.ChineseNumerology ? window.ChineseNumerology.analyze(oldName) : null;
+    var nR = window.ChineseNumerology ? window.ChineseNumerology.analyze(newName) : null;
+    if (!oR || !nR || oR.error || nR.error) return null;
+    var oG = (oR.fortuneCounts['大吉']||0)+(oR.fortuneCounts['吉']||0)+(oR.fortuneCounts['中吉']||0);
+    var oB = (oR.fortuneCounts['凶']||0)+(oR.fortuneCounts['大凶']||0);
+    var nG = (nR.fortuneCounts['大吉']||0)+(nR.fortuneCounts['吉']||0)+(nR.fortuneCounts['中吉']||0);
+    var nB = (nR.fortuneCounts['凶']||0)+(nR.fortuneCounts['大凶']||0);
+    var imp = nG - oG + (oB - nB);
+    var changes = [];
+    ['tian','ren','di','wai','zong'].forEach(function(k) {
+      var og=oR.grids[k], ng=nR.grids[k];
+      changes.push({
+        name:og.name, changed:og.number!==ng.number||og.element!==ng.element,
+        old:{num:og.number,ele:og.element,glory:og.fortune?og.fortune.glory:'?'},
+        new:{num:ng.number,ele:ng.element,glory:ng.fortune?ng.fortune.glory:'?'}
+      });
+    });
+    return {
+      oldName:oldName, newName:newName, oldGood:oG, oldBad:oB, newGood:nG, newBad:nB,
+      improvement:imp, verdict:imp>=3?'大幅改善':imp>=1?'明顯改善':imp>=0?'略有改善':'效果不佳',
+      gridChanges:changes
+    };
+  }
+
+  function careerSuggestions(element) {
+    var el=element||'木';
+    var c={
+      '木':'教育、出版、園藝、設計、醫療、環保',
+      '火':'餐飲、娛樂、媒體、科技、業務、公關',
+      '土':'房地產、建築、金融、管理、顧問、農業',
+      '金':'法律、軍警、機械、工程、會計、銀行',
+      '水':'貿易、物流、寫作、藝術、心理諮商、旅遊'
+    };
+    return {element:el, suggestion:c[el]||c['木']};
+  }
+
+  function luckyElements(element) {
+    var el=element||'木';
+    var l={
+      '木':{color:'綠色、青色',direction:'東方',number:'3、8',gem:'翡翠、綠松石'},
+      '火':{color:'紅色、紫色',direction:'南方',number:'2、7',gem:'紅寶石、紫水晶'},
+      '土':{color:'黃色、棕色',direction:'中央/東北',number:'5、0',gem:'黃水晶、琥珀'},
+      '金':{color:'白色、金色',direction:'西方',number:'4、9',gem:'白金、鑽石'},
+      '水':{color:'黑色、藍色',direction:'北方',number:'1、6',gem:'黑曜石、藍寶石'}
+    };
+    return l[el]||l['木'];
+  }
+
   return {
-    analyzeXiYongShen: analyzeXiYongShen,
-    diagnoseElements: diagnoseElements,
-    generateReport: generateReport,
-    reportToText: reportToText,
-    getClassicalQuote: getClassicalQuote
+    analyzeXiYongShen:analyzeXiYongShen, diagnoseElements:diagnoseElements,
+    generateReport:generateReport, reportToText:reportToText,
+    getClassicalQuote:getClassicalQuote, compareNames:compareNames,
+    careerSuggestions:careerSuggestions, luckyElements:luckyElements
   };
 })();

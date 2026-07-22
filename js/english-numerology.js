@@ -197,6 +197,48 @@ window.EnglishNumerology = (function() {
     };
   }
 
+  // ============ 高峰數字 (Pinnacle Numbers) ============
+  function getPinnacleNumbers(destinyNumber) {
+    var d = reduceNumber(destinyNumber);
+    var pinnacles = [];
+    // 四個高峰：用命運數字計算
+    var p1 = reduceNumber(36 - d);
+    var p2 = reduceNumber(9 + d);
+    var p3 = reduceNumber(p1 + p2);
+    var p4 = reduceNumber(d + (d % 10));
+
+    var ageRanges = ['0-30歲','31-40歲','41-50歲','51歲+'];
+    [p1,p2,p3,p4].forEach(function(p, i) {
+      var m = getNumberMeaning(p) || {};
+      pinnacles.push({
+        number: p,
+        age: ageRanges[i],
+        title: (m.title || ''),
+        desc: (m.strengths || '').substring(0, 80) + '...'
+      });
+    });
+    return pinnacles;
+  }
+
+  /** 轉折年 (Turning Points) */
+  function getTurningYears(birthYear, destinyNumber) {
+    if (!birthYear) return null;
+    var d = reduceNumber(destinyNumber);
+    // 轉折年=出生年+命運數字，之後每9年一個
+    var base = birthYear + d;
+    var currentYear = new Date().getFullYear();
+    var years = [];
+    for (var y = base; y <= currentYear + 5; y += 9) {
+      years.push({
+        year: y,
+        age: y - birthYear,
+        description: y <= currentYear ? '已過轉折點' : '即將到來的轉折點',
+        isPast: y <= currentYear
+      });
+    }
+    return years;
+  }
+
   // ============ 衍生數字 ============
 
   function getChallengeNumbers(fullName) {
@@ -245,6 +287,8 @@ window.EnglishNumerology = (function() {
     getChallengeNumbers: getChallengeNumbers,
     getMaturityNumber: getMaturityNumber,
     getBalanceNumber: getBalanceNumber,
+    getPinnacleNumbers: getPinnacleNumbers,
+    getTurningYears: getTurningYears,
     getAdvancedNumbers: getAdvancedNumbers,
     letterToNumber: letterToNumber,
     reduceNumber: reduceNumber,
