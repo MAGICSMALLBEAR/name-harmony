@@ -574,6 +574,18 @@
         html += '</div>';
       }
 
+      // 塔羅
+      if (r.en && window.FunExtras) {
+        var tarot = window.FunExtras.getTarot(r.en.destiny);
+        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin:2px 0;">🃏 塔羅：<strong>' + tarot.e + ' ' + tarot.card + '</strong> — ' + tarot.desc.substring(0,40) + '...</p>';
+      }
+
+      // 卡巴拉
+      if (r.en && window.EnglishNumerology) {
+        var chal = window.EnglishNumerology.chaldeanNumber(r.en.name || r.enReport.name);
+        html += '<p style="font-size:0.78rem;color:var(--color-text-muted);margin:2px 0;">🔯 卡巴拉靈數：' + chal + '</p>';
+      }
+
       // 語音和諧度
       if (r.cn && r.en) {
         var cnChars = r.cn.parsed.givenNameChars;

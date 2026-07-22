@@ -6,6 +6,22 @@
 window.EnglishNumerology = (function() {
 
   // ============ 畢達哥拉斯字母數字對照表 ============
+  // 卡巴拉系統 (Chaldean/Hebrew) — 另一套字母數字對照
+  var CHALDEAN_MAP = {
+    'A':1,'B':2,'C':3,'D':4,'E':5,'F':8,'G':3,'H':5,'I':1,
+    'J':1,'K':2,'L':3,'M':4,'N':5,'O':7,'P':8,'Q':1,'R':2,
+    'S':3,'T':4,'U':6,'V':6,'W':6,'X':5,'Y':1,'Z':7
+  };
+  function chaldeanNumber(name) {
+    if (!name) return 0;
+    var sum = 0;
+    var chars = name.toUpperCase().replace(/[^A-Z]/g,'').split('');
+    chars.forEach(function(c) {
+      sum += (CHALDEAN_MAP[c] || 0);
+    });
+    return reduceNumber(sum);
+  }
+
   var PYTHAGOREAN_MAP = {
     'A':1,'B':2,'C':3,'D':4,'E':5,'F':6,'G':7,'H':8,'I':9,
     'J':1,'K':2,'L':3,'M':4,'N':5,'O':6,'P':7,'Q':8,'R':9,
@@ -289,6 +305,7 @@ window.EnglishNumerology = (function() {
     getBalanceNumber: getBalanceNumber,
     getPinnacleNumbers: getPinnacleNumbers,
     getTurningYears: getTurningYears,
+    chaldeanNumber: chaldeanNumber, CHALDEAN_MAP: CHALDEAN_MAP,
     getAdvancedNumbers: getAdvancedNumbers,
     letterToNumber: letterToNumber,
     reduceNumber: reduceNumber,
