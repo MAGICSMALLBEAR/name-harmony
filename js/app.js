@@ -109,6 +109,18 @@
       }
     });
 
+    // QR/連結分享鍵
+    var linkBtn = document.createElement('button');
+    linkBtn.className = 'btn-action';
+    linkBtn.innerHTML = '<span>🔗</span> 連結';
+    linkBtn.addEventListener('click', function() {
+      var text = buildShareText();
+      var url = 'https://magicsmallbear.github.io/name-harmony/';
+      copyText(url + '\n\n' + text);
+      toast('網址+報告已複製！可貼到訊息分享');
+    });
+    actionBar.insertBefore(linkBtn, backBtn);
+
     // 動態插入歷史和匯出按鈕
     var actionBar = document.getElementById('actionBar');
     historyBtn = document.createElement('button');
@@ -228,19 +240,23 @@
     var persons = [];
     // Person A
     var aBday = document.querySelector('#formSection .person-section:nth-of-type(1) .bday-input');
+    var aBlood = document.querySelector('#formSection .person-section:nth-of-type(1) .blood-input');
     persons.push({
       id: 'A', label: customLabels[0] || '甲方',
       cn: document.getElementById('cnA').value.trim(),
       en: document.getElementById('enA').value.trim(),
-      birthday: (aBday ? aBday.value.trim() : '') || ''
+      birthday: (aBday ? aBday.value.trim() : '') || '',
+      blood: (aBlood ? aBlood.value : '') || ''
     });
     // Person B
     var bBday = document.querySelector('#formSection .person-section:nth-of-type(2) .bday-input');
+    var bBlood = document.querySelector('#formSection .person-section:nth-of-type(2) .blood-input');
     persons.push({
       id: 'B', label: customLabels[1] || '乙方',
       cn: document.getElementById('cnB').value.trim(),
       en: document.getElementById('enB').value.trim(),
-      birthday: (bBday ? bBday.value.trim() : '') || ''
+      birthday: (bBday ? bBday.value.trim() : '') || '',
+      blood: (bBlood ? bBlood.value : '') || ''
     });
     // Extra persons
     var extraDivs = extraPersons.querySelectorAll('.extra-person');
@@ -311,6 +327,12 @@
         if (a.cn && b.cn) {
           var p = window.PairHarmony.cncnHarmony(a.cn, b.cn);
           if (p) {
+            // 血型配對
+            var bA = results[i].person.blood, bB = results[j].person.blood;
+            if (bA && bB) {
+              var bc = bloodCompatibility(bA, bB);
+              if (bc) { p.dimensions.push({ label: '🩸 血型配對', score: bc.score, max: 100, detail: bc.detail }); }
+            }
             // 加入生肖配對
             if (bdA && bdB && a.zodiac && b.zodiac && a.zodiac.zodiac && b.zodiac.zodiac) {
               var zc = window.ZodiacBazi.zodiacCompatibility(a.zodiac.zodiac, b.zodiac.zodiac);
@@ -366,6 +388,23 @@
   function showError(msg) {
     formError.textContent = msg;
     formError.classList.remove('hidden');
+  }
+
+  // 血型配對表
+  var BLOOD_COMPAT = {
+    'A': { best:['A','AB'], ok:['O'], bad:['B'] },
+    'B': { best:['B','AB'], ok:['O'], bad:['A'] },
+    'AB': { best:['A','B','AB','O'], ok:[], bad:[] },
+    'O': { best:['O'], ok:['A','B','AB'], bad:[] }
+  };
+  function bloodCompatibility(b1, b2) {
+    if (!b1 || !b2) return null;
+    var c = BLOOD_COMPAT[b1.toUpperCase()];
+    if (!c) return { score: 50, detail: '未知血型配對' };
+    if (c.best.indexOf(b2) >= 0) return { score: 90, detail: b1+'與'+b2+'型高度相容，溝通順暢，適合長期合作與親密關係。' };
+    if (c.ok.indexOf(b2) >= 0) return { score: 65, detail: b1+'與'+b2+'型相容度尚可，一般相處沒問題，特別場合多加注意即可。' };
+    if (c.bad.indexOf(b2) >= 0) return { score: 30, detail: b1+'與'+b2+'型傳統上較不相容，需要更多耐心與理解。' };
+    return { score: 50, detail: '血型配對中等' };
   }
 
   function parseBirthday(str) {
@@ -939,6 +978,27 @@
           });
           html += '</div>';
           if (compare.baziMissing.length) html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);margin-top:4px;">⚠️ 命盤缺：' + compare.baziMissing.join('、') + '</p>';
+          html += '</div>';
+        }
+      }
+
+      // 大運流年（專業模式+有八字）
+      if (isProMode && r.zodiac && r.zodiac.bazi) {
+        var dayuns = window.ZodiacBazi.getDaYun(r.zodiac.bazi, 'male');
+        var liunian = window.ZodiacBazi.getLiuNian(r.zodiac.bazi.dayMaster);
+        if (dayuns) {
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">📅 大運流年</div>';
+          html += '<p style="font-size:0.75rem;color:var(--color-text-muted);">十年大運排盤（每10年換一運）：</p>';
+          html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
+          dayuns.forEach(function(dy) {
+            html += '<span style="font-size:0.7rem;padding:3px 8px;background:rgba(0,0,0,0.1);border-radius:10px;">' + dy.name + ' <span class="element-' + dy.tgEle + '">' + dy.tgEle + '</span> ' + dy.ages + '</span>';
+          });
+          html += '</div>';
+          if (liunian) {
+            html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">📌 ' + liunian.year + '流年：' + liunian.pillar + '（' + liunian.zodiac + '年）— <strong>' + liunian.shiShen + '</strong></p>';
+            html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + liunian.tip + '</p>';
+          }
           html += '</div>';
         }
       }

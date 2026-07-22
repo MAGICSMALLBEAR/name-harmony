@@ -248,12 +248,56 @@ window.ZodiacBazi = (function() {
     };
   }
 
+  // ========== 大運/流年 ==========
+  function getDaYun(bazi, gender) {
+    if (!bazi) return null;
+    var yearTG = bazi.pillars[0].tg;
+    var yearTgIdx = TIAN_GAN.indexOf(yearTG);
+    var isYang = yearTgIdx % 2 === 0;
+    var monthDZ = bazi.pillars[1].dz;
+    var monthIdx = DI_ZHI.indexOf(monthDZ);
+    var forward = (gender==='male'&&isYang) || (gender==='female'&&!isYang);
+    var daYuns = [];
+    for (var i = 0; i < 8; i++) {
+      var offset = forward ? (i + 1) : -(i + 1);
+      var dzIdx = ((monthIdx + offset) % 12 + 12) % 12;
+      var tgIdx = ((yearTgIdx + offset) % 10 + 10) % 10;
+      daYuns.push({
+        name: TIAN_GAN[tgIdx] + DI_ZHI[dzIdx],
+        tg: TIAN_GAN[tgIdx], dz: DI_ZHI[dzIdx],
+        tgEle: TIAN_GAN_ELE[tgIdx], dzEle: DI_ZHI_ELE[dzIdx],
+        ages: (6+i*10) + '-' + (15+i*10) + '歲',
+        shiShen: calcShiShen(bazi.dayMaster, TIAN_GAN_ELE[tgIdx])
+      });
+    }
+    return daYuns;
+  }
+
+  function getLiuNian(dayMaster, currentYear) {
+    if (!currentYear) currentYear = new Date().getFullYear();
+    var yp = yearPillar(currentYear);
+    var sn = calcShiShen(dayMaster, yp.tgEle);
+    var tips = {
+      '比肩':'適合建立自信與獨立性，朋友與同輩會是重要支持。',
+      '食神':'創意與表達之年，適合發展興趣、享受生活。',
+      '正財':'財運穩定之年，努力工作會有合理回報。',
+      '正官':'事業發展之年，可能獲得升遷或承擔更多責任。',
+      '正印':'學習進修之年，適合讀書、考證照、尋求指導。',
+      '七殺':'挑戰與突破之年，壓力較大但成長快速。',
+      '傷官':'變革創新之年，適合轉換跑道或突破框架。',
+      '偏財':'意外收穫之年，投資運佳但需注意風險。',
+      '偏印':'內省沉澱之年，適合獨處與心靈成長。'
+    };
+    return { year: currentYear, zodiac: yp.zodiac, pillar: yp.tg+yp.dz, shiShen: sn, tip: tips[sn]||'平穩之年', element: yp.tgEle };
+  }
+
   return {
     yearPillar:yearPillar, monthPillar:monthPillar, dayPillar:dayPillar, hourPillar:hourPillar,
     fullBazi:fullBazi, fullAnalysis:fullAnalysis,
     getZodiac:getZodiac, getYearPillar:getYearPillar, getDayMaster:getDayMaster,
     getStarSign:getStarSign, getShiChen:getShiChen,
     zodiacCompatibility:zodiacCompatibility, zodiacElement:zodiacElement,
-    baziNameCompare:baziNameCompare, ZODIAC_NATURE:ZODIAC_NATURE
+    baziNameCompare:baziNameCompare, ZODIAC_NATURE:ZODIAC_NATURE,
+    getDaYun:getDaYun, getLiuNian:getLiuNian
   };
 })();
