@@ -732,6 +732,11 @@
       html += '<span class="analysis-mode-badge ' + entry.pair.modeClass + '">' + entry.pair.mode + '</span>';
       html += '</div>';
 
+      // 迷你雷達圖
+      if (entry.pair.dimensions && entry.pair.dimensions.length >= 3) {
+        html += renderMiniRadar(entry.pair.dimensions);
+      }
+
       // 分數摘要（含動畫）
       html += '<div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm);">';
       html += '<span class="score-animate" style="font-family:var(--font-en);font-size:2rem;font-weight:900;color:' + scColor + ';">' + entry.pair.score + '</span>';
@@ -1207,6 +1212,47 @@
         toast('已載入並重新分析！');
       });
     });
+  }
+
+  // ============ 迷你雷達圖 ============
+  function renderMiniRadar(dimensions) {
+    var w = 200, h = 160, cx = w/2, cy = h/2, r = 55;
+    var count = dimensions.length;
+    var html = '<svg width="' + w + '" height="' + h + '" style="display:block;margin:0 auto;">';
+    // 背景網格
+    for (var level = 1; level <= 3; level++) {
+      var pts = [];
+      for (var i = 0; i < count; i++) {
+        var angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+        var lr = r * level / 3;
+        pts.push((cx + lr * Math.cos(angle)).toFixed(1) + ',' + (cy + lr * Math.sin(angle)).toFixed(1));
+      }
+      html += '<polygon points="' + pts.join(' ') + '" fill="none" stroke="rgba(212,168,67,0.2)" stroke-width="1"/>';
+    }
+    // 軸線
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+      html += '<line x1="' + cx + '" y1="' + cy + '" x2="' + (cx + r * Math.cos(angle)).toFixed(1) + '" y2="' + (cy + r * Math.sin(angle)).toFixed(1) + '" stroke="rgba(212,168,67,0.15)" stroke-width="1"/>';
+    }
+    // 數據多邊形
+    var dataPts = [];
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+      var pct = Math.max(0.1, dimensions[i].score / dimensions[i].max);
+      var lr = r * pct;
+      dataPts.push((cx + lr * Math.cos(angle)).toFixed(1) + ',' + (cy + lr * Math.sin(angle)).toFixed(1));
+    }
+    html += '<polygon points="' + dataPts.join(' ') + '" fill="rgba(212,168,67,0.2)" stroke="var(--color-gold-primary)" stroke-width="2"/>';
+    // 標籤
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 / count) * i - Math.PI / 2;
+      var lx = cx + (r + 20) * Math.cos(angle);
+      var ly = cy + (r + 20) * Math.sin(angle);
+      var label = dimensions[i].label.replace(/[🎭🎯🏠🌐🔢🩸🐉🌿💖🎪📏]/g,'').substring(0,2);
+      html += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)">' + label + '</text>';
+    }
+    html += '</svg>';
+    return '<div style="float:right;margin-left:12px;">' + html + '</div>';
   }
 
   // ============ 智能總結 ============
