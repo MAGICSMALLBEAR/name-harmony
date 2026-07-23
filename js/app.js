@@ -386,7 +386,8 @@
     var pkSection = document.getElementById('namePkSection');
     if (pkSection) pkSection.classList.remove('hidden');
 
-    renderAll();；3人以上顯示成員
+    renderAll();
+    // 2人直接看配對，3人以上看成員
     switchTab(results.length === 2 && pairs.length > 0 ? 'matrix' : 'members');
     showResults();
   }
