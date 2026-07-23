@@ -464,14 +464,15 @@
 
   function parseBirthday(str) {
     if (!str) return null;
+    // 支援 YYYY-MM-DD (date input) 和 YYYY/M/D 格式
     var parts = str.split(/[\/\-\.\s]+/);
     if (parts.length < 2) return null;
     var y = parseInt(parts[0]);
     var m = parseInt(parts[1]);
     var d = parts.length >= 3 ? parseInt(parts[2]) : 1;
-    var h = parts.length >= 4 ? parseInt(parts[3]) : null;
     if (isNaN(y) || isNaN(m) || y < 1900 || y > 2100 || m < 1 || m > 12) return null;
-    return { year: y, month: m, day: d || 1, hour: (h != null && h >= 0 && h <= 23) ? h : null };
+    // date input 不支援時辰，保持 null
+    return { year: y, month: m, day: d || 1, hour: null };
   }
 
   // ============ 手動筆劃 ============
@@ -1627,8 +1628,8 @@
     document.getElementById('enB').value = 'Mary Jane';
     // 生日示範
     var inputs = document.querySelectorAll('.bday-input');
-    if (inputs[0]) inputs[0].value = '1990/6/15';
-    if (inputs[1]) inputs[1].value = '1992/3/20';
+    if (inputs[0]) inputs[0].value = '1990-06-15';
+    if (inputs[1]) inputs[1].value = '1992-03-20';
     toast('示範資料已載入！點擊「開始團隊和盤分析」查看');
   }
 

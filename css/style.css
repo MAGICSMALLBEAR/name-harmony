@@ -1840,15 +1840,10 @@ body {
 /* === 分頁面板 === */
 .tab-panel {
   display: none;
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .tab-panel.active {
   display: block;
-  opacity: 1;
-  transform: translateY(0);
   animation: tabIn 0.3s ease;
 }
 
