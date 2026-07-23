@@ -343,10 +343,24 @@ window.Professional = (function() {
     return l[el]||l['木'];
   }
 
+  // ========== 風水方位 ==========
+  function fengshuiAdvice(nameElement, dayMaster) {
+    var el = dayMaster || nameElement || '木';
+    var advice = {
+      '木':{door:'東或東南',bed:'頭朝東',desk:'面東而坐',decor:'綠色植物、木質家具',avoid:'過多金屬裝飾'},
+      '火':{door:'南',bed:'頭朝南',desk:'面南而坐',decor:'紅色系、三角形擺設',avoid:'過多黑色/藍色'},
+      '土':{door:'中央或西南',bed:'頭朝西南',desk:'面西南而坐',decor:'大地色系、方形家具',avoid:'過多綠色植物'},
+      '金':{door:'西或西北',bed:'頭朝西',desk:'面西而坐',decor:'白色系、金屬圓形飾品',avoid:'過多紅色裝飾'},
+      '水':{door:'北',bed:'頭朝北',desk:'面北而坐',decor:'黑色藍色、波浪型擺設',avoid:'過多黃棕色家具'}
+    };
+    return advice[el] || advice['木'];
+  }
+
   return {
     analyzeXiYongShen:analyzeXiYongShen, diagnoseElements:diagnoseElements,
     generateReport:generateReport, reportToText:reportToText,
     getClassicalQuote:getClassicalQuote, compareNames:compareNames,
-    careerSuggestions:careerSuggestions, luckyElements:luckyElements
+    careerSuggestions:careerSuggestions, luckyElements:luckyElements,
+    fengshuiAdvice:fengshuiAdvice
   };
 })();

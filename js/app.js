@@ -124,6 +124,24 @@
     });
     actionBar.insertBefore(linkBtn, backBtn);
 
+    // 客戶存檔
+    var profileBtn = document.createElement('button');
+    profileBtn.className = 'btn-action';
+    profileBtn.innerHTML = '<span>💼</span> 存檔';
+    profileBtn.addEventListener('click', saveProfile);
+    actionBar.insertBefore(profileBtn, backBtn);
+
+    // QR
+    var qrBtn = document.createElement('button');
+    qrBtn.className = 'btn-action';
+    qrBtn.innerHTML = '<span>📱</span> QR';
+    qrBtn.addEventListener('click', function() {
+      var url = 'https://magicsmallbear.github.io/name-harmony/';
+      copyText(url);
+      toast('網址已複製！可到 qr-code.io 產生 QR Code');
+    });
+    actionBar.insertBefore(qrBtn, backBtn);
+
     // IG分享
     var igBtn = document.createElement('button');
     igBtn.className = 'btn-action';
@@ -1111,6 +1129,23 @@
         html += '</div>';
       }
 
+      // 風水建議（專業模式）
+      if (isProMode && r.cn && window.Professional) {
+        var fsEl = r.cn.grids.ren.element;
+        var fs = window.Professional.fengshuiAdvice(fsEl);
+        if (fs) {
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">🏠 風水方位建議</div>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">人格屬' + fsEl + '，居家/辦公建議：</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🚪 大門朝向：<strong>' + fs.door + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🛏️ 床頭方向：<strong>' + fs.bed + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🪑 辦公座位：<strong>' + fs.desk + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🎨 裝飾建議：<strong>' + fs.decor + '</strong></p>';
+          html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);">⚠️ 避免：' + fs.avoid + '</p>';
+          html += '</div>';
+        }
+      }
+
       // 改名建議（專業模式）
       if (isProMode && report.xiYong && report.elementDiagnosis) {
         html += '<div class="report-section">';
@@ -1522,6 +1557,35 @@
     hist.unshift(entry); if (hist.length > 20) hist = hist.slice(0, 20);
     try { localStorage.setItem('name-harmony-v3', JSON.stringify(hist)); toast('已儲存！'); }
     catch(e) { toast('儲存失敗'); }
+  }
+
+  // ========== 客戶存檔 ==========
+  function saveProfile() {
+    if (!currentData) return;
+    var profiles = loadProfiles();
+    var entry = {
+      name: prompt('請為這份檔案命名（例：客戶張先生）', '') || ('未命名_' + new Date().toLocaleDateString()),
+      time: new Date().toISOString(),
+      persons: currentData.results.map(function(r) {
+        return { cn: r.person.cn, en: r.person.en, blood: r.person.blood, birthday: r.person.birthday };
+      }),
+      pairs: currentData.pairs.map(function(p) {
+        return { a: p.a, b: p.b, mode: p.pair.mode, score: p.pair.score, tier: p.pair.tier };
+      })
+    };
+    if (!entry.name) return;
+    profiles.unshift(entry);
+    if (profiles.length > 50) profiles = profiles.slice(0, 50);
+    try {
+      localStorage.setItem('name-harmony-profiles', JSON.stringify(profiles));
+      toast('已存檔：' + entry.name);
+      profileBtn.querySelector('span').textContent = '✅';
+      setTimeout(function() { profileBtn.querySelector('span').textContent = '💼'; }, 1500);
+    } catch(e) { toast('存檔失敗'); }
+  }
+
+  function loadProfiles() {
+    try { return JSON.parse(localStorage.getItem('name-harmony-profiles') || '[]'); } catch(e) { return []; }
   }
 
   function loadHistory() {
