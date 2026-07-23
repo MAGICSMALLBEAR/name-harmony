@@ -124,6 +124,19 @@
     });
     actionBar.insertBefore(linkBtn, backBtn);
 
+    // IG分享
+    var igBtn = document.createElement('button');
+    igBtn.className = 'btn-action';
+    igBtn.innerHTML = '<span>📱</span> IG';
+    igBtn.addEventListener('click', function() {
+      if (!currentData) return;
+      if (window.ShareCard && window.ShareCard.downloadIG) {
+        window.ShareCard.downloadIG(currentData);
+        toast('IG 分享圖已下載！');
+      }
+    });
+    actionBar.insertBefore(igBtn, backBtn);
+
     // TTS 語音朗讀
     var ttsBtn = document.createElement('button');
     ttsBtn.className = 'btn-action';
@@ -500,6 +513,8 @@
     // 結果摘要卡
     html += renderSummaryCard();
 
+    // 每日運勢卡
+    html += renderDailyFortuneCard();
     // 五行說明（可摺疊）
     html += renderElementLegend();
 
@@ -899,6 +914,26 @@
         if (names.length === 2) openPairDetail(names[0].trim(), names[1].trim());
       });
     });
+  }
+
+  function renderDailyFortuneCard() {
+    if (!currentData || !window.FunExtras) return '';
+    var r = currentData.results[0];
+    if (!r || !r.result.en) return '';
+    var el = r.result.cn ? r.result.cn.grids.ren.element : '?';
+    var df = window.FunExtras.getDailyFortune(r.result.en.destiny, el);
+    var html = '<div class="fortune-detail" style="text-align:center;background:linear-gradient(135deg,rgba(212,168,67,0.06),rgba(196,30,58,0.04));">';
+    html += '<h3>🔮 今日姓名運勢</h3>';
+    html += '<div style="font-size:1.5rem;margin:8px 0;color:var(--color-gold-primary);">' + df.starDisplay + '</div>';
+    html += '<div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:0.85rem;">';
+    html += '<span>🎨 <strong style="color:var(--color-gold-light);">' + df.color + '</strong></span>';
+    html += '<span>🧭 <strong style="color:var(--color-gold-light);">' + df.direction + '</strong></span>';
+    html += '<span>🔢 <strong style="color:var(--color-gold-light);">' + df.number + '</strong></span>';
+    html += '</div>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px;">' + df.tip + '</p>';
+    html += '<p style="font-size:0.65rem;color:var(--color-text-muted);">' + df.date + '</p>';
+    html += '</div>';
+    return html;
   }
 
   // ============ 並排比較五格 ============
