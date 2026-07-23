@@ -298,6 +298,18 @@
     <!-- 返回頂部 -->
     <button id="scrollTopBtn" class="scroll-top-btn hidden" title="返回頂部">⬆</button>
 
+    <!-- 名字PK區 -->
+    <div id="namePkSection" class="card hidden" style="margin-top:var(--space-lg);">
+      <h3 style="color:var(--color-gold-primary);margin-bottom:8px;">🏆 名字PK排名</h3>
+      <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">輸入姓氏和多個備選名字，用逗號分隔（例：柏宇,冠廷,怡君,志豪）</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="pkSurname" class="form-input" placeholder="姓氏" style="flex:1;min-width:80px;" maxlength="4">
+        <input type="text" id="pkNames" class="form-input" placeholder="備選名（逗號分隔）" style="flex:3;min-width:200px;" maxlength="100">
+        <button id="pkBtn" class="btn-download-img">📊 開始PK</button>
+      </div>
+      <div id="pkResults" style="margin-top:12px;"></div>
+    </div>
+
     <!-- 分享預覽圖隱藏 canvas -->
     <canvas id="shareCanvas" style="display:none;"></canvas>
 

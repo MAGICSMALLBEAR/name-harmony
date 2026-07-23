@@ -60,6 +60,9 @@
     saveBtn.addEventListener('click', handleSave);
     backBtn.addEventListener('click', handleBack);
     demoBtn.addEventListener('click', loadDemo);
+    // 名字PK
+    var pkBtn = document.getElementById('pkBtn');
+    if (pkBtn) pkBtn.addEventListener('click', runNamePK);
     // 專業模式記憶
     if (localStorage.getItem('name-harmony-pro') === 'true') {
       proModeToggle.checked = true;
@@ -379,8 +382,11 @@
     }
 
     currentData = { results: results, pairs: pairs };
-    renderAll();
-    // 2人模式直接顯示配對；3人以上顯示成員
+    // 顯示PK區
+    var pkSection = document.getElementById('namePkSection');
+    if (pkSection) pkSection.classList.remove('hidden');
+
+    renderAll();；3人以上顯示成員
     switchTab(results.length === 2 && pairs.length > 0 ? 'matrix' : 'members');
     showResults();
   }
@@ -1487,6 +1493,33 @@
   }
 
   // ============ 示範資料 ============
+  // ========== 名字PK ==========
+  function runNamePK() {
+    var surname = document.getElementById('pkSurname').value.trim();
+    var namesStr = document.getElementById('pkNames').value.trim();
+    if (!surname || !namesStr) { toast('請輸入姓氏和備選名字'); return; }
+    var names = namesStr.split(/[,，\s]+/).filter(function(n){return n;});
+    if (!names.length || !window.SmartInsights) return;
+
+    var results = window.SmartInsights.rankNames(surname, names);
+    if (!results.length) { toast('無法分析，請確認名字格式'); return; }
+
+    var html = '<div style="margin-top:8px;">';
+    results.forEach(function(r, i) {
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      var gloryColor = r.renGlory==='大吉'?'var(--color-fortune-great)':r.renGlory==='吉'?'var(--color-fortune-good)':'var(--color-fortune-neutral)';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(212,168,67,0.1);">';
+      html += '<span style="font-size:1.2rem;">'+medal+'</span>';
+      html += '<span style="font-family:var(--font-heading);font-size:1.1rem;color:var(--color-gold-light);flex:1;">'+r.name+'</span>';
+      html += '<span style="font-family:var(--font-en);font-weight:700;color:var(--color-gold-light);">'+r.score+'分</span>';
+      html += '<span style="font-size:0.75rem;color:'+gloryColor+';">'+r.ren+'('+r.renGlory+')</span>';
+      html += '<span style="font-size:0.7rem;color:var(--color-text-secondary);">'+r.sancai+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    document.getElementById('pkResults').innerHTML = html;
+  }
+
   function loadDemo() {
     document.getElementById('cnA').value = '陳小明';
     document.getElementById('enA').value = 'John Smith';
