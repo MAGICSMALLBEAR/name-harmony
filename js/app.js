@@ -573,13 +573,13 @@
       html += '<span style="flex:1;color:var(--color-gold-light);font-weight:600;">' + (p.cn||'') + (p.cn&&p.en?' / ':'') + (p.en||'') + '</span>';
       html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">▼</span>';
       html += '</div><div class="member-accordion-body' + (isOpen ? ' open' : '') + '">';
-      html += renderPersonDetail(r);
+      html += renderPersonDetail(r, item.birthday);
       html += '</div></div>';
     });
     membersContent.innerHTML = html;
   }
 
-  function renderPersonDetail(r) {
+  function renderPersonDetail(r, bday) {
     var html = '';
 
     // 生日資訊
