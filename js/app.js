@@ -507,7 +507,7 @@
   function switchTab(tab) {
     tabNav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport', history: 'panelHistory' };
+    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport', lucky: 'panelLucky', history: 'panelHistory' };
     var panel = document.getElementById(m[tab] || 'panelMembers');
     if (panel) panel.classList.add('active');
   }
@@ -519,6 +519,7 @@
     renderMatrix();
     renderTeam();
     renderProfessionalReports();
+    renderLuckyGuide();
     renderHistoryPanel();
   }
 
@@ -1220,6 +1221,28 @@
         toast('專業報告已複製！（可貼到文件或訊息）');
       });
     });
+  }
+
+  // ============ 開運指南 ============
+  var luckyContent = document.getElementById('luckyContent');
+
+  function renderLuckyGuide() {
+    if (!luckyContent || !currentData || !window.LuckyItems) {
+      if (luckyContent) luckyContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text">需要輸入中文姓名</div></div>';
+      return;
+    }
+    var html = '';
+    currentData.results.forEach(function(item) {
+      var r = item.result;
+      if (!r.cn) return;
+      var el = r.cn.grids.ren.element;
+      html += '<div class="card" style="margin-bottom:var(--space-lg);">';
+      html += '<h2 class="card-title"><span class="title-icon">💎</span>' + item.person.label + ' 開運指南</h2>';
+      html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是專屬的開運建議：</p>';
+      html += window.LuckyItems.generateGuide(el);
+      html += '</div>';
+    });
+    luckyContent.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text">請輸入中文姓名後分析</div></div>';
   }
 
   // ============ 歷史面板 ============
