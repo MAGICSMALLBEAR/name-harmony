@@ -92,6 +92,15 @@
       }
     });
 
+    // 英文UI切換
+    var langToggle = document.getElementById('langToggle');
+    var isEnglish = localStorage.getItem('name-harmony-lang') === 'en';
+    langToggle.addEventListener('click',function(){
+      isEnglish = !isEnglish;
+      localStorage.setItem('name-harmony-lang', isEnglish ? 'en' : 'zh');
+      toast(isEnglish ? 'Switched to English (basic)' : '已切換為繁體中文');
+    });
+
     // 主題切換
     var themeToggle = document.getElementById('themeToggle');
     var savedTheme = localStorage.getItem('name-harmony-theme');
@@ -200,6 +209,18 @@
       if (!btn) return;
       switchTab(btn.dataset.tab);
     });
+
+    // PWA 每日推播
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+      setTimeout(function() {
+        Notification.requestPermission().then(function(p) {
+          if (p === 'granted' && !localStorage.getItem('daily-push-set')) {
+            localStorage.setItem('daily-push-set', '1');
+            new Notification('🔮 姓名和盤', {body:'每日運勢已就緒！打開 APP 查看今日幸運色、方位與數字。',icon:'img/icon-192.png'});
+          }
+        });
+      }, 5000);
+    }
 
     // 金粉粒子
     spawnParticles();
@@ -624,6 +645,21 @@
         var tarotDeep = window.DeepReadings.getTarotDeepReading(r.en.destiny, r.en);
         html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🃏 塔羅解析</summary>';
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + tarotDeep + '</p></details>';
+      }
+
+      // 占星盤
+      if (bday && window.Astrology) {
+        var astro = window.Astrology.getChart(bday.year, bday.month, bday.day, bday.hour);
+        if (astro) {
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 占星盤：' + astro.sunSign.n + '</summary>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + astro.sunSign.desc + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">主導元素：<strong class="element-' + astro.dominantElement + '">' + astro.dominantElement + '</strong> — ' + astro.nameAdvice + '</p>';
+          html += '<div style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:4px;">';
+          astro.planets.slice(0,5).forEach(function(pl) {
+            html += pl.emoji + ' ' + pl.name + '→' + pl.house.n.split(' ')[0] + ' | ';
+          });
+          html += '</div></details>';
+        }
       }
 
       // 紫微斗數
