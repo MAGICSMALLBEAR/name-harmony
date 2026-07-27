@@ -1285,7 +1285,56 @@
       html += '</div>';
     });
 
+    // 客戶檔案區
+    var profiles = loadProfiles();
+    if (profiles.length) {
+      html += '<h3 style="color:var(--color-gold-primary);margin:1rem 0 8px;padding-top:1rem;border-top:1px solid rgba(212,168,67,0.15);">💼 客戶檔案</h3>';
+      profiles.forEach(function(p, i) {
+        var members = (p.persons||[]).map(function(ps){return (ps.cn||'')+(ps.cn&&ps.en?' / ':'')+(ps.en||'');}).filter(function(s){return s;}).join('、');
+        var avg = (p.pairs||[]).length ? Math.round(p.pairs.reduce(function(a,b){return a+b.score;},0)/p.pairs.length) : 0;
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid rgba(212,168,67,0.1);">';
+        html += '<span style="flex:1;font-size:0.85rem;"><strong style="color:var(--color-gold-light);">' + (p.name||'未命名') + '</strong><br><span style="font-size:0.7rem;color:var(--color-text-secondary);">' + members + '</span></span>';
+        html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">' + avg + '分</span>';
+        html += '<button class="btn-download-img" style="font-size:0.7rem;padding:4px 8px;" data-load-profile="'+i+'">📥</button>';
+        html += '<button class="btn-download-img" style="font-size:0.7rem;padding:4px 8px;background:rgba(244,67,54,0.1);border-color:rgba(244,67,54,0.3);" data-del-profile="'+i+'">🗑️</button>';
+        html += '</div>';
+      });
+    }
+
     historyPanelContent.innerHTML = html;
+
+    // 客戶檔案按鈕事件
+    historyPanelContent.querySelectorAll('[data-load-profile]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.loadProfile);
+        var p = loadProfiles()[idx];
+        if (!p || !p.persons) return;
+        var ids = [['cnA','enA'],['cnB','enB']];
+        p.persons.forEach(function(ps, i) {
+          if (i < 2) {
+            document.getElementById(ids[i][0]).value = ps.cn || '';
+            document.getElementById(ids[i][1]).value = ps.en || '';
+          }
+        });
+        handleAnalyze();
+        toast('已載入：' + (p.name||''));
+      });
+    });
+    // 刪除按鈕
+    historyPanelContent.querySelectorAll('[data-del-profile]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var idx = parseInt(this.dataset.delProfile);
+        var profiles = loadProfiles();
+        var name = profiles[idx] ? profiles[idx].name : '';
+        if (confirm('刪除「' + name + '」？')) {
+          profiles.splice(idx, 1);
+          localStorage.setItem('name-harmony-profiles', JSON.stringify(profiles));
+          renderHistoryPanel();
+          toast('已刪除');
+        }
+      });
+    });
 
     // 載入按鈕事件
     historyPanelContent.querySelectorAll('[data-load-idx]').forEach(function(btn) {
@@ -1437,8 +1486,12 @@
 
     var html = '<div class="fortune-detail" style="margin-bottom:var(--space-lg);">';
     html += '<h3>🎯 吉數姓名推薦（姓氏：' + surname + '）</h3>';
-    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">以下名字皆確保<strong>人格（主運）為吉數</strong>，僅供參考：</p>';
-    html += '<div class="generator-results">';
+    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
+    html += '<select id="genGender" class="form-input" style="width:auto;padding:4px 8px;font-size:0.75rem;"><option value="">全部</option><option value="male">男</option><option value="female">女</option></select>';
+    html += '<button id="genRefresh" class="btn-download-img" style="font-size:0.75rem;">🔄 換一批</button>';
+    html += '</div>';
+    html += '<p style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:8px;">確保<strong>人格（主運）為吉數</strong>，點擊名字可填入甲方：</p>';
+    html += '<div class="generator-results" id="genResults">';
 
     names.slice(0, 6).forEach(function(n) {
       if (!n.name) return;
