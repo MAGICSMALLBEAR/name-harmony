@@ -626,6 +626,24 @@
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + tarotDeep + '</p></details>';
       }
 
+      // 紫微斗數
+      if (r.cn && bday && window.Ziwei) {
+        var zw = window.Ziwei.getZiweiChart(bday.year, bday.month, bday.day, bday.hour);
+        if (zw) {
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 紫微斗數：命宮' + zw.mingStar + '</summary>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
+          var zc = window.Ziwei.ziweiNameCompare(zw, r.cn);
+          if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 命宮vs姓名：' + zc.reading + '</p>';
+          // 12宮簡表
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-top:8px;font-size:0.7rem;">';
+          zw.palaces.forEach(function(p) {
+            html += '<span style="color:var(--color-text-secondary);">' + p.name + '</span>';
+            html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + p.star + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span></span>';
+          });
+          html += '</div></details>';
+        }
+      }
+
       // 卡巴拉深度
       if (r.en && window.EnglishNumerology && window.DeepReadings) {
         var chal = window.EnglishNumerology.chaldeanNumber(r.en.name || r.enReport.name);
