@@ -1763,8 +1763,8 @@
     toast('示範資料已載入！點擊「開始團隊和盤分析」查看');
   }
 
-  function showLoading() { loadingOverlay.classList.remove('hidden'); }
-  function hideLoading() { loadingOverlay.classList.add('hidden'); }
+  function showLoading() { if (loadingOverlay) loadingOverlay.classList.remove('hidden'); }
+  function hideLoading() { if (loadingOverlay) loadingOverlay.classList.add('hidden'); }
 
   function handleBack() {
     showForm();

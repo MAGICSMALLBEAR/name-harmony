@@ -1188,6 +1188,15 @@ body {
   inset: 0;
   z-index: 300;
   background: rgba(0,0,0,0.75);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.loading-overlay:not(.hidden) {
+  pointer-events: auto;
+  opacity: 1;
+}
   display: flex;
   align-items: center;
   justify-content: center;
