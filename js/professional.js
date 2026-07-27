@@ -356,11 +356,24 @@ window.Professional = (function() {
     return advice[el] || advice['木'];
   }
 
+  // ========== 面相特質 ==========
+  function faceReading(element) {
+    var el = element || '木';
+    var readings = {
+      '木':{forehead:'高寬飽滿，有思考力',eyes:'清澈有神，目光遠大',nose:'挺拔修長',mouth:'嘴角上揚',best:'額頭飽滿、身形修長，給人朝氣蓬勃的印象。',style:'適合俐落短髮或自然長直髮。'},
+      '火':{forehead:'寬闊明亮，熱情外顯',eyes:'炯炯有神，充滿熱情',nose:'尖挺有勢',mouth:'唇色紅潤',best:'眼神明亮、笑容燦爛，舉手投足充滿活力。',style:'適合俐落短髮或亮色系穿搭。'},
+      '土':{forehead:'圓潤飽滿，給人安全感',eyes:'溫和敦厚，可信賴',nose:'鼻頭有肉',mouth:'唇厚有福',best:'臉型圓潤、氣色紅潤，讓人感到穩重可靠。',style:'適合中規中矩的經典造型。'},
+      '金':{forehead:'方正飽滿，正義感強',eyes:'銳利有神，判斷力佳',nose:'鼻樑高挺',mouth:'唇形分明',best:'五官立體、輪廓分明，自帶威嚴氣場。',style:'適合俐落短髮、線條分明的穿搭。'},
+      '水':{forehead:'圓潤柔和，智慧內斂',eyes:'深邃有靈氣',nose:'鼻型秀氣',mouth:'唇薄靈巧',best:'眼神靈動、氣質柔和，給人聰明細膩的印象。',style:'適合柔順中長髮或波浪捲髮。'}
+    };
+    return readings[el] || readings['木'];
+  }
+
   return {
     analyzeXiYongShen:analyzeXiYongShen, diagnoseElements:diagnoseElements,
     generateReport:generateReport, reportToText:reportToText,
     getClassicalQuote:getClassicalQuote, compareNames:compareNames,
     careerSuggestions:careerSuggestions, luckyElements:luckyElements,
-    fengshuiAdvice:fengshuiAdvice
+    fengshuiAdvice:fengshuiAdvice, faceReading:faceReading
   };
 })();

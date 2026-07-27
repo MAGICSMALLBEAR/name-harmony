@@ -140,14 +140,15 @@
     profileBtn.addEventListener('click', saveProfile);
     actionBar.insertBefore(profileBtn, backBtn);
 
-    // QR
+    // QR Code 圖片
     var qrBtn = document.createElement('button');
     qrBtn.className = 'btn-action';
     qrBtn.innerHTML = '<span>📱</span> QR';
     qrBtn.addEventListener('click', function() {
       var url = 'https://magicsmallbear.github.io/name-harmony/';
-      copyText(url);
-      toast('網址已複製！可到 qr-code.io 產生 QR Code');
+      var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+      var win = window.open('', '_blank');
+      if (win) { win.document.write('<title>QR Code - 姓名和盤</title><body style="background:#1A0A0A;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><img src="'+qrImg+'" style="border:3px solid #D4A843;border-radius:12px;"><p style="color:#D4A843;margin-top:16px;font-family:sans-serif;">姓名和盤</p></div></body>'); }
     });
     actionBar.insertBefore(qrBtn, backBtn);
 
@@ -1183,6 +1184,22 @@
         if (report.xiYong.jiShen) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">忌神：<strong class="element-' + report.xiYong.jiShen + '">' + report.xiYong.jiShen + '</strong></p>';
         html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + report.xiYong.analysis + '</p>';
         html += '</div>';
+      }
+
+      // 面相特質
+      if (isProMode && r.cn && window.Professional) {
+        var face = window.Professional.faceReading(r.cn.grids.ren.element);
+        if (face) {
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">👁️ 面相特質</div>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">依人格五行推演的理想面相特徵：</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">額頭：' + face.forehead + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">眼睛：' + face.eyes + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">鼻子：' + face.nose + '　嘴巴：' + face.mouth + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">整體：' + face.best + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">髮型穿搭：' + face.style + '</p>';
+          html += '</div>';
+        }
       }
 
       // 風水建議（專業模式）
