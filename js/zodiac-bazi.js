@@ -37,8 +37,24 @@ window.ZodiacBazi = (function() {
    * 第 k 個「節」的交節時刻（k=0 小寒@1月, 1 立春@2月, …, 11 大雪@12月）
    * 回傳以 UTC+8 牆上時間表示的毫秒值（可直接與 Date.UTC(y,m-1,d,h) 比較）
    */
+  var jieCache = {};
+
   function jieMoment(year, k) {
+    var key = year + ':' + k;
+    if (jieCache[key] == null) jieCache[key] = computeJie(year, k);
+    return jieCache[key];
+  }
+
+  function computeJie(year, k) {
     var target = (285 + 30 * k) % 360;
+    // 有載入 astronomy-engine 時用它精確求解（秒級），否則用下方 Meeus 近似
+    var A = window.Astronomy;
+    if (A && A.SearchSunLongitude) {
+      try {
+        var found = A.SearchSunLongitude(target, new Date(Date.UTC(year, k, 1)), 20);
+        if (found) return found.date.getTime() + 8 * 3600000;
+      } catch (e) {}
+    }
     var jd = Date.UTC(year, k, 6) / 86400000 + 2440587.5; // 各「節」約落在當月 4~8 日
     for (var i = 0; i < 6; i++) {
       var diff = ((target - sunLongitude(jd) + 540) % 360) - 180;
@@ -47,18 +63,28 @@ window.ZodiacBazi = (function() {
     return (jd - 2440587.5) * 86400000 + 8 * 3600000;
   }
 
+  /** 第 k 個節（k 可為 -1 或 12，自動跨年） */
+  function jieAt(year, k) {
+    if (k < 0) return jieMoment(year - 1, k + 12);
+    if (k > 11) return jieMoment(year + 1, k - 12);
+    return jieMoment(year, k);
+  }
+
   /**
    * 依節氣決定八字的年與月：立春換年、各「節」換月
+   * year..minute 為出生地標準時間，tzOffset 為該地標準時偏移（小時，預設 +8）
    * 未提供時辰時以正午判斷交節當天
+   * 回傳 t（出生時刻，UTC+8 表示）與前後兩個節的時刻，供大運起運計算
    */
-  function solarYearMonth(year, month, day, hour) {
-    var h = (hour == null || hour < 0 || hour > 23) ? 12 : hour;
-    var t = Date.UTC(year, month - 1, day, h);
+  function solarYearMonth(year, month, day, hour, minute, tzOffset) {
+    var hasHour = hour != null && hour >= 0 && hour <= 23;
+    var tz = tzOffset == null ? 8 : tzOffset;
+    var t = Date.UTC(year, month - 1, day, hasHour ? hour : 12, hasHour ? (minute || 0) : 0) + (8 - tz) * 3600000;
     var k = month - 1;
-    if (t < jieMoment(year, k)) k -= 1; // 尚未交本月的節，仍屬上個節氣月
+    if (t < jieAt(year, k)) k -= 1; // 尚未交本月的節，仍屬上個節氣月
     var baziYear = (t >= jieMoment(year, 1)) ? year : year - 1;
     var mIdx = ((k - 1) % 12 + 12) % 12; // 寅月=0（立春起），小寒起為丑月=11
-    return { year: baziYear, mIdx: mIdx };
+    return { year: baziYear, mIdx: mIdx, t: t, prevJie: jieAt(year, k), nextJie: jieAt(year, k + 1) };
   }
 
   /** 年柱（year 為以立春為界的八字年） */
@@ -110,9 +136,9 @@ window.ZodiacBazi = (function() {
   }
 
   /** 完整四柱 */
-  function fullBazi(year, month, day, hour) {
+  function fullBazi(year, month, day, hour, minute, tzOffset) {
     if (!year || !month || !day) return null;
-    var sym = solarYearMonth(year, month, day, hour);
+    var sym = solarYearMonth(year, month, day, hour, minute, tzOffset);
     var yp = yearPillar(sym.year);
     var mp = monthPillar(sym.year, sym.mIdx);
     var dp = dayPillar(year, month, day);
@@ -138,7 +164,9 @@ window.ZodiacBazi = (function() {
       dayMasterTG: dp.tg,
       zodiac: yp.zodiac,
       zodiacNature: ZODIAC_NATURE[yp.zodiac],
-      hasHour: !!hp
+      hasHour: !!hp,
+      birthYear: year,
+      jie: { t: sym.t, prev: sym.prevJie, next: sym.nextJie }
     };
   }
 
@@ -277,8 +305,8 @@ window.ZodiacBazi = (function() {
   function zodiacElement(z){var i=ZODIAC.indexOf(z);return i>=0?DI_ZHI_ELE[i]:null;}
 
   // 相容舊版 fullAnalysis
-  function fullAnalysis(year,month,day,hour){
-    var bazi=fullBazi(year,month,day,hour);
+  function fullAnalysis(year,month,day,hour,minute,tzOffset){
+    var bazi=fullBazi(year,month,day,hour,minute,tzOffset);
     var ss=getStarSign(month,day);
     return {
       zodiac:bazi?bazi.zodiac:null,
@@ -293,27 +321,40 @@ window.ZodiacBazi = (function() {
   }
 
   // ========== 大運/流年 ==========
+  /**
+   * 八字大運：陽男陰女順排、陰男陽女逆排，由月柱起算
+   * 起運：順排數到下一個節、逆排數回上一個節，三天折一年（一天＝四個月）
+   */
   function getDaYun(bazi, gender) {
-    if (!bazi) return null;
-    var yearTG = bazi.pillars[0].tg;
-    var yearTgIdx = TIAN_GAN.indexOf(yearTG);
-    var isYang = yearTgIdx % 2 === 0;
-    var monthDZ = bazi.pillars[1].dz;
-    var monthIdx = DI_ZHI.indexOf(monthDZ);
-    var forward = (gender==='male'&&isYang) || (gender==='female'&&!isYang);
+    if (!bazi || (gender !== 'male' && gender !== 'female')) return null;
+    var isYang = TIAN_GAN.indexOf(bazi.pillars[0].tg) % 2 === 0;
+    var forward = (gender === 'male') === isYang;
+    var mTg = TIAN_GAN.indexOf(bazi.pillars[1].tg);
+    var mDz = DI_ZHI.indexOf(bazi.pillars[1].dz);
+
+    var span = bazi.jie ? (forward ? bazi.jie.next - bazi.jie.t : bazi.jie.t - bazi.jie.prev) : 0;
+    var totalMonths = Math.floor(span / 86400000 * 4); // 1 天 = 4 個月
+    var startYears = Math.floor(totalMonths / 12);
+    var startMonths = totalMonths % 12;
+
     var daYuns = [];
     for (var i = 0; i < 8; i++) {
       var offset = forward ? (i + 1) : -(i + 1);
-      var dzIdx = ((monthIdx + offset) % 12 + 12) % 12;
-      var tgIdx = ((yearTgIdx + offset) % 10 + 10) % 10;
+      var dzIdx = ((mDz + offset) % 12 + 12) % 12;
+      var tgIdx = ((mTg + offset) % 10 + 10) % 10;
+      var age = startYears + i * 10;
       daYuns.push({
         name: TIAN_GAN[tgIdx] + DI_ZHI[dzIdx],
         tg: TIAN_GAN[tgIdx], dz: DI_ZHI[dzIdx],
         tgEle: TIAN_GAN_ELE[tgIdx], dzEle: DI_ZHI_ELE[dzIdx],
-        ages: (6+i*10) + '-' + (15+i*10) + '歲',
+        startAge: age,
+        startYear: bazi.birthYear ? bazi.birthYear + age : null,
+        ages: age + '-' + (age + 9) + '歲',
         shiShen: calcShiShen(bazi.dayMaster, TIAN_GAN_ELE[tgIdx])
       });
     }
+    daYuns.forward = forward;
+    daYuns.startText = startYears + '歲' + (startMonths ? startMonths + '個月' : '') + '起運';
     return daYuns;
   }
 

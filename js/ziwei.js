@@ -92,8 +92,9 @@ window.Ziwei = (function() {
   /**
    * 依生日排紫微盤（以農曆正月初一換年；命宮與主星需要出生時辰）
    * 沒有時辰時只回傳生年四化，needHour = true
+   * gender（'male' / 'female'）用於排大限：陽男陰女順行、陰男陽女逆行，由命宮起、局數為起始歲數（虛歲）
    */
-  function getZiweiChart(year, month, day, hour) {
+  function getZiweiChart(year, month, day, hour, gender) {
     if (!year || !month || !day) return null;
     var hasHour = hour != null && hour >= 0 && hour <= 23;
 
@@ -164,6 +165,20 @@ window.Ziwei = (function() {
       };
     });
 
+    // 大限
+    var hasGender = gender === 'male' || gender === 'female';
+    var forward = hasGender && ((gender === 'male') === (yIdx % 2 === 0));
+    var nowAge = new Date().getFullYear() - lunar.year + 1; // 虛歲（約略）
+    var currentDecadal = null;
+    if (hasGender) {
+      palaces.forEach(function(p, i) {
+        var pos = mod12(mingPos - i);
+        var j = forward ? mod12(pos - mingPos) : mod12(mingPos - pos);
+        p.decadal = { start: bureau + j * 10, end: bureau + j * 10 + 9 };
+        if (nowAge >= p.decadal.start && nowAge <= p.decadal.end) { p.isCurrentDecadal = true; currentDecadal = p; }
+      });
+    }
+
     var mingPalace = palaces[0];
     var shenPalace = palaces.filter(function(p) { return p.isShen; })[0];
 
@@ -178,7 +193,8 @@ window.Ziwei = (function() {
       mingEle: mingPalace.starEle,
       mingGlory: mingPalace.starGlory,
       mingDesc: (mingPalace.borrowed ? '命宮無主星，借對宮（遷移宮）' + mingPalace.stars.join('、') + '論。' : '') + mingPalace.starDesc,
-      sihua: getSihua(yearTG, palaces)
+      sihua: getSihua(yearTG, palaces),
+      decadal: hasGender ? { forward: forward, current: currentDecadal, nowAge: nowAge } : null
     };
   }
 

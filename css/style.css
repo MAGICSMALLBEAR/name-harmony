@@ -586,6 +586,27 @@ body {
 .bday-row .bday-input { flex: 1 1 9.5em; min-width: 0; }
 .bday-row .btime-input { flex: 1 1 8.5em; min-width: 0; }
 
+.birth-meta-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.birth-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.birth-meta .form-input {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
 .form-bday-hint {
   font-size: 0.7rem;
   color: var(--color-gold-dark);
