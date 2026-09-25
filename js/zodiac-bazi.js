@@ -17,21 +17,64 @@ window.ZodiacBazi = (function() {
 
   // ========== 四柱計算 ==========
 
-  /** 年柱 */
+  // ========== 節氣（以太陽視黃經計算，Meeus 低精度公式，誤差約 15 分鐘） ==========
+
+  /** 太陽視黃經（度），jd 為儒略日 */
+  function sunLongitude(jd) {
+    var T = (jd - 2451545) / 36525;
+    var rad = Math.PI / 180;
+    var L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+    var M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * rad;
+    var C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M)
+          + (0.019993 - 0.000101 * T) * Math.sin(2 * M)
+          + 0.000289 * Math.sin(3 * M);
+    var omega = (125.04 - 1934.136 * T) * rad;
+    var lon = L0 + C - 0.00569 - 0.00478 * Math.sin(omega);
+    return ((lon % 360) + 360) % 360;
+  }
+
+  /**
+   * 第 k 個「節」的交節時刻（k=0 小寒@1月, 1 立春@2月, …, 11 大雪@12月）
+   * 回傳以 UTC+8 牆上時間表示的毫秒值（可直接與 Date.UTC(y,m-1,d,h) 比較）
+   */
+  function jieMoment(year, k) {
+    var target = (285 + 30 * k) % 360;
+    var jd = Date.UTC(year, k, 6) / 86400000 + 2440587.5; // 各「節」約落在當月 4~8 日
+    for (var i = 0; i < 6; i++) {
+      var diff = ((target - sunLongitude(jd) + 540) % 360) - 180;
+      jd += diff / 0.98565; // 太陽每日平均移動約 0.9856°
+    }
+    return (jd - 2440587.5) * 86400000 + 8 * 3600000;
+  }
+
+  /**
+   * 依節氣決定八字的年與月：立春換年、各「節」換月
+   * 未提供時辰時以正午判斷交節當天
+   */
+  function solarYearMonth(year, month, day, hour) {
+    var h = (hour == null || hour < 0 || hour > 23) ? 12 : hour;
+    var t = Date.UTC(year, month - 1, day, h);
+    var k = month - 1;
+    if (t < jieMoment(year, k)) k -= 1; // 尚未交本月的節，仍屬上個節氣月
+    var baziYear = (t >= jieMoment(year, 1)) ? year : year - 1;
+    var mIdx = ((k - 1) % 12 + 12) % 12; // 寅月=0（立春起），小寒起為丑月=11
+    return { year: baziYear, mIdx: mIdx };
+  }
+
+  /** 年柱（year 為以立春為界的八字年） */
   function yearPillar(year) {
-    var idx = (year - 4) % 60;
+    var idx = ((year - 4) % 60 + 60) % 60;
     return { tg: TIAN_GAN[idx % 10], dz: DI_ZHI[idx % 12], tgEle: TIAN_GAN_ELE[idx % 10], dzEle: DI_ZHI_ELE[idx % 12], zodiac: ZODIAC[idx % 12] };
   }
 
-  /** 月柱：依年干+月份查表 */
-  function monthPillar(year, month) {
-    var yTG = yearPillar(year).tg;
+  /** 月柱：依八字年的年干 + 節氣月（mIdx，寅月=0）起月 */
+  function monthPillar(baziYear, mIdx) {
+    var yTG = yearPillar(baziYear).tg;
     var yIdx = TIAN_GAN.indexOf(yTG);
     // 甲己年起丙寅, 乙庚年起戊寅, 丙辛年起庚寅, 丁壬年起壬寅, 戊癸年起甲寅
-    var startTG = [2,4,6,8,0][Math.floor(yIdx / 2)]; // index into TIAN_GAN for 寅月
-    var mIdx = (month < 2 ? month + 10 : month - 2); // 寅月=0
+    var startTG = [2,4,6,8,0][yIdx % 5]; // index into TIAN_GAN for 寅月
     var tg = TIAN_GAN[(startTG + mIdx) % 10];
-    var dz = DI_ZHI[mIdx % 12];
+    var dz = DI_ZHI[(mIdx + 2) % 12]; // 寅在地支表的索引為 2
     return { tg: tg, dz: dz, tgEle: TIAN_GAN_ELE[TIAN_GAN.indexOf(tg)], dzEle: DI_ZHI_ELE[DI_ZHI.indexOf(dz)] };
   }
 
@@ -50,8 +93,8 @@ window.ZodiacBazi = (function() {
   /** 時辰 */
   function getShiChen(hour) {
     if (hour == null || hour < 0 || hour > 23) return null;
-    var idx = Math.floor((hour + 2) % 24 / 2);
-    return { name: DI_ZHI[idx] + '時', dz: DI_ZHI[idx], range: (idx*2+23)%24 + ':00-' + ((idx*2+1)%24) + ':59' };
+    var idx = Math.floor((hour + 1) % 24 / 2);
+    return { name: DI_ZHI[idx] + '時', dz: DI_ZHI[idx], range: (idx*2+23)%24 + ':00-' + (idx*2) + ':59' };
   }
 
   /** 時柱：日干+時辰 */
@@ -60,8 +103,8 @@ window.ZodiacBazi = (function() {
     var sc = getShiChen(hour);
     var dIdx = TIAN_GAN.indexOf(dayTG);
     // 甲己日起甲子, 乙庚日起丙子...
-    var startTG = [0,2,4,6,8][Math.floor(dIdx / 2)];
-    var hIdx = Math.floor((hour + 2) % 24 / 2);
+    var startTG = [0,2,4,6,8][dIdx % 5];
+    var hIdx = Math.floor((hour + 1) % 24 / 2);
     var tg = TIAN_GAN[(startTG + hIdx) % 10];
     return { tg: tg, dz: sc.dz, tgEle: TIAN_GAN_ELE[TIAN_GAN.indexOf(tg)], dzEle: DI_ZHI_ELE[DI_ZHI.indexOf(sc.dz)], shiChen: sc };
   }
@@ -69,8 +112,9 @@ window.ZodiacBazi = (function() {
   /** 完整四柱 */
   function fullBazi(year, month, day, hour) {
     if (!year || !month || !day) return null;
-    var yp = yearPillar(year);
-    var mp = monthPillar(year, month);
+    var sym = solarYearMonth(year, month, day, hour);
+    var yp = yearPillar(sym.year);
+    var mp = monthPillar(sym.year, sym.mIdx);
     var dp = dayPillar(year, month, day);
     var hp = hourPillar(dp.tg, hour);
 
@@ -294,6 +338,7 @@ window.ZodiacBazi = (function() {
   return {
     yearPillar:yearPillar, monthPillar:monthPillar, dayPillar:dayPillar, hourPillar:hourPillar,
     fullBazi:fullBazi, fullAnalysis:fullAnalysis,
+    jieMoment:jieMoment, solarYearMonth:solarYearMonth,
     getZodiac:getZodiac, getYearPillar:getYearPillar, getDayMaster:getDayMaster,
     getStarSign:getStarSign, getShiChen:getShiChen,
     zodiacCompatibility:zodiacCompatibility, zodiacElement:zodiacElement,
