@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+
+# 本機測試產物
+.edge-test-profile/
+ui-manual-stroke-test.js

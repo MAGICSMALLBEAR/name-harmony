@@ -1,7 +1,31 @@
 /**
- * 紫微斗數簡易引擎 — 12宮+14主星+命宮分析
+ * 紫微斗數簡易引擎 — 12宮+14主星+命宮分析+四化星
  */
 window.Ziwei = (function() {
+
+  var TIAN_GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+
+  // 生年四化（中州派）：年干 → 化祿/化權/化科/化忌 對應的星曜
+  // 部分對應星（文昌/文曲/左輔/右弼）不在14主星表中，此時該化落於輔星，不掛靠任何宮位
+  var SIHUA_TABLE = {
+    '甲': { '化祿':'廉貞', '化權':'破軍', '化科':'武曲', '化忌':'太陽' },
+    '乙': { '化祿':'天機', '化權':'天梁', '化科':'紫微', '化忌':'太陰' },
+    '丙': { '化祿':'天同', '化權':'天機', '化科':'文昌', '化忌':'廉貞' },
+    '丁': { '化祿':'太陰', '化權':'天同', '化科':'天機', '化忌':'巨門' },
+    '戊': { '化祿':'貪狼', '化權':'太陰', '化科':'右弼', '化忌':'天機' },
+    '己': { '化祿':'武曲', '化權':'貪狼', '化科':'天梁', '化忌':'文曲' },
+    '庚': { '化祿':'太陽', '化權':'武曲', '化科':'太陰', '化忌':'天同' },
+    '辛': { '化祿':'巨門', '化權':'太陽', '化科':'文曲', '化忌':'文昌' },
+    '壬': { '化祿':'天梁', '化權':'紫微', '化科':'左輔', '化忌':'武曲' },
+    '癸': { '化祿':'破軍', '化權':'巨門', '化科':'太陰', '化忌':'貪狼' }
+  };
+
+  var SIHUA_MEANING = {
+    '化祿': '增益、順遂、財源與人緣的加持，四化中最吉，代表該宮位之事容易水到渠成。',
+    '化權': '掌握主導權、企圖心與行動力增強，能有所成就，但也容易流於強勢或壓力過大。',
+    '化科': '帶來名聲、貴人、考運與文書上的順利，是較溫和的吉象，利於學業與名譽。',
+    '化忌': '容易出現糾結、阻礙、反覆或需要特別留意的課題，是四化中最需謹慎面對的一化。'
+  };
 
   // 14主星
   var STARS = {
@@ -62,6 +86,7 @@ window.Ziwei = (function() {
     });
 
     var mingPalace = palaces[mingIdx];
+    var sihua = getSihua(year, palaces);
 
     return {
       palaces: palaces,
@@ -69,8 +94,27 @@ window.Ziwei = (function() {
       mingStar: mingPalace.star,
       mingEle: mingPalace.starEle,
       mingGlory: mingPalace.starGlory,
-      mingDesc: mingPalace.starDesc
+      mingDesc: mingPalace.starDesc,
+      sihua: sihua
     };
+  }
+
+  /** 依年干取生年四化，並比對落於哪個宮位 */
+  function getSihua(year, palaces) {
+    var idx = (year - 4) % 60;
+    if (idx < 0) idx += 60;
+    var tg = TIAN_GAN[idx % 10];
+    var table = SIHUA_TABLE[tg];
+    if (!table) return null;
+
+    var list = Object.keys(table).map(function(type) {
+      var star = table[type];
+      var palace = palaces.filter(function(p) { return p.star === star; })[0] || null;
+      var reading = star + (palace ? '在' + palace.name : '（輔星，未列入命盤主星）') + type + '：' + SIHUA_MEANING[type];
+      return { type: type, star: star, palace: palace, reading: reading };
+    });
+
+    return { tg: tg, list: list };
   }
 
   /** 紫微命宮 vs 姓名人格比對 */

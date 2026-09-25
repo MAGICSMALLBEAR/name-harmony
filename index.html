@@ -22,7 +22,7 @@
   <!-- 英文切換 -->
   <button class="theme-toggle" id="langToggle" title="English" aria-label="語言切換" style="top:16px;right:64px;">🌐</button>
   <!-- 主題切換 + 專業模式 -->
-  <button class="theme-toggle" id="themeToggle" title="切換淺色/深色主題" aria-label="主題切換">☀️</button>
+  <button class="theme-toggle" id="themeToggle" title="切換淺色/深色主題" data-i18n-title="themeToggleTitle" aria-label="主題切換">☀️</button>
   <div class="pro-fixed-toggle" id="proFixedToggle">
     <span class="pro-fixed-label">📜</span>
     <label class="pro-toggle">
@@ -59,7 +59,7 @@
         </svg>
       </div>
       <h1 class="app-title">姓名和盤</h1>
-      <p class="app-subtitle">中英文姓名命理分析</p>
+      <p class="app-subtitle" data-i18n="appSubtitle">中英文姓名命理分析</p>
       <div class="header-decoration">
         <span class="deco-line"></span>
         <span class="deco-diamond">◆</span>
@@ -72,9 +72,9 @@
       <div class="card form-card">
         <h2 class="card-title">
           <span class="title-icon">📝</span>
-          輸入雙方姓名
+          <span data-i18n="formCardTitle">輸入雙方姓名</span>
         </h2>
-        <p class="card-subtitle">可填一或多個欄位，系統自動判斷分析模式</p>
+        <p class="card-subtitle" data-i18n="formCardSubtitle">可填一或多個欄位，系統自動判斷分析模式</p>
 
         <!-- Person A -->
         <div class="person-section">
@@ -84,26 +84,26 @@
           </div>
           <div class="person-fields">
             <div class="form-group">
-              <label for="cnA" class="form-label">中文姓名</label>
+              <label for="cnA" class="form-label" data-i18n="cnNameLabel">中文姓名</label>
               <div class="input-wrapper">
                 <span class="input-icon">姓</span>
-                <input type="text" id="cnA" class="form-input" placeholder="姓+名" autocomplete="off" maxlength="12">
+                <input type="text" id="cnA" class="form-input" placeholder="姓+名" data-i18n-placeholder="cnNamePlaceholder" autocomplete="off" maxlength="12">
               </div>
             </div>
             <div class="form-group">
-              <label for="enA" class="form-label">英文姓名</label>
+              <label for="enA" class="form-label" data-i18n="enNameLabel">英文姓名</label>
               <div class="input-wrapper">
                 <span class="input-icon">A</span>
                 <input type="text" id="enA" class="form-input" placeholder="English name" autocomplete="off" maxlength="60">
               </div>
             </div>
             <div class="form-group form-group-sm">
-              <label class="form-label">📅 生日<span class="form-optional">選填</span></label>
+              <label class="form-label"><span data-i18n="bdayLabel">📅 生日</span><span class="form-optional" data-i18n="formOptional">選填</span></label>
               <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
-              <p class="form-bday-hint">🐉 選擇生日可解鎖生肖+八字+星座</p>
+              <p class="form-bday-hint" data-i18n="bdayHint">🐉 選擇生日可解鎖生肖+八字+星座</p>
             </div>
             <div class="form-group form-group-sm" style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:0.75rem;color:var(--color-text-secondary);">🩸血型<span class="form-optional">選填</span></span>
+              <span style="font-size:0.75rem;color:var(--color-text-secondary);"><span data-i18n="bloodLabel">🩸血型</span><span class="form-optional" data-i18n="formOptional">選填</span></span>
               <select class="form-input blood-input" style="width:auto;padding:4px 8px;font-size:0.8rem;">
                 <option value="">-</option><option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
               </select>
@@ -114,7 +114,7 @@
         <!-- 中間分隔「和」 -->
         <div class="harmony-divider">
           <span class="divider-line"></span>
-          <span class="divider-symbol">和</span>
+          <span class="divider-symbol" data-i18n="dividerSymbol">和</span>
           <span class="divider-line"></span>
         </div>
 
@@ -126,21 +126,21 @@
           </div>
           <div class="person-fields">
             <div class="form-group">
-              <label for="cnB" class="form-label">中文姓名</label>
+              <label for="cnB" class="form-label" data-i18n="cnNameLabel">中文姓名</label>
               <div class="input-wrapper">
                 <span class="input-icon">姓</span>
-                <input type="text" id="cnB" class="form-input" placeholder="姓+名" autocomplete="off" maxlength="12">
+                <input type="text" id="cnB" class="form-input" placeholder="姓+名" data-i18n-placeholder="cnNamePlaceholder" autocomplete="off" maxlength="12">
               </div>
             </div>
             <div class="form-group">
-              <label for="enB" class="form-label">英文姓名</label>
+              <label for="enB" class="form-label" data-i18n="enNameLabel">英文姓名</label>
               <div class="input-wrapper">
                 <span class="input-icon">B</span>
                 <input type="text" id="enB" class="form-input" placeholder="English name" autocomplete="off" maxlength="60">
               </div>
             </div>
             <div class="form-group form-group-sm">
-              <label class="form-label">📅 生日<span class="form-optional">選填</span></label>
+              <label class="form-label"><span data-i18n="bdayLabel">📅 生日</span><span class="form-optional" data-i18n="formOptional">選填</span></label>
               <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
             </div>
           </div>
@@ -150,17 +150,17 @@
         <div id="extraPersons"></div>
 
         <!-- 新增成員按鈕 -->
-        <button id="addPersonBtn" class="btn-add-person" type="button">
-          <span>＋</span> 新增成員（最多 5 人）
+        <button id="addPersonBtn" class="btn-add-person" type="button" data-i18n="addPersonBtn">
+          ＋ 新增成員（最多 5 人）
         </button>
 
         <div style="display:flex;gap:8px;">
           <button id="analyzeBtn" class="btn-analyze" style="flex:3;">
             <span class="btn-icon">🔮</span>
-            <span class="btn-text">開始團隊和盤分析</span>
+            <span class="btn-text" data-i18n="analyzeBtn">開始團隊和盤分析</span>
           </button>
-          <button id="demoBtn" class="btn-analyze" style="flex:1;opacity:0.7;font-size:0.9rem;" type="button">
-            <span>✨</span> 示範
+          <button id="demoBtn" class="btn-analyze" style="flex:1;opacity:0.7;font-size:0.9rem;" type="button" data-i18n="demoBtn">
+            ✨ 示範
           </button>
         </div>
 
@@ -173,16 +173,16 @@
       <div id="manualStrokeCard" class="card form-card hidden">
         <h2 class="card-title">
           <span class="title-icon">✏️</span>
-          手動輸入筆劃
+          <span data-i18n="manualStrokeTitle">手動輸入筆劃</span>
         </h2>
-        <p style="color:var(--color-text-secondary);margin-bottom:1rem;font-size:0.9rem;">
+        <p style="color:var(--color-text-secondary);margin-bottom:1rem;font-size:0.9rem;" data-i18n="manualStrokeDesc">
           以下漢字不在筆劃資料庫中，請手動輸入康熙字典筆劃數：
         </p>
         <div id="manualStrokeFields"></div>
         <div id="manualStrokeError" class="form-error hidden"></div>
         <button id="manualStrokeBtn" class="btn-analyze" style="margin-top:1rem;">
           <span class="btn-icon">🔮</span>
-          <span class="btn-text">重新分析</span>
+          <span class="btn-text" data-i18n="manualStrokeBtn">重新分析</span>
         </button>
       </div>
     </section>
@@ -192,7 +192,7 @@
       <div class="person-section extra-person">
         <div class="person-header">
           <span class="person-badge person-badge-extra">成員N</span>
-          <button class="btn-remove-person" type="button" title="移除">✕</button>
+          <button class="btn-remove-person" type="button" title="移除" data-i18n-title="removePersonTitle">✕</button>
         </div>
         <div class="person-fields">
           <div class="form-group">
@@ -221,27 +221,27 @@
       <nav class="tab-nav" id="tabNav">
         <button class="tab-btn active" data-tab="members">
           <span class="tab-icon">👥</span>
-          <span class="tab-label">成員分析</span>
+          <span class="tab-label" data-i18n="tabMembers">成員分析</span>
         </button>
         <button class="tab-btn" data-tab="matrix">
           <span class="tab-icon">💫</span>
-          <span class="tab-label">配對矩陣</span>
+          <span class="tab-label" data-i18n="tabMatrix">配對矩陣</span>
         </button>
         <button class="tab-btn" data-tab="team">
           <span class="tab-icon">📊</span>
-          <span class="tab-label">團隊報告</span>
+          <span class="tab-label" data-i18n="tabTeam">團隊報告</span>
         </button>
         <button class="tab-btn" data-tab="report">
           <span class="tab-icon">📜</span>
-          <span class="tab-label">鑑定書</span>
+          <span class="tab-label" data-i18n="tabReport">鑑定書</span>
         </button>
         <button class="tab-btn" data-tab="lucky">
           <span class="tab-icon">💎</span>
-          <span class="tab-label">開運指南</span>
+          <span class="tab-label" data-i18n="tabLucky">開運指南</span>
         </button>
         <button class="tab-btn" data-tab="history">
           <span class="tab-icon">📋</span>
-          <span class="tab-label">歷史</span>
+          <span class="tab-label" data-i18n="tabHistory">歷史</span>
         </button>
       </nav>
 
@@ -253,7 +253,7 @@
       <!-- 配對矩陣面板 -->
       <div class="tab-panel" id="panelMatrix">
         <div class="card">
-          <h2 class="card-title"><span class="title-icon">💫</span>配對矩陣</h2>
+          <h2 class="card-title"><span class="title-icon">💫</span><span data-i18n="matrixTitle">配對矩陣</span></h2>
           <div id="matrixContent"></div>
         </div>
       </div>
@@ -261,7 +261,7 @@
       <!-- 團隊報告面板 -->
       <div class="tab-panel" id="panelTeam">
         <div class="card">
-          <h2 class="card-title"><span class="title-icon">📊</span>團隊命理報告</h2>
+          <h2 class="card-title"><span class="title-icon">📊</span><span data-i18n="teamTitle">團隊命理報告</span></h2>
           <div id="teamContent"></div>
         </div>
       </div>
@@ -279,7 +279,7 @@
       <!-- 歷史記錄面板 -->
       <div class="tab-panel" id="panelHistory">
         <div class="card">
-          <h2 class="card-title"><span class="title-icon">📋</span>歷史分析記錄</h2>
+          <h2 class="card-title"><span class="title-icon">📋</span><span data-i18n="historyPanelTitle">歷史分析記錄</span></h2>
           <div id="historyPanelContent"></div>
         </div>
       </div>
@@ -287,13 +287,13 @@
       <!-- 分享與操作區 -->
       <div class="action-bar" id="actionBar">
         <button id="shareBtn" class="btn-action">
-          <span>📤</span> 分享結果
+          <span>📤</span> <span data-i18n="shareBtn">分享結果</span>
         </button>
         <button id="saveBtn" class="btn-action">
-          <span>💾</span> 儲存記錄
+          <span>💾</span> <span data-i18n="saveBtn">儲存記錄</span>
         </button>
         <button id="backBtn" class="btn-action btn-action-secondary">
-          <span>🔄</span> 重新查詢
+          <span>🔄</span> <span data-i18n="backBtn">重新查詢</span>
         </button>
       </div>
     </section>
@@ -302,21 +302,21 @@
     <div id="loadingOverlay" class="loading-overlay hidden">
       <div class="loading-spinner">
         <div class="taiji-spin"></div>
-        <p>分析中...</p>
+        <p data-i18n="loadingText">分析中...</p>
       </div>
     </div>
 
     <!-- 返回頂部 -->
-    <button id="scrollTopBtn" class="scroll-top-btn hidden" title="返回頂部">⬆</button>
+    <button id="scrollTopBtn" class="scroll-top-btn hidden" title="返回頂部" data-i18n-title="scrollTopTitle">⬆</button>
 
     <!-- 名字PK區 -->
     <div id="namePkSection" class="card hidden" style="margin-top:var(--space-lg);">
-      <h3 style="color:var(--color-gold-primary);margin-bottom:8px;">🏆 名字PK排名</h3>
-      <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">輸入姓氏和多個備選名字，用逗號分隔（例：柏宇,冠廷,怡君,志豪）</p>
+      <h3 style="color:var(--color-gold-primary);margin-bottom:8px;" data-i18n="pkTitle">🏆 名字PK排名</h3>
+      <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;" data-i18n="pkDesc">輸入姓氏和多個備選名字，用逗號分隔（例：柏宇,冠廷,怡君,志豪）</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <input type="text" id="pkSurname" class="form-input" placeholder="姓氏" style="flex:1;min-width:80px;" maxlength="4">
-        <input type="text" id="pkNames" class="form-input" placeholder="備選名（逗號分隔）" style="flex:3;min-width:200px;" maxlength="100">
-        <button id="pkBtn" class="btn-download-img">📊 開始PK</button>
+        <input type="text" id="pkSurname" class="form-input" placeholder="姓氏" data-i18n-placeholder="pkSurnamePh" style="flex:1;min-width:80px;" maxlength="4">
+        <input type="text" id="pkNames" class="form-input" placeholder="備選名（逗號分隔）" data-i18n-placeholder="pkNamesPh" style="flex:3;min-width:200px;" maxlength="100">
+        <button id="pkBtn" class="btn-download-img" data-i18n="pkBtn">📊 開始PK</button>
       </div>
       <div id="pkResults" style="margin-top:12px;"></div>
     </div>
@@ -339,17 +339,17 @@
     <div id="historyModal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="modal-header">
-          <h2 class="card-title"><span class="title-icon">📋</span>歷史記錄</h2>
+          <h2 class="card-title"><span class="title-icon">📋</span><span data-i18n="historyModalTitle">歷史記錄</span></h2>
           <button id="historyClose" class="btn-modal-close">✕</button>
         </div>
         <div id="historyList"></div>
-        <button id="historyClear" class="btn-action btn-action-secondary" style="margin-top:1rem;width:100%;">🗑️ 清除全部記錄</button>
+        <button id="historyClear" class="btn-action btn-action-secondary" style="margin-top:1rem;width:100%;" data-i18n="historyClearBtn">🗑️ 清除全部記錄</button>
       </div>
     </div>
 
     <!-- 底部 -->
     <footer class="app-footer">
-      <p>僅供娛樂參考，請勿過度迷信</p>
+      <p data-i18n="footerText">僅供娛樂參考，請勿過度迷信</p>
     </footer>
   </div>
 
@@ -374,13 +374,23 @@
   <script src="js/english-numerology.js"></script>
   <script src="js/harmony.js"></script>
   <script src="js/pair-harmony.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/app.js"></script>
 
   <!-- PWA Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js').catch(function() {});
+        navigator.serviceWorker.register('sw.js').then(function(reg) {
+          // 進階：Periodic Background Sync（僅安裝為PWA且瀏覽器支援時才有效果，屬best-effort加強）
+          if ('periodicSync' in reg && navigator.permissions) {
+            navigator.permissions.query({ name: 'periodic-background-sync' }).then(function(status) {
+              if (status.state === 'granted') {
+                reg.periodicSync.register('daily-fortune', { minInterval: 20 * 60 * 60 * 1000 }).catch(function() {});
+              }
+            }).catch(function() {});
+          }
+        }).catch(function() {});
       });
     }
   </script>

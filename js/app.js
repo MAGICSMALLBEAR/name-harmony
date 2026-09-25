@@ -94,11 +94,12 @@
 
     // 英文UI切換
     var langToggle = document.getElementById('langToggle');
-    var isEnglish = localStorage.getItem('name-harmony-lang') === 'en';
+    if (window.I18N) window.I18N.apply(window.I18N.getLang());
     langToggle.addEventListener('click',function(){
-      isEnglish = !isEnglish;
-      localStorage.setItem('name-harmony-lang', isEnglish ? 'en' : 'zh');
-      toast(isEnglish ? 'Switched to English (basic)' : '已切換為繁體中文');
+      var next = window.I18N.getLang() === 'en' ? 'zh' : 'en';
+      window.I18N.setLang(next);
+      window.I18N.apply(next);
+      toast(next === 'en' ? 'Switched to English' : '已切換為繁體中文');
     });
 
     // 主題切換
@@ -124,7 +125,7 @@
     // QR/連結分享鍵
     var linkBtn = document.createElement('button');
     linkBtn.className = 'btn-action';
-    linkBtn.innerHTML = '<span>🔗</span> 連結';
+    linkBtn.innerHTML = '<span>🔗</span> <span data-i18n="linkBtn">連結</span>';
     linkBtn.addEventListener('click', function() {
       var text = buildShareText();
       var url = 'https://magicsmallbear.github.io/name-harmony/';
@@ -136,14 +137,14 @@
     // 客戶存檔
     var profileBtn = document.createElement('button');
     profileBtn.className = 'btn-action';
-    profileBtn.innerHTML = '<span>💼</span> 存檔';
+    profileBtn.innerHTML = '<span>💼</span> <span data-i18n="profileBtn">存檔</span>';
     profileBtn.addEventListener('click', saveProfile);
     actionBar.insertBefore(profileBtn, backBtn);
 
     // QR Code 圖片
     var qrBtn = document.createElement('button');
     qrBtn.className = 'btn-action';
-    qrBtn.innerHTML = '<span>📱</span> QR';
+    qrBtn.innerHTML = '<span>📱</span> <span data-i18n="qrBtn">QR</span>';
     qrBtn.addEventListener('click', function() {
       var url = 'https://magicsmallbear.github.io/name-harmony/';
       var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
@@ -155,7 +156,7 @@
     // IG分享
     var igBtn = document.createElement('button');
     igBtn.className = 'btn-action';
-    igBtn.innerHTML = '<span>📱</span> IG';
+    igBtn.innerHTML = '<span>📱</span> <span data-i18n="igBtn">IG</span>';
     igBtn.addEventListener('click', function() {
       if (!currentData) return;
       if (window.ShareCard && window.ShareCard.downloadIG) {
@@ -165,20 +166,13 @@
     });
     actionBar.insertBefore(igBtn, backBtn);
 
-    // TTS 語音朗讀
+    // TTS 語音朗讀（摘要）
     var ttsBtn = document.createElement('button');
     ttsBtn.className = 'btn-action';
-    ttsBtn.innerHTML = '<span>🔊</span> 朗讀';
+    ttsBtn.innerHTML = '<span>🔊</span> <span data-i18n="speakBtn">朗讀</span>';
     ttsBtn.addEventListener('click', function() {
       if (!currentData) return;
-      var text = buildShareText().replace(/[🔮💫🀄🔢🐉📜]/g,'');
-      if ('speechSynthesis' in window) {
-        var u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-TW'; u.rate = 0.9;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
-        toast('🔊 正在朗讀分析結果...');
-      } else { toast('您的瀏覽器不支援語音朗讀'); }
+      speakText(buildShareText(), '正在朗讀分析摘要...');
     });
     actionBar.insertBefore(ttsBtn, backBtn);
 
@@ -186,15 +180,18 @@
     var actionBar = document.getElementById('actionBar');
     historyBtn = document.createElement('button');
     historyBtn.className = 'btn-action';
-    historyBtn.innerHTML = '<span>📋</span> 歷史';
+    historyBtn.innerHTML = '<span>📋</span> <span data-i18n="tabHistory">歷史</span>';
     historyBtn.addEventListener('click', openHistory);
     actionBar.insertBefore(historyBtn, backBtn);
 
     var exportBtn = document.createElement('button');
     exportBtn.className = 'btn-action';
-    exportBtn.innerHTML = '<span>📄</span> 匯出';
+    exportBtn.innerHTML = '<span>📄</span> <span data-i18n="exportBtn">匯出</span>';
     exportBtn.addEventListener('click', exportImage);
     actionBar.insertBefore(exportBtn, backBtn);
+
+    // 套用目前語言到所有動態按鈕（含上方剛建立的）
+    if (window.I18N) window.I18N.apply(window.I18N.getLang());
 
     // Enter
     document.addEventListener('keydown', function(e) {
@@ -211,16 +208,13 @@
       switchTab(btn.dataset.tab);
     });
 
-    // PWA 每日推播
-    if ('Notification' in window && 'serviceWorker' in navigator) {
-      setTimeout(function() {
-        Notification.requestPermission().then(function(p) {
-          if (p === 'granted' && !localStorage.getItem('daily-push-set')) {
-            localStorage.setItem('daily-push-set', '1');
-            new Notification('🔮 姓名和盤', {body:'每日運勢已就緒！打開 APP 查看今日幸運色、方位與數字。',icon:'img/icon-192.png'});
-          }
-        });
-      }, 5000);
+    // PWA 每日推播：每次開啟/回到前景時檢查是否已跨日，跨日則推播一次
+    // （純前端無後端，無法在App完全關閉時保證推播；periodicSync 為額外的best-effort加強，見 sw.js）
+    if ('Notification' in window) {
+      setTimeout(checkDailyFortune, 5000);
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') checkDailyFortune();
+      });
     }
 
     // 金粉粒子
@@ -543,6 +537,7 @@
     renderProfessionalReports();
     renderLuckyGuide();
     renderHistoryPanel();
+    if (window.I18N) window.I18N.apply(window.I18N.getLang());
   }
 
   // ============ 成員分析（摺疊） ============
@@ -656,10 +651,19 @@
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + astro.sunSign.desc + '</p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">主導元素：<strong class="element-' + astro.dominantElement + '">' + astro.dominantElement + '</strong> — ' + astro.nameAdvice + '</p>';
           html += '<div style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:4px;">';
-          astro.planets.slice(0,5).forEach(function(pl) {
+          astro.planets.forEach(function(pl) {
             html += pl.emoji + ' ' + pl.name + '→' + pl.house.n.split(' ')[0] + ' | ';
           });
-          html += '</div></details>';
+          html += '</div>';
+          if (astro.aspects && astro.aspects.length) {
+            var topAspects = astro.aspects.slice(0, 6);
+            html += '<div style="margin-top:8px;font-size:0.75rem;">📐 主要相位（共' + astro.aspects.length + '組）</div>';
+            topAspects.forEach(function(a) {
+              var color = a.nature === '吉' ? 'var(--color-gold-light)' : (a.nature === '挑戰' ? 'var(--color-danger, #c0392b)' : 'var(--color-text-secondary)');
+              html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + a.p1 + ' × ' + a.p2Emoji + a.p2 + ' ' + a.type + '（' + a.angle + '）— ' + (a.nature === '吉' ? '和諧' : a.nature === '挑戰' ? '張力' : '融合') + '</p>';
+            });
+          }
+          html += '</details>';
         }
       }
 
@@ -677,7 +681,15 @@
             html += '<span style="color:var(--color-text-secondary);">' + p.name + '</span>';
             html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + p.star + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span></span>';
           });
-          html += '</div></details>';
+          html += '</div>';
+          if (zw.sihua && zw.sihua.list.length) {
+            html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）</div>';
+            zw.sihua.list.forEach(function(s) {
+              var color = s.type === '化忌' ? 'var(--color-danger, #c0392b)' : 'var(--color-gold-light)';
+              html += '<p style="font-size:0.75rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + s.reading + '</p>';
+            });
+          }
+          html += '</details>';
         }
       }
 
@@ -1267,7 +1279,8 @@
 
       // 操作按鈕
       html += '<div class="report-actions">';
-      html += '<button class="btn-download-img copy-report-btn" data-idx="' + idx + '">📋 複製報告</button>';
+      html += '<button class="btn-download-img copy-report-btn" data-idx="' + idx + '" data-i18n="copyReportBtn">📋 複製報告</button>';
+      html += '<button class="btn-download-img speak-report-btn" data-idx="' + idx + '" data-i18n="speakReportBtn">🔊 朗讀報告</button>';
       html += '</div>';
 
       // 印章
@@ -1276,7 +1289,7 @@
       html += '</div>';
     });
 
-    if (!html) html = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">需要輸入中文姓名</div><div class="empty-state-hint">才能產生命理鑑定書</div></div>';
+    if (!html) html = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text" data-i18n="emptyNeedCn">需要輸入中文姓名</div><div class="empty-state-hint" data-i18n="emptyNeedCnReport">才能產生命理鑑定書</div></div>';
 
     reportContent.innerHTML = html;
 
@@ -1292,6 +1305,17 @@
         toast('專業報告已複製！（可貼到文件或訊息）');
       });
     });
+
+    // 綁定朗讀報告按鈕
+    reportContent.querySelectorAll('.speak-report-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.idx);
+        var item = currentData.results[idx];
+        if (!item || !item.result.cn) return;
+        var report = window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac);
+        speakText(window.Professional.reportToText(report), '正在朗讀' + item.person.label + '的鑑定書...');
+      });
+    });
   }
 
   // ============ 開運指南 ============
@@ -1299,11 +1323,11 @@
 
   function renderLuckyGuide() {
     if (!luckyContent || !currentData || !window.LuckyItems) {
-      if (luckyContent) luckyContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text">需要輸入中文姓名</div></div>';
+      if (luckyContent) luckyContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text" data-i18n="emptyNeedCn">需要輸入中文姓名</div></div>';
       return;
     }
     var html = '';
-    currentData.results.forEach(function(item) {
+    currentData.results.forEach(function(item, idx) {
       var r = item.result;
       if (!r.cn) return;
       var el = r.cn.grids.ren.element;
@@ -1311,9 +1335,21 @@
       html += '<h2 class="card-title"><span class="title-icon">💎</span>' + item.person.label + ' 開運指南</h2>';
       html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是專屬的開運建議：</p>';
       html += window.LuckyItems.generateGuide(el);
+      html += '<div class="report-actions"><button class="btn-download-img speak-guide-btn" data-idx="' + idx + '" data-i18n="speakGuideBtn">🔊 朗讀開運指南</button></div>';
       html += '</div>';
     });
-    luckyContent.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text">請輸入中文姓名後分析</div></div>';
+    luckyContent.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text" data-i18n="emptyNeedCnLucky">請輸入中文姓名後分析</div></div>';
+
+    // 綁定朗讀開運指南按鈕
+    luckyContent.querySelectorAll('.speak-guide-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(this.dataset.idx);
+        var item = currentData.results[idx];
+        if (!item || !item.result.cn) return;
+        var el = item.result.cn.grids.ren.element;
+        speakText(window.LuckyItems.guideToText(el), '正在朗讀' + item.person.label + '的開運指南...');
+      });
+    });
   }
 
   // ============ 歷史面板 ============
@@ -1660,8 +1696,8 @@
   }
 
   // ============ 分享 ============
-  function handleShare() {
-    if (!currentData) return;
+  function buildShareText() {
+    if (!currentData) return '';
     var lines = ['🔮 姓名和盤團隊分析'];
     currentData.results.forEach(function(item) {
       lines.push(item.person.label + ': ' + (item.person.cn||'') + (item.person.cn&&item.person.en?' / ':'') + (item.person.en||''));
@@ -1674,9 +1710,28 @@
       lines.push('共 ' + currentData.results.length + ' 人，' + currentData.pairs.length + ' 組配對');
     }
     lines.push('— 姓名和盤');
-    var text = lines.join('\n');
+    return lines.join('\n');
+  }
+
+  function handleShare() {
+    if (!currentData) return;
+    var text = buildShareText();
     if (navigator.share) navigator.share({title:'姓名和盤',text:text}).catch(function(){});
     else copyText(text);
+  }
+
+  /** 語音朗讀：清除emoji/符號後交由瀏覽器TTS朗讀 */
+  function speakText(text, statusMsg) {
+    if (!text) return;
+    // 移除emoji、box-drawing符號等不利朗讀的字元，保留中英文/數字/標點
+    var clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}─-╿]/gu, ' ').replace(/\s{2,}/g, ' ').trim();
+    if (!clean) return;
+    if (!('speechSynthesis' in window)) { toast('您的瀏覽器不支援語音朗讀'); return; }
+    var u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'zh-TW'; u.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    toast('🔊 ' + (statusMsg || '正在朗讀...'));
   }
 
   function copyText(text) {
@@ -1734,6 +1789,39 @@
 
   function loadProfiles() {
     try { return JSON.parse(localStorage.getItem('name-harmony-profiles') || '[]'); } catch(e) { return []; }
+  }
+
+  // ============ 每日運勢推播 ============
+  function checkDailyFortune() {
+    if (!('Notification' in window)) return;
+    var todayStr = new Date().toDateString();
+    if (localStorage.getItem('daily-fortune-shown') === todayStr) return;
+
+    if (Notification.permission === 'granted') {
+      showDailyFortuneNotification(todayStr);
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission().then(function(p) {
+        if (p === 'granted') showDailyFortuneNotification(todayStr);
+      });
+    }
+  }
+
+  function showDailyFortuneNotification(todayStr) {
+    var body = '打開 APP 查看今日幸運色、方位與數字。';
+    try {
+      var profiles = loadProfiles();
+      var p = profiles[0];
+      if (p && p.persons && p.persons[0] && window.FunExtras) {
+        var r = analyzeOne(p.persons[0]);
+        if (r && !r.error && !r.needsManual && r.en) {
+          var el = r.cn ? r.cn.grids.ren.element : '?';
+          var df = window.FunExtras.getDailyFortune(r.en.destiny, el);
+          body = df.starDisplay + ' 幸運色' + df.color + ' · 幸運方位' + df.direction + ' · 幸運數字' + df.number;
+        }
+      }
+    } catch (e) {}
+    new Notification('🔮 姓名和盤 · 今日運勢', { body: body, icon: 'img/icon-192.png' });
+    localStorage.setItem('daily-fortune-shown', todayStr);
   }
 
   function loadHistory() {

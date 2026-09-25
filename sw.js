@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v1';
+var CACHE_NAME = 'name-harmony-v3';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -11,11 +11,26 @@ var ASSETS_TO_CACHE = [
   './manifest.json',
   './css/style.css',
   './js/data/stroke-db.js',
+  './js/data/s2t-map.js',
   './js/data/fortune-81.js',
+  './js/data/english-names.js',
   './js/data/english-number-meanings.js',
+  './js/zodiac-bazi.js',
+  './js/name-generator.js',
+  './js/share-card.js',
+  './js/fun-extras.js',
+  './js/iching.js',
+  './js/deep-readings.js',
+  './js/smart-insights.js',
+  './js/lucky-items.js',
+  './js/ziwei.js',
+  './js/astrology.js',
+  './js/professional.js',
   './js/chinese-numerology.js',
   './js/english-numerology.js',
   './js/harmony.js',
+  './js/pair-harmony.js',
+  './js/i18n.js',
   './js/app.js'
 ];
 
@@ -43,6 +58,31 @@ self.addEventListener('activate', function(event) {
     })
   );
   self.clients.claim();
+});
+
+// Periodic Background Sync: 每日運勢推播（僅安裝為PWA且瀏覽器授權時觸發，屬best-effort）
+self.addEventListener('periodicsync', function(event) {
+  if (event.tag === 'daily-fortune') {
+    event.waitUntil(
+      self.registration.showNotification('🔮 姓名和盤 · 今日運勢', {
+        body: '新的一天，打開 APP 查看今日幸運色、方位與數字。',
+        icon: 'img/icon-192.png'
+      })
+    );
+  }
+});
+
+// 點擊通知：聚焦或開啟 App
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
 });
 
 // Fetch: Cache-First with font caching

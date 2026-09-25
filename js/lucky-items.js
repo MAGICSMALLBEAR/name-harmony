@@ -124,9 +124,25 @@ window.LuckyItems = (function() {
     return html;
   }
 
+  /** 產生個人開運指南純文字（供語音朗讀/複製使用） */
+  function guideToText(element) {
+    var items = getRecommendations(element);
+    var lines = [];
+    lines.push('開運指南 — 屬' + (element || '木'));
+    lines.push('');
+    lines.push('開運水晶：' + items.crystal.map(function(c) { return c.n; }).join('、'));
+    lines.push('主色調：' + items.color.main + '，點綴色：' + items.color.accent + '，避免：' + items.color.avoid);
+    lines.push('開運香氛：' + items.aroma.name + '，功效：' + items.aroma.effect);
+    lines.push('穿搭建議：' + items.style);
+    lines.push('開運飲食：' + items.diet);
+    lines.push('能量景點：' + items.powerSpot);
+    return lines.join('\n');
+  }
+
   return {
     getRecommendations: getRecommendations,
     generateGuide: generateGuide,
+    guideToText: guideToText,
     ELEMENT_ITEMS: ELEMENT_ITEMS
   };
 })();

@@ -60,6 +60,39 @@ window.Astrology = (function() {
     return SIGNS[3]; // default
   }
 
+  // 主要相位定義：以12宮位間隔（每宮30°）換算的角度關係
+  // step = 兩宮位索引差（取最短方向，0~6）
+  var ASPECT_DEFS = {
+    0: { type:'合相',   angle:'0°',   nature:'中性', priority:1, desc:'兩星能量完全融合，特質疊加、效果加乘（吉凶依星曜本質而定）。' },
+    2: { type:'六合相', angle:'60°',  nature:'吉',   priority:4, desc:'和諧的助力，兩者能自然搭配、創造機會與資源。' },
+    3: { type:'四分相', angle:'90°',  nature:'挑戰', priority:2, desc:'產生摩擦與張力，帶來壓力但也是成長與突破的契機。' },
+    4: { type:'三合相', angle:'120°', nature:'吉',   priority:3, desc:'順暢自然的合作關係，兩股力量相輔相成、如虎添翼。' },
+    6: { type:'對分相', angle:'180°', nature:'挑戰', priority:1, desc:'兩極拉扯、彼此對立，需要學習整合並找到平衡點。' }
+  };
+
+  /** 計算全行星兩兩相位（10星共45組），依重要性排序 */
+  function getAspects(planets) {
+    var list = [];
+    for (var i = 0; i < planets.length; i++) {
+      for (var j = i + 1; j < planets.length; j++) {
+        var hi = HOUSES.indexOf(planets[i].house);
+        var hj = HOUSES.indexOf(planets[j].house);
+        var diff = Math.abs(hi - hj);
+        var step = Math.min(diff, 12 - diff);
+        var def = ASPECT_DEFS[step];
+        if (!def) continue; // 30°/150° 為次要相位，略過
+        list.push({
+          p1: planets[i].name, p1Emoji: planets[i].emoji,
+          p2: planets[j].name, p2Emoji: planets[j].emoji,
+          type: def.type, angle: def.angle, nature: def.nature, priority: def.priority,
+          desc: planets[i].name + '與' + planets[j].name + '形成' + def.type + '（' + def.angle + '）：' + def.desc
+        });
+      }
+    }
+    list.sort(function(a, b) { return a.priority - b.priority; });
+    return list;
+  }
+
   function getChart(year, month, day, hour) {
     if (!year || !month || !day) return null;
     var sunSign = getSign(month, day);
@@ -71,13 +104,8 @@ window.Astrology = (function() {
       return { name: p.n, emoji: p.e, element: p.el, desc: p.desc, house: HOUSES[houseIdx] };
     });
 
-    // 簡易相位（日月關係）
-    var sunHouse = planets[0].house;
-    var moonHouse = planets[1].house;
-    var aspects = [];
-    if (sunHouse === moonHouse) aspects.push({p1:'太陽',p2:'月亮',type:'合相',desc:'內外一致，情感與意志協調。'});
-    else if (Math.abs(HOUSES.indexOf(sunHouse) - HOUSES.indexOf(moonHouse)) % 6 === 3)
-      aspects.push({p1:'太陽',p2:'月亮',type:'對分相',desc:'內在與外在有張力，需學習平衡。'});
+    // 全行星相位
+    var aspects = getAspects(planets);
 
     // 姓名對應
     var dominant = sunSign.element;
