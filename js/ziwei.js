@@ -69,6 +69,22 @@ window.Ziwei = (function() {
 
   function mod12(n) { return ((n % 12) + 12) % 12; }
 
+  // 祿存：依年干（甲寅 乙卯 丙戊巳 丁己午 庚申 辛酉 壬亥 癸子）
+  var LUCUN_POS = [2, 3, 5, 6, 5, 6, 8, 9, 11, 0];
+  // 天魁、天鉞：甲戊庚牛羊、乙己鼠猴鄉、丙丁豬雞位、壬癸兔蛇藏、辛逢馬虎
+  var KUI_YUE = [[1,7],[0,8],[11,9],[11,9],[1,7],[0,8],[1,7],[6,2],[3,5],[3,5]];
+  // 年支三合局：0 申子辰、1 巳酉丑、2 寅午戌、3 亥卯未
+  var SAN_HE = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3];
+  var TIANMA_POS = [2, 11, 8, 5];
+  var HUO_START = [2, 3, 1, 9];
+  var LING_START = [10, 10, 3, 10];
+  // 煞星（畫面上以警示色顯示）
+  var SHA_STARS = ['擎羊', '陀羅', '火星', '鈴星', '地空', '地劫'];
+
+  var CHANGSHENG = ['長生','沐浴','冠帶','臨官','帝旺','衰','病','死','墓','絕','胎','養'];
+  // 長生起點：水土申、木亥、金巳、火寅
+  var CHANGSHENG_START = { '水': 8, '土': 8, '木': 11, '金': 5, '火': 2 };
+
   /** 國曆轉農曆（js/lunar.js），回傳 { year, month, day, leap } */
   function toLunar(year, month, day) {
     return window.Lunar ? window.Lunar.fromSolar(year, month, day) : null;
@@ -141,6 +157,25 @@ window.Ziwei = (function() {
     function putMinor(name, pos) { pos = mod12(pos); (minorAt[pos] = minorAt[pos] || []).push(name); }
     putMinor('文昌', 10 - hIdx); putMinor('文曲', 4 + hIdx); putMinor('左輔', 4 + (m - 1)); putMinor('右弼', 10 - (m - 1));
 
+    // 年干系：祿存、擎羊、陀羅、天魁、天鉞
+    var tgI = yIdx % 10, dzI = yIdx % 12;
+    var lu = LUCUN_POS[tgI];
+    putMinor('祿存', lu); putMinor('擎羊', lu + 1); putMinor('陀羅', lu - 1);
+    putMinor('天魁', KUI_YUE[tgI][0]); putMinor('天鉞', KUI_YUE[tgI][1]);
+    // 年支系：天馬；年支+時辰：火星、鈴星；時辰：地空、地劫
+    var trio = SAN_HE[dzI];
+    putMinor('天馬', TIANMA_POS[trio]);
+    putMinor('火星', HUO_START[trio] + hIdx); putMinor('鈴星', LING_START[trio] + hIdx);
+    putMinor('地空', 11 - hIdx); putMinor('地劫', 11 + hIdx);
+
+    // 十二長生：依五行局定長生位，陽男陰女順行、陰男陽女逆行（需要性別）
+    var csAt = {};
+    if (gender === 'male' || gender === 'female') {
+      var csForward = (gender === 'male') === (yIdx % 2 === 0);
+      var csStart = CHANGSHENG_START[nayin];
+      CHANGSHENG.forEach(function(name, i) { csAt[mod12(csStart + (csForward ? i : -i))] = name; });
+    }
+
     // 12宮：由命宮逆排
     var palaces = PALACES.map(function(p, i) {
       var pos = mod12(mingPos - i);
@@ -155,6 +190,7 @@ window.Ziwei = (function() {
         ganzhi: TIAN_GAN[palaceTG(pos)] + DI_ZHI[pos],
         stars: stars,
         minorStars: minorAt[pos] || [],
+        changsheng: csAt[pos] || '',
         borrowed: borrowed,
         star: stars.join('、') + (borrowed ? '（借）' : ''),
         starDesc: stars.map(function(s) { return s + '：' + STARS[s].desc; }).join(' '),
@@ -249,6 +285,7 @@ window.Ziwei = (function() {
     getZiweiChart: getZiweiChart,
     ziweiNameCompare: ziweiNameCompare,
     STARS: STARS,
+    SHA_STARS: SHA_STARS,
     PALACES: PALACES
   };
 })();

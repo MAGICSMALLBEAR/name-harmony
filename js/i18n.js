@@ -22,6 +22,7 @@ window.I18N = (function() {
     genderMale: 'Male',
     genderFemale: 'Female',
     placeLabel: '📍 Birthplace',
+    tstLabel: '☀️ Use true solar time for the birth hour (longitude + equation of time; applies to BaZi and Zi Wei)',
     bloodLabel: '🩸 Blood Type',
     dividerSymbol: '&',
     addPersonBtn: 'Add Member (max 5)',

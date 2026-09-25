@@ -55,6 +55,13 @@
   // ============ 初始化 ============
   function init() {
     initPlaceSelects(document);
+    var tstToggle = document.getElementById('tstToggle');
+    if (tstToggle) {
+      try { tstToggle.checked = localStorage.getItem('name-harmony-tst') === 'true'; } catch (e) {}
+      tstToggle.addEventListener('change', function() {
+        try { localStorage.setItem('name-harmony-tst', tstToggle.checked ? 'true' : 'false'); } catch (e) {}
+      });
+    }
     analyzeBtn.addEventListener('click', function() { handleAnalyze(); });
     manualStrokeBtn.addEventListener('click', handleManualReanalyze);
     shareBtn.addEventListener('click', handleShare);
@@ -274,12 +281,64 @@
     return el;
   }
 
-  /** 填入出生地選單選項（預設台北） */
+  /** 填入出生地選單選項（預設台北），選「其他」時顯示緯度、經度、時區欄位 */
   function initPlaceSelects(scope) {
     if (!window.BirthPlace) return;
     scope.querySelectorAll('.place-input').forEach(function(sel) {
-      if (!sel.options.length) sel.innerHTML = window.BirthPlace.optionsHtml();
+      if (sel.options.length) return;
+      sel.innerHTML = window.BirthPlace.optionsHtml();
+      var box = document.createElement('span');
+      box.className = 'custom-place hidden';
+      box.innerHTML = '<input type="number" class="form-input place-lat" step="0.01" min="-90" max="90" placeholder="緯度（北正南負）" aria-label="緯度">'
+        + '<input type="number" class="form-input place-lon" step="0.01" min="-180" max="180" placeholder="經度（東正西負）" aria-label="經度">'
+        + '<select class="form-input place-tz" aria-label="時區"></select>';
+      var row = sel.closest('.birth-meta-row') || sel.parentNode;
+      row.appendChild(box);
+      sel.addEventListener('change', function() { toggleCustomPlace(sel); });
     });
+  }
+
+  function toggleCustomPlace(sel) {
+    var row = sel.closest('.birth-meta-row') || sel.parentNode;
+    var box = row.querySelector('.custom-place');
+    if (!box) return;
+    var show = sel.value === 'custom';
+    box.classList.toggle('hidden', !show);
+    var tz = box.querySelector('.place-tz');
+    if (show && !tz.options.length) {
+      tz.innerHTML = window.BirthPlace.zoneOptionsHtml(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei');
+    }
+  }
+
+  /** 讀取出生地：預設地點回傳 key，自訂回傳 custom:緯度,經度,時區；自訂但資料不完整回傳 'custom!' */
+  function readPlace(scope) {
+    var sel = scope ? scope.querySelector('.place-input') : null;
+    if (!sel) return '';
+    if (sel.value !== 'custom') return sel.value;
+    var row = sel.closest('.birth-meta-row') || sel.parentNode;
+    var lat = row.querySelector('.place-lat').value.trim();
+    var lon = row.querySelector('.place-lon').value.trim();
+    var tz = row.querySelector('.place-tz').value;
+    var key = window.BirthPlace.customKey(lat, lon, tz);
+    return lat && lon && tz && window.BirthPlace.parseCustom(key) ? key : 'custom!';
+  }
+
+  /** 還原出生地欄位（含自訂） */
+  function writePlace(scope, value) {
+    var sel = scope.querySelector('.place-input');
+    if (!sel) return;
+    var c = window.BirthPlace ? window.BirthPlace.parseCustom(value) : null;
+    if (c) {
+      sel.value = 'custom';
+      toggleCustomPlace(sel);
+      var row = sel.closest('.birth-meta-row') || sel.parentNode;
+      row.querySelector('.place-lat').value = c.lat;
+      row.querySelector('.place-lon').value = c.lon;
+      row.querySelector('.place-tz').value = c.tz;
+    } else {
+      sel.value = value || (window.BirthPlace ? window.BirthPlace.DEFAULT_KEY : '');
+      toggleCustomPlace(sel);
+    }
   }
 
   function updateAddBtn() {
@@ -328,7 +387,7 @@
       en: document.getElementById('enA').value.trim(),
       birthday: readBirthday(aSection),
       gender: readSelect(aSection, '.gender-input'),
-      place: readSelect(aSection, '.place-input'),
+      place: readPlace(aSection),
       blood: (aBlood ? aBlood.value : '') || ''
     });
     // Person B
@@ -340,7 +399,7 @@
       en: document.getElementById('enB').value.trim(),
       birthday: readBirthday(bSection),
       gender: readSelect(bSection, '.gender-input'),
-      place: readSelect(bSection, '.place-input'),
+      place: readPlace(bSection),
       blood: (bBlood ? bBlood.value : '') || ''
     });
     // Extra persons
@@ -354,7 +413,7 @@
         en: div.querySelector('.en-input').value.trim(),
         birthday: readBirthday(div),
         gender: readSelect(div, '.gender-input'),
-        place: readSelect(div, '.place-input')
+        place: readPlace(div)
       });
     });
     return persons;
@@ -391,7 +450,11 @@
         return;
       }
       // 生日分析
-      var bday = applyBirthPlace(parseBirthday(persons[i].birthday), persons[i].place);
+      if (persons[i].place === 'custom!') {
+        showError(persons[i].label + '：自訂出生地請填入緯度（-90～90）、經度（-180～180）並選擇時區');
+        return;
+      }
+      var bday = applyBirthPlace(parseBirthday(persons[i].birthday), persons[i].place, useTrueSolarTime());
       var zodiac = bday ? window.ZodiacBazi.fullAnalysis(bday.year, bday.month, bday.day, bday.hour, bday.minute, bday.tzOffset) : null;
       r.zodiac = zodiac;
       r.gender = persons[i].gender || '';
@@ -517,7 +580,12 @@
    * 依出生地換算：有出生時間時扣除夏令時間、改為當地標準時間
    * 回傳的 year..minute 為標準時間；clock 保留使用者輸入的時鐘時間
    */
-  function applyBirthPlace(bday, placeKey) {
+  function useTrueSolarTime() {
+    var el = document.getElementById('tstToggle');
+    return !!(el && el.checked);
+  }
+
+  function applyBirthPlace(bday, placeKey, useTST) {
     if (!bday || !window.BirthPlace) return bday;
     var B = window.BirthPlace;
     var place = B.getPlace(placeKey);
@@ -533,6 +601,16 @@
     bday.hour = res.std.hour; bday.minute = res.std.minute;
     bday.tzOffset = res.stdOffset;
     bday.dst = res.dst;
+    bday.std = { hour: bday.hour, minute: bday.minute };
+    if (useTST) {
+      // 真太陽時：日期、時辰都改用出生地的視太陽時；tzOffset 相應調整，讓節氣與占星仍對應同一個 UTC 時刻
+      var tst = B.trueSolarTime(res.utcMs, place.lat, place.lon);
+      var t = new Date(tst.ms);
+      bday.year = t.getUTCFullYear(); bday.month = t.getUTCMonth() + 1; bday.day = t.getUTCDate();
+      bday.hour = t.getUTCHours(); bday.minute = t.getUTCMinutes();
+      bday.tzOffset = (tst.ms - res.utcMs) / 3600000;
+      bday.tst = { eotMin: tst.eotMin, lonMin: tst.lonMin - res.stdOffset * 60 };
+    }
     return bday;
   }
 
@@ -658,7 +736,12 @@
       }
       if (bday && bday.dst) {
         html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">🕐 ' + bday.place.name + '當時實施夏令時間：' + pad2(bday.clock.hour) + ':' + pad2(bday.clock.minute)
-          + ' 已換算為標準時間 ' + pad2(bday.hour) + ':' + pad2(bday.minute) + '</span>';
+          + ' 已換算為標準時間 ' + pad2(bday.std.hour) + ':' + pad2(bday.std.minute) + '</span>';
+      }
+      if (bday && bday.tst) {
+        var sgn = function(v) { v = Math.round(v); return (v >= 0 ? '+' : '−') + Math.abs(v); };
+        html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">☀️ 真太陽時 ' + pad2(bday.hour) + ':' + pad2(bday.minute)
+          + '（' + bday.place.name + '，經度校正 ' + sgn(bday.tst.lonMin) + ' 分、均時差 ' + sgn(bday.tst.eotMin) + ' 分）</span>';
       }
       // 完整四柱
       if (r.zodiac.bazi && r.zodiac.bazi.pillars) {
@@ -769,9 +852,13 @@
           zw.palaces.forEach(function(p) {
             html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + p.name + ' <span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '') + '</span></span>';
             html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + (p.star || '空宮') + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span>'
-              + (p.minorStars.length ? ' <span style="font-size:0.6rem;color:var(--color-text-secondary);">' + p.minorStars.join('、') + '</span>' : '') + '</span>';
+              + (p.minorStars.length ? ' <span style="font-size:0.6rem;color:var(--color-text-secondary);">' + p.minorStars.map(function(n) {
+                  return window.Ziwei.SHA_STARS.indexOf(n) >= 0 ? '<span style="color:var(--color-danger, #c0392b);">' + n + '</span>' : n;
+                }).join('、') + '</span>' : '')
+              + (p.changsheng ? ' <span style="font-size:0.6rem;color:var(--color-text-muted);">〔' + p.changsheng + '〕</span>' : '') + '</span>';
           });
           html += '</div>';
+          html += '<p style="font-size:0.65rem;color:var(--color-text-muted);margin:2px 0;">紅字為煞星（擎羊、陀羅、火星、鈴星、地空、地劫）；〔 〕為十二長生' + (zw.decadal ? '' : '（填性別後顯示）') + '</p>';
           if (zw.sihua && zw.sihua.list.length) {
             html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）</div>';
             zw.sihua.list.forEach(function(s) {
@@ -1850,8 +1937,7 @@
       set('.btime-input', parts[1]);
       set('.gender-input', p.gender);
       set('.blood-input', p.blood);
-      var placeEl = scope.querySelector('.place-input');
-      if (placeEl) placeEl.value = p.place || (window.BirthPlace ? window.BirthPlace.DEFAULT_KEY : '');
+      writePlace(scope, p.place);
     });
     updateAddBtn();
   }

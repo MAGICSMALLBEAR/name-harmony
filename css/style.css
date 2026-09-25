@@ -607,6 +607,38 @@ body {
   font-size: 0.8rem;
 }
 
+.custom-place {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.custom-place.hidden { display: none; }
+
+.custom-place .form-input {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.custom-place .place-lat,
+.custom-place .place-lon { width: 6.5em; }
+
+.custom-place .place-tz { flex: 1 1 12em; min-width: 0; }
+
+.tst-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--space-sm) 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.tst-toggle input { margin-top: 2px; }
+
 .form-bday-hint {
   font-size: 0.7rem;
   color: var(--color-gold-dark);

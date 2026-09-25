@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v6';
+var CACHE_NAME = 'name-harmony-v7';
 
 var ASSETS_TO_CACHE = [
   './',
