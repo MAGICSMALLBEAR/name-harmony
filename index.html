@@ -99,8 +99,11 @@
             </div>
             <div class="form-group form-group-sm">
               <label class="form-label"><span data-i18n="bdayLabel">📅 生日</span><span class="form-optional" data-i18n="formOptional">選填</span></label>
-              <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
-              <p class="form-bday-hint" data-i18n="bdayHint">🐉 選擇生日可解鎖生肖+八字+星座</p>
+              <div class="bday-row">
+                <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
+                <input type="time" class="form-input btime-input" title="出生時間（選填）" data-i18n-title="btimeTitle" aria-label="出生時間">
+              </div>
+              <p class="form-bday-hint" data-i18n="bdayHint">🐉 選擇生日可解鎖生肖+八字+星座；再填出生時間可解鎖時柱、紫微命宮、上升星座</p>
             </div>
             <div class="form-group form-group-sm" style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:0.75rem;color:var(--color-text-secondary);"><span data-i18n="bloodLabel">🩸血型</span><span class="form-optional" data-i18n="formOptional">選填</span></span>
@@ -141,7 +144,10 @@
             </div>
             <div class="form-group form-group-sm">
               <label class="form-label"><span data-i18n="bdayLabel">📅 生日</span><span class="form-optional" data-i18n="formOptional">選填</span></label>
-              <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
+              <div class="bday-row">
+                <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
+                <input type="time" class="form-input btime-input" title="出生時間（選填）" data-i18n-title="btimeTitle" aria-label="出生時間">
+              </div>
             </div>
           </div>
         </div>
@@ -150,8 +156,8 @@
         <div id="extraPersons"></div>
 
         <!-- 新增成員按鈕 -->
-        <button id="addPersonBtn" class="btn-add-person" type="button" data-i18n="addPersonBtn">
-          ＋ 新增成員（最多 5 人）
+        <button id="addPersonBtn" class="btn-add-person" type="button">
+          <span>＋</span> <span data-i18n="addPersonBtn">新增成員（最多 5 人）</span>
         </button>
 
         <div style="display:flex;gap:8px;">
@@ -208,7 +214,10 @@
             </div>
           </div>
           <div class="form-group form-group-sm">
-            <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
+            <div class="bday-row">
+              <input type="date" class="form-input bday-input" max="2100-12-31" min="1900-01-01">
+              <input type="time" class="form-input btime-input" title="出生時間（選填）" data-i18n-title="btimeTitle" aria-label="出生時間">
+            </div>
           </div>
         </div>
       </div>
@@ -365,7 +374,9 @@
   <script src="js/deep-readings.js"></script>
   <script src="js/smart-insights.js"></script>
   <script src="js/lucky-items.js"></script>
+  <script src="js/lunar.js"></script>
   <script src="js/ziwei.js"></script>
+  <script src="js/vendor/astronomy.browser.min.js"></script>
   <script src="js/astrology.js"></script>
   <script src="js/professional.js"></script>
   <script src="js/data/english-names.js"></script>

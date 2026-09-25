@@ -1,5 +1,5 @@
 /**
- * 占星盤引擎 — 行星+宮位+相位+姓名對應
+ * 占星盤引擎 — 真實星曆行星位置 + 上升點 + 宮位 + 相位 + 姓名對應
  */
 window.Astrology = (function() {
 
@@ -60,55 +60,112 @@ window.Astrology = (function() {
     return SIGNS[3]; // default
   }
 
-  // 主要相位定義：以12宮位間隔（每宮30°）換算的角度關係
-  // step = 兩宮位索引差（取最短方向，0~6）
-  var ASPECT_DEFS = {
-    0: { type:'合相',   angle:'0°',   nature:'中性', priority:1, desc:'兩星能量完全融合，特質疊加、效果加乘（吉凶依星曜本質而定）。' },
-    2: { type:'六合相', angle:'60°',  nature:'吉',   priority:4, desc:'和諧的助力，兩者能自然搭配、創造機會與資源。' },
-    3: { type:'四分相', angle:'90°',  nature:'挑戰', priority:2, desc:'產生摩擦與張力，帶來壓力但也是成長與突破的契機。' },
-    4: { type:'三合相', angle:'120°', nature:'吉',   priority:3, desc:'順暢自然的合作關係，兩股力量相輔相成、如虎添翼。' },
-    6: { type:'對分相', angle:'180°', nature:'挑戰', priority:1, desc:'兩極拉扯、彼此對立，需要學習整合並找到平衡點。' }
-  };
+  // ========== 真實星曆（js/vendor/astronomy.browser.min.js，astronomy-engine MIT） ==========
 
-  /** 計算全行星兩兩相位（10星共45組），依重要性排序 */
-  function getAspects(planets) {
+  var BODIES = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
+
+  // 預設出生地：台北（尚無出生地欄位），時區 UTC+8
+  var DEFAULT_PLACE = { name: '台北', lat: 25.03, lon: 121.56, tz: 8 };
+
+  // 主要相位：角度與容許度（orb）
+  var ASPECT_DEFS = [
+    { type:'合相',   angle:0,   orb:8, nature:'中性', priority:1, desc:'兩星能量完全融合，特質疊加、效果加乘（吉凶依星曜本質而定）。' },
+    { type:'對分相', angle:180, orb:8, nature:'挑戰', priority:1, desc:'兩極拉扯、彼此對立，需要學習整合並找到平衡點。' },
+    { type:'四分相', angle:90,  orb:7, nature:'挑戰', priority:2, desc:'產生摩擦與張力，帶來壓力但也是成長與突破的契機。' },
+    { type:'三合相', angle:120, orb:7, nature:'吉',   priority:3, desc:'順暢自然的合作關係，兩股力量相輔相成、如虎添翼。' },
+    { type:'六合相', angle:60,  orb:5, nature:'吉',   priority:4, desc:'和諧的助力，兩者能自然搭配、創造機會與資源。' }
+  ];
+
+  function norm360(x) { return ((x % 360) + 360) % 360; }
+
+  /** 天體的地心視黃經（真黃道，of date） */
+  function eclipticLongitude(A, body, date) {
+    return A.Ecliptic(A.GeoVector(body, date, true)).elon;
+  }
+
+  /** 上升點：依恆星時、真黃赤交角與出生地緯度 */
+  function ascendant(A, date, place) {
+    var rad = Math.PI / 180;
+    var ramc = norm360(A.SiderealTime(date) * 15 + place.lon) * rad;
+    var eps = A.e_tilt(A.MakeTime(date)).tobl * rad;
+    var phi = place.lat * rad;
+    var asc = Math.atan2(Math.cos(ramc), -(Math.sin(ramc) * Math.cos(eps) + Math.tan(phi) * Math.sin(eps)));
+    return norm360(asc / rad);
+  }
+
+  function signOf(lon) { return SIGNS[Math.floor(norm360(lon) / 30)]; }
+
+  function fmtDeg(lon) {
+    var inSign = norm360(lon) % 30;
+    var d = Math.floor(inSign);
+    var m = Math.floor((inSign - d) * 60);
+    return d + '°' + (m < 10 ? '0' : '') + m + '′';
+  }
+
+  /** 計算全行星兩兩相位（依實際黃經夾角與容許度），依重要性與緊密度排序 */
+  function getAspects(planets, skipMoon) {
     var list = [];
     for (var i = 0; i < planets.length; i++) {
       for (var j = i + 1; j < planets.length; j++) {
-        var hi = HOUSES.indexOf(planets[i].house);
-        var hj = HOUSES.indexOf(planets[j].house);
-        var diff = Math.abs(hi - hj);
-        var step = Math.min(diff, 12 - diff);
-        var def = ASPECT_DEFS[step];
-        if (!def) continue; // 30°/150° 為次要相位，略過
-        list.push({
-          p1: planets[i].name, p1Emoji: planets[i].emoji,
-          p2: planets[j].name, p2Emoji: planets[j].emoji,
-          type: def.type, angle: def.angle, nature: def.nature, priority: def.priority,
-          desc: planets[i].name + '與' + planets[j].name + '形成' + def.type + '（' + def.angle + '）：' + def.desc
-        });
+        if (skipMoon && (planets[i].name === '月亮' || planets[j].name === '月亮')) continue;
+        var sep = Math.abs(planets[i].lon - planets[j].lon);
+        if (sep > 180) sep = 360 - sep;
+        for (var k = 0; k < ASPECT_DEFS.length; k++) {
+          var def = ASPECT_DEFS[k];
+          var orb = Math.abs(sep - def.angle);
+          if (orb > def.orb) continue;
+          list.push({
+            p1: planets[i].name, p1Emoji: planets[i].emoji,
+            p2: planets[j].name, p2Emoji: planets[j].emoji,
+            type: def.type, angle: def.angle + '°', orb: Math.round(orb * 10) / 10,
+            nature: def.nature, priority: def.priority,
+            desc: planets[i].name + '與' + planets[j].name + '形成' + def.type + '（' + def.angle + '°，容許度 ' + orb.toFixed(1) + '°）：' + def.desc
+          });
+          break;
+        }
       }
     }
-    list.sort(function(a, b) { return a.priority - b.priority; });
+    list.sort(function(a, b) { return a.priority - b.priority || a.orb - b.orb; });
     return list;
   }
 
-  function getChart(year, month, day, hour) {
+  /**
+   * 本命星盤
+   * 有出生時間：計算上升點並以整宮制（Whole Sign）分宮
+   * 沒有出生時間：以正午計算，採太陽宮位制（太陽星座為第一宮），並略過月亮相位（月亮一天移動約 13°）
+   */
+  function getChart(year, month, day, hour, minute, place) {
     if (!year || !month || !day) return null;
-    var sunSign = getSign(month, day);
-    var seed = year * 10000 + month * 100 + day + (hour || 12);
+    var A = window.Astronomy;
+    if (!A) return null;
+    place = place || DEFAULT_PLACE;
+    var timeKnown = hour != null && hour >= 0 && hour <= 23;
+    var date = new Date(Date.UTC(year, month - 1, day, timeKnown ? hour : 12, timeKnown ? (minute || 0) : 0) - place.tz * 3600000);
+    var nextDay = new Date(date.getTime() + 86400000);
 
-    // 簡化行星+宮位分配
     var planets = PLANETS.map(function(p, i) {
-      var houseIdx = (seed + i * 3 + 7) % 12;
-      return { name: p.n, emoji: p.e, element: p.el, desc: p.desc, house: HOUSES[houseIdx] };
+      var lon = eclipticLongitude(A, BODIES[i], date);
+      var move = norm360(eclipticLongitude(A, BODIES[i], nextDay) - lon + 180) - 180;
+      return {
+        name: p.n, emoji: p.e, element: p.el, desc: p.desc,
+        lon: lon, sign: signOf(lon), degree: fmtDeg(lon),
+        retrograde: i > 1 && move < 0
+      };
     });
 
-    // 全行星相位
-    var aspects = getAspects(planets);
+    var sunSign = planets[0].sign;
+    var asc = timeKnown ? ascendant(A, date, place) : null;
+    var firstHouseSign = Math.floor((asc != null ? asc : planets[0].lon) / 30);
+    planets.forEach(function(p) {
+      p.house = HOUSES[(Math.floor(p.lon / 30) - firstHouseSign + 12) % 12];
+    });
 
-    // 姓名對應
-    var dominant = sunSign.element;
+    // 主導元素：太陽、月亮、上升各計 2 分，其餘行星 1 分
+    var score = { '火':0, '土':0, '風':0, '水':0 };
+    planets.forEach(function(p, i) { score[p.sign.el] += (i < 2 ? 2 : 1); });
+    if (asc != null) score[signOf(asc).el] += 2;
+    var dominant = Object.keys(score).sort(function(a, b) { return score[b] - score[a]; })[0];
+
     var nameMatch = {
       '火':'熱情行動派，名字若多火屬性則加倍旺盛，缺火則可補。',
       '土':'穩健務實派，名字若多土屬性則根基穩固，缺土則可補。',
@@ -118,8 +175,13 @@ window.Astrology = (function() {
 
     return {
       sunSign: sunSign,
+      moonSign: planets[1].sign,
+      ascendant: asc != null ? { lon: asc, sign: signOf(asc), degree: fmtDeg(asc) } : null,
+      timeKnown: timeKnown,
+      houseSystem: timeKnown ? '整宮制（' + place.name + '）' : '太陽宮位制',
       planets: planets,
-      aspects: aspects,
+      aspects: getAspects(planets, !timeKnown),
+      elementScore: score,
       dominantElement: dominant,
       nameAdvice: nameMatch[dominant] || ''
     };

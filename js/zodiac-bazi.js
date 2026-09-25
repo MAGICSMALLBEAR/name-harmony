@@ -283,7 +283,7 @@ window.ZodiacBazi = (function() {
     return {
       zodiac:bazi?bazi.zodiac:null,
       zodiacNature:bazi?bazi.zodiacNature:null,
-      yearPillar:bazi?{tianGan:bazi.pillars[0].tg,dizhi:bazi.pillars[0].dz,element:bazi.pillars[0].tgEle,zodiac:bazi.zodiac}:null,
+      yearPillar:bazi?{tianGan:bazi.pillars[0].tg,diZhi:bazi.pillars[0].dz,element:bazi.pillars[0].tgEle,zodiac:bazi.zodiac}:null,
       dayMaster:bazi?bazi.dayMaster:null,
       starSign:ss,
       hasData:!!(bazi||ss),

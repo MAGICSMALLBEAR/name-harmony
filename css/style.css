@@ -577,6 +577,15 @@ body {
   padding: 8px 12px;
 }
 
+.bday-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bday-row .bday-input { flex: 1 1 9.5em; min-width: 0; }
+.bday-row .btime-input { flex: 1 1 8.5em; min-width: 0; }
+
 .form-bday-hint {
   font-size: 0.7rem;
   color: var(--color-gold-dark);

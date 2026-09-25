@@ -122,6 +122,8 @@
       }
     });
 
+    var actionBar = document.getElementById('actionBar');
+
     // QR/連結分享鍵
     var linkBtn = document.createElement('button');
     linkBtn.className = 'btn-action';
@@ -306,36 +308,35 @@
 
     var persons = [];
     // Person A
-    var aBday = document.querySelector('#formSection .person-section:nth-of-type(1) .bday-input');
+    var aSection = document.querySelector('#formSection .person-section:nth-of-type(1)');
     var aBlood = document.querySelector('#formSection .person-section:nth-of-type(1) .blood-input');
     persons.push({
       id: 'A', label: customLabels[0] || '甲方',
       cn: document.getElementById('cnA').value.trim(),
       en: document.getElementById('enA').value.trim(),
-      birthday: (aBday ? aBday.value.trim() : '') || '',
+      birthday: readBirthday(aSection),
       blood: (aBlood ? aBlood.value : '') || ''
     });
     // Person B
-    var bBday = document.querySelector('#formSection .person-section:nth-of-type(2) .bday-input');
+    var bSection = document.querySelector('#formSection .person-section:nth-of-type(2)');
     var bBlood = document.querySelector('#formSection .person-section:nth-of-type(2) .blood-input');
     persons.push({
       id: 'B', label: customLabels[1] || '乙方',
       cn: document.getElementById('cnB').value.trim(),
       en: document.getElementById('enB').value.trim(),
-      birthday: (bBday ? bBday.value.trim() : '') || '',
+      birthday: readBirthday(bSection),
       blood: (bBlood ? bBlood.value : '') || ''
     });
     // Extra persons
     var extraDivs = extraPersons.querySelectorAll('.extra-person');
     var labels = ['C','D','E'];
     extraDivs.forEach(function(div, i) {
-      var bdInput = div.querySelector('.bday-input');
       persons.push({
         id: labels[i],
         label: '成員' + (i + 3),
         cn: div.querySelector('.cn-input').value.trim(),
         en: div.querySelector('.en-input').value.trim(),
-        birthday: (bdInput ? bdInput.value.trim() : '') || ''
+        birthday: readBirthday(div)
       });
     });
     return persons;
@@ -478,17 +479,29 @@
     return { score: 50, detail: '血型配對中等' };
   }
 
+  /** 讀取某人的生日欄位；有填出生時間時組成「YYYY-MM-DD HH:MM」 */
+  function readBirthday(scope) {
+    if (!scope) return '';
+    var d = scope.querySelector('.bday-input');
+    var t = scope.querySelector('.btime-input');
+    var v = d ? d.value.trim() : '';
+    if (v && t && t.value) v += ' ' + t.value;
+    return v;
+  }
+
   function parseBirthday(str) {
     if (!str) return null;
-    // 支援 YYYY-MM-DD (date input) 和 YYYY/M/D 格式
-    var parts = str.split(/[\/\-\.\s]+/);
-    if (parts.length < 2) return null;
-    var y = parseInt(parts[0]);
-    var m = parseInt(parts[1]);
-    var d = parts.length >= 3 ? parseInt(parts[2]) : 1;
-    if (isNaN(y) || isNaN(m) || y < 1900 || y > 2100 || m < 1 || m > 12) return null;
-    // date input 不支援時辰，保持 null
-    return { year: y, month: m, day: d || 1, hour: null };
+    // 支援 YYYY-MM-DD (date input) 和 YYYY/M/D 格式，可選「 HH:MM」出生時間
+    var mt = str.trim().match(/^(\d{4})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{1,2}))?(?:[\sT]+(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (!mt) return null;
+    var y = parseInt(mt[1], 10);
+    var m = parseInt(mt[2], 10);
+    var d = mt[3] ? parseInt(mt[3], 10) : 1;
+    if (y < 1900 || y > 2100 || m < 1 || m > 12) return null;
+    var hour = mt[4] != null ? parseInt(mt[4], 10) : null;
+    var minute = mt[5] != null ? parseInt(mt[5], 10) : 0;
+    if (hour != null && (hour > 23 || minute > 59)) { hour = null; minute = 0; }
+    return { year: y, month: m, day: d || 1, hour: hour, minute: minute };
   }
 
   // ============ 手動筆劃 ============
@@ -645,22 +658,29 @@
 
       // 占星盤
       if (bday && window.Astrology) {
-        var astro = window.Astrology.getChart(bday.year, bday.month, bday.day, bday.hour);
+        var astro = window.Astrology.getChart(bday.year, bday.month, bday.day, bday.hour, bday.minute);
         if (astro) {
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 占星盤：' + astro.sunSign.n + '</summary>';
+          var astroTitle = '太陽' + astro.sunSign.n + (astro.timeKnown ? ' · 月亮' + astro.moonSign.n : '') + (astro.ascendant ? ' · 上升' + astro.ascendant.sign.n : '');
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 占星盤：' + astroTitle + '</summary>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + astro.sunSign.desc + '</p>';
+          if (astro.ascendant) html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">⬆️ 上升' + astro.ascendant.sign.n + ' ' + astro.ascendant.degree + '：' + astro.ascendant.sign.desc + '</p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">主導元素：<strong class="element-' + astro.dominantElement + '">' + astro.dominantElement + '</strong> — ' + astro.nameAdvice + '</p>';
-          html += '<div style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:4px;">';
+          html += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;font-size:0.72rem;color:var(--color-text-secondary);margin-top:6px;">';
           astro.planets.forEach(function(pl) {
-            html += pl.emoji + ' ' + pl.name + '→' + pl.house.n.split(' ')[0] + ' | ';
+            html += '<span>' + pl.emoji + ' ' + pl.name + '</span>';
+            html += '<span style="color:var(--color-gold-light);">' + pl.sign.n + ' ' + pl.degree + (pl.retrograde ? ' <span title="逆行">℞</span>' : '') + '</span>';
+            html += '<span>' + pl.house.n.split(' ')[0] + '</span>';
           });
           html += '</div>';
+          html += '<p style="font-size:0.68rem;color:var(--color-text-muted);margin:4px 0;">' + (astro.timeKnown
+            ? '宮位：' + astro.houseSystem + '，出生地預設台北'
+            : '未填出生時間：以正午計算，月亮位置可能差數度，宮位採太陽宮位制，並略過月亮相位') + '</p>';
           if (astro.aspects && astro.aspects.length) {
             var topAspects = astro.aspects.slice(0, 6);
             html += '<div style="margin-top:8px;font-size:0.75rem;">📐 主要相位（共' + astro.aspects.length + '組）</div>';
             topAspects.forEach(function(a) {
               var color = a.nature === '吉' ? 'var(--color-gold-light)' : (a.nature === '挑戰' ? 'var(--color-danger, #c0392b)' : 'var(--color-text-secondary)');
-              html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + a.p1 + ' × ' + a.p2Emoji + a.p2 + ' ' + a.type + '（' + a.angle + '）— ' + (a.nature === '吉' ? '和諧' : a.nature === '挑戰' ? '張力' : '融合') + '</p>';
+              html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + a.p1 + ' × ' + a.p2Emoji + a.p2 + ' ' + a.type + '（' + a.angle + '，差 ' + a.orb + '°）— ' + (a.nature === '吉' ? '和諧' : a.nature === '挑戰' ? '張力' : '融合') + '</p>';
             });
           }
           html += '</details>';
@@ -670,16 +690,25 @@
       // 紫微斗數
       if (r.cn && bday && window.Ziwei) {
         var zw = window.Ziwei.getZiweiChart(bday.year, bday.month, bday.day, bday.hour);
-        if (zw) {
+        if (zw && zw.needHour) {
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 紫微斗數：需要出生時間</summary>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.lunarText + '。命宮與十四主星的位置由出生時辰決定，填入出生時間即可排出完整命盤。</p>';
+          if (zw.sihua && zw.sihua.list.length) {
+            html += '<div style="margin-top:4px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）：' + zw.sihua.list.map(function(s) { return s.star + s.type; }).join('、') + '</div>';
+          }
+          html += '</details>';
+        } else if (zw) {
           html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 紫微斗數：命宮' + zw.mingStar + '</summary>';
+          html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">' + zw.lunarText + ' · ' + zw.bureau + ' · 身宮在' + zw.shenPalace.name + '</p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
           var zc = window.Ziwei.ziweiNameCompare(zw, r.cn);
           if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 命宮vs姓名：' + zc.reading + '</p>';
           // 12宮簡表
-          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;margin-top:8px;font-size:0.7rem;">';
+          html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:8px;font-size:0.7rem;">';
           zw.palaces.forEach(function(p) {
-            html += '<span style="color:var(--color-text-secondary);">' + p.name + '</span>';
-            html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + p.star + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span></span>';
+            html += '<span style="color:var(--color-text-secondary);">' + p.name + ' <span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + '</span></span>';
+            html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + (p.star || '空宮') + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span>'
+              + (p.minorStars.length ? ' <span style="font-size:0.6rem;color:var(--color-text-secondary);">' + p.minorStars.join('、') + '</span>' : '') + '</span>';
           });
           html += '</div>';
           if (zw.sihua && zw.sihua.list.length) {
@@ -1864,6 +1893,8 @@
     // 生日示範
     var inputs = document.querySelectorAll('.bday-input');
     if (inputs[0]) inputs[0].value = '1990-06-15';
+    var times = document.querySelectorAll('.btime-input');
+    if (times[0]) times[0].value = '08:30';
     if (inputs[1]) inputs[1].value = '1992-03-20';
     toast('示範資料已載入！點擊「開始團隊和盤分析」查看');
   }

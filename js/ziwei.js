@@ -1,5 +1,5 @@
 /**
- * 紫微斗數簡易引擎 — 12宮+14主星+命宮分析+四化星
+ * 紫微斗數引擎 — 農曆排盤：命身宮、五行局、14主星、輔星、生年四化
  */
 window.Ziwei = (function() {
 
@@ -61,56 +61,141 @@ window.Ziwei = (function() {
     {n:'父母宮',desc:'代表父母、長輩與上司關係。'}
   ];
 
-  /** 依生日排紫微盤 */
+  var DI_ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+  // 六十甲子納音五行（每兩組干支一個納音）
+  var NAYIN_ELE = '金火木土金火水土金木水土火木水金火木土金火水土金木水土火木水';
+  var BUREAU = { '水':2, '木':3, '金':4, '土':5, '火':6 };
+
+  function mod12(n) { return ((n % 12) + 12) % 12; }
+
+  /** 國曆轉農曆（js/lunar.js），回傳 { year, month, day, leap } */
+  function toLunar(year, month, day) {
+    return window.Lunar ? window.Lunar.fromSolar(year, month, day) : null;
+  }
+
+  /** 天干地支 → 六十甲子序號 */
+  function jiaziIndex(tgIdx, dzIdx) {
+    return ((6 * tgIdx - 5 * dzIdx) % 60 + 60) % 60;
+  }
+
+  /** 紫微星所在地支：農曆日 + 五行局數 */
+  function ziweiPosition(lunarDay, bureau) {
+    var x = 0;
+    while ((lunarDay + x) % bureau !== 0) x++;
+    var q = (lunarDay + x) / bureau;
+    var pos = 2 + q - 1; // 由寅宮起數
+    pos += (x % 2 === 1) ? -x : x; // 補數為奇數退、偶數進
+    return mod12(pos);
+  }
+
+  /**
+   * 依生日排紫微盤（以農曆正月初一換年；命宮與主星需要出生時辰）
+   * 沒有時辰時只回傳生年四化，needHour = true
+   */
   function getZiweiChart(year, month, day, hour) {
     if (!year || !month || !day) return null;
-    // 用生日+性別決定命宮位置（簡化演算法）
-    var seed = year * 10000 + month * 100 + day + (hour || 12);
-    var mingIdx = seed % 12;
+    var hasHour = hour != null && hour >= 0 && hour <= 23;
 
-    // 排14主星到12宮（簡化分配）
-    var starKeys = Object.keys(STARS);
+    // 23 點後為子時，屬於隔天
+    var lunar = hasHour && hour === 23
+      ? (function() { var d = new Date(Date.UTC(year, month - 1, day + 1)); return toLunar(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); })()
+      : toLunar(year, month, day);
+    if (!lunar) return null;
+
+    var yIdx = ((lunar.year - 4) % 60 + 60) % 60;
+    var yearTG = TIAN_GAN[yIdx % 10];
+    var yearDZ = DI_ZHI[yIdx % 12];
+    var lunarText = '農曆' + yearTG + yearDZ + '年' + (lunar.leap ? '閏' : '') + lunar.month + '月' + lunar.day + '日';
+
+    if (!hasHour) {
+      return { needHour: true, lunar: lunar, lunarText: lunarText, sihua: getSihua(yearTG, null) };
+    }
+
+    // 閏月：前半月算本月，後半月算下個月
+    var m = lunar.month + (lunar.leap && lunar.day > 15 ? 1 : 0);
+    if (m > 12) m = 1;
+    var hIdx = Math.floor((hour + 1) % 24 / 2); // 子=0
+    var mingPos = mod12(2 + (m - 1) - hIdx);
+    var shenPos = mod12(2 + (m - 1) + hIdx);
+
+    // 宮干：五虎遁，由年干定寅宮天干
+    var yinTG = [2, 4, 6, 8, 0][yIdx % 10 % 5];
+    function palaceTG(pos) { return (yinTG + mod12(pos - 2)) % 10; }
+
+    // 五行局：命宮干支納音
+    var mingTG = palaceTG(mingPos);
+    var nayin = NAYIN_ELE.charAt(Math.floor(jiaziIndex(mingTG, mingPos) / 2));
+    var bureau = BUREAU[nayin];
+
+    // 安十四主星
+    var z = ziweiPosition(lunar.day, bureau);
+    var f = mod12(4 - z); // 天府與紫微以寅申線對稱
+    var starAt = {};
+    function put(name, pos) { pos = mod12(pos); (starAt[pos] = starAt[pos] || []).push(name); }
+    put('紫微', z); put('天機', z - 1); put('太陽', z - 3); put('武曲', z - 4); put('天同', z - 5); put('廉貞', z - 8);
+    put('天府', f); put('太陰', f + 1); put('貪狼', f + 2); put('巨門', f + 3); put('天相', f + 4); put('天梁', f + 5); put('七殺', f + 6); put('破軍', f + 10);
+
+    var minorAt = {};
+    function putMinor(name, pos) { pos = mod12(pos); (minorAt[pos] = minorAt[pos] || []).push(name); }
+    putMinor('文昌', 10 - hIdx); putMinor('文曲', 4 + hIdx); putMinor('左輔', 4 + (m - 1)); putMinor('右弼', 10 - (m - 1));
+
+    // 12宮：由命宮逆排
     var palaces = PALACES.map(function(p, i) {
-      var starIdx = (seed + i * 7) % starKeys.length;
-      var starName = starKeys[starIdx];
-      var star = STARS[starName];
+      var pos = mod12(mingPos - i);
+      var stars = starAt[pos] || [];
+      var borrowed = false;
+      if (!stars.length) { stars = starAt[mod12(pos + 6)] || []; borrowed = true; } // 空宮借對宮主星
+      var first = STARS[stars[0]];
       return {
         name: p.n,
         desc: p.desc,
-        star: starName,
-        starDesc: star.desc,
-        starEle: star.el,
-        starGlory: star.g,
-        isMing: i === mingIdx
+        branch: DI_ZHI[pos],
+        ganzhi: TIAN_GAN[palaceTG(pos)] + DI_ZHI[pos],
+        stars: stars,
+        minorStars: minorAt[pos] || [],
+        borrowed: borrowed,
+        star: stars.join('、') + (borrowed ? '（借）' : ''),
+        starDesc: stars.map(function(s) { return s + '：' + STARS[s].desc; }).join(' '),
+        starEle: first ? first.el : '土',
+        starGlory: stars.map(function(s) { return STARS[s].g; }).join('/'),
+        isMing: i === 0,
+        isShen: pos === shenPos
       };
     });
 
-    var mingPalace = palaces[mingIdx];
-    var sihua = getSihua(year, palaces);
+    var mingPalace = palaces[0];
+    var shenPalace = palaces.filter(function(p) { return p.isShen; })[0];
 
     return {
       palaces: palaces,
+      lunar: lunar,
+      lunarText: lunarText,
+      bureau: nayin + ['','','二','三','四','五','六'][bureau] + '局',
       mingPalace: mingPalace,
+      shenPalace: shenPalace,
       mingStar: mingPalace.star,
       mingEle: mingPalace.starEle,
       mingGlory: mingPalace.starGlory,
-      mingDesc: mingPalace.starDesc,
-      sihua: sihua
+      mingDesc: (mingPalace.borrowed ? '命宮無主星，借對宮（遷移宮）' + mingPalace.stars.join('、') + '論。' : '') + mingPalace.starDesc,
+      sihua: getSihua(yearTG, palaces)
     };
   }
 
-  /** 依年干取生年四化，並比對落於哪個宮位 */
-  function getSihua(year, palaces) {
-    var idx = (year - 4) % 60;
-    if (idx < 0) idx += 60;
-    var tg = TIAN_GAN[idx % 10];
+  /** 依農曆年干取生年四化，並比對落於哪個宮位（palaces 為 null 時只列星曜） */
+  function getSihua(tg, palaces) {
     var table = SIHUA_TABLE[tg];
     if (!table) return null;
 
     var list = Object.keys(table).map(function(type) {
       var star = table[type];
-      var palace = palaces.filter(function(p) { return p.star === star; })[0] || null;
-      var reading = star + (palace ? '在' + palace.name : '（輔星，未列入命盤主星）') + type + '：' + SIHUA_MEANING[type];
+      var palace = null;
+      if (palaces) {
+        palace = palaces.filter(function(p) {
+          return (!p.borrowed && p.stars.indexOf(star) >= 0) || p.minorStars.indexOf(star) >= 0;
+        })[0] || null;
+      }
+      var reading = star + (palace ? '在' + palace.name : '') + type + '：' + SIHUA_MEANING[type];
       return { type: type, star: star, palace: palace, reading: reading };
     });
 
@@ -119,7 +204,7 @@ window.Ziwei = (function() {
 
   /** 紫微命宮 vs 姓名人格比對 */
   function ziweiNameCompare(ziwei, chineseResult) {
-    if (!ziwei || !chineseResult) return null;
+    if (!ziwei || ziwei.needHour || !chineseResult) return null;
     var renEle = chineseResult.grids.ren.element;
     var mingEle = ziwei.mingEle;
 

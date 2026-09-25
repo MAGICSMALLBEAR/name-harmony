@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v4';
+var CACHE_NAME = 'name-harmony-v5';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -23,7 +23,9 @@ var ASSETS_TO_CACHE = [
   './js/deep-readings.js',
   './js/smart-insights.js',
   './js/lucky-items.js',
+  './js/lunar.js',
   './js/ziwei.js',
+  './js/vendor/astronomy.browser.min.js',
   './js/astrology.js',
   './js/professional.js',
   './js/chinese-numerology.js',
