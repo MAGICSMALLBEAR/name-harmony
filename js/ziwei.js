@@ -82,6 +82,74 @@ window.Ziwei = (function() {
   var SHA_STARS = ['擎羊', '陀羅', '火星', '鈴星', '地空', '地劫'];
 
   var CHANGSHENG = ['長生','沐浴','冠帶','臨官','帝旺','衰','病','死','墓','絕','胎','養'];
+
+  // 星曜亮度（廟旺得利平不陷），字串第 n 個字 = 地支 n（子起）；「－」表示該宮不入
+  // 資料取自 iztro（MIT License）預設表
+  var BRIGHTNESS = {
+    '紫微': '平廟旺旺得旺廟廟旺旺得旺',
+    '天機': '廟陷得旺利平廟陷得旺利平',
+    '太陽': '陷不旺廟旺旺旺得得平不陷',
+    '武曲': '旺廟得利廟平旺廟得利廟平',
+    '天同': '旺不利平平廟陷不旺平平廟',
+    '廉貞': '平利廟平利陷平利廟平利陷',
+    '天府': '廟廟廟得廟得旺廟得旺廟得',
+    '太陰': '廟廟旺陷陷陷不不利旺旺廟',
+    '貪狼': '旺廟平利廟陷旺廟平利廟陷',
+    '巨門': '旺不廟廟陷旺旺不廟廟陷旺',
+    '天相': '廟廟廟陷得得廟得廟陷得得',
+    '天梁': '廟旺廟廟廟陷廟旺陷得廟陷',
+    '七殺': '旺廟廟旺廟平旺廟廟旺廟平',
+    '破軍': '廟旺得陷旺平廟旺得陷旺平',
+    '文昌': '得廟陷利得廟陷利得廟陷利',
+    '文曲': '得廟平旺得廟陷旺得廟陷旺',
+    '火星': '陷得廟利陷得廟利陷得廟利',
+    '鈴星': '陷得廟利陷得廟利陷得廟利',
+    '擎羊': '陷廟－陷廟－陷廟－陷廟－',
+    '陀羅': '－廟陷－廟陷－廟陷－廟陷'
+  };
+
+  // 年干系雜曜與流曜
+  var CHANG_BY_TG = [5, 6, 8, 9, 8, 9, 11, 0, 2, 3];  // 流昌：甲巳 乙午 丙戊申 丁己酉 庚亥 辛子 壬寅 癸卯
+  var QU_BY_TG    = [9, 8, 6, 5, 6, 5, 3, 2, 0, 11];  // 流曲
+  var TIANGUAN_POS = [7, 4, 5, 2, 3, 9, 11, 9, 10, 6];
+  var TIANFU_ADJ_POS = [9, 8, 0, 11, 3, 2, 6, 5, 6, 5];
+  var TIANCHU_POS = [5, 6, 0, 5, 6, 8, 2, 6, 9, 11];
+  var JIELU_POS = [8, 6, 4, 2, 0];     // 依年干 % 5
+  var KONGWANG_POS = [9, 7, 5, 3, 1];
+  // 年支系：依三合局（0 申子辰、1 巳酉丑、2 寅午戌、3 亥卯未）
+  var HUAGAI_POS = [4, 1, 10, 7];
+  var XIANCHI_POS = [9, 6, 3, 0];
+  var XIAOXIAN_START = [10, 7, 4, 1]; // 小限起宮：申子辰戌、巳酉丑未、寅午戌辰、亥卯未丑
+  var FEILIAN_POS = [8, 9, 10, 5, 6, 7, 2, 3, 4, 11, 0, 1];
+  var POSUI_POS = [5, 1, 9];           // 依年支 % 3
+  // 月系（正月 = 0）
+  var TIANYUE_POS = [10, 5, 4, 2, 7, 3, 11, 7, 2, 6, 10, 2];
+  var TIANWU_POS = [5, 8, 2, 11];      // 依月 % 4
+  var YINSHA_POS = [2, 0, 10, 8, 6, 4]; // 依月 % 6
+
+  // 雜曜分類（畫面顯示用）
+  var FLOWER_STARS = ['紅鸞', '天喜', '天姚', '咸池'];
+  var HELPER_STARS = ['解神', '年解', '天德', '月德', '天官', '天福', '恩光', '天貴', '三台', '八座', '龍池', '鳳閣', '台輔', '封誥', '天才', '天壽', '天廚', '華蓋'];
+
+  /** 孤辰、寡宿：依年支所屬方局（寅卯辰、巳午未、申酉戌、亥子丑） */
+  function guGua(dz) {
+    var g = Math.floor(mod12(dz - 2) / 3);
+    return [[5, 1], [8, 4], [11, 7], [2, 10]][g];
+  }
+
+  /** 流曜（流年用）：依天干、地支安流魁鉞昌曲祿羊陀馬鸞喜與年解 */
+  function yearlyStarsAt(tgI, dzI) {
+    var at = {};
+    function put(n, pos) { pos = mod12(pos); (at[pos] = at[pos] || []).push(n); }
+    var lu = LUCUN_POS[tgI];
+    put('流魁', KUI_YUE[tgI][0]); put('流鉞', KUI_YUE[tgI][1]);
+    put('流昌', CHANG_BY_TG[tgI]); put('流曲', QU_BY_TG[tgI]);
+    put('流祿', lu); put('流羊', lu + 1); put('流陀', lu - 1);
+    put('流馬', TIANMA_POS[SAN_HE[dzI]]);
+    put('流鸞', 3 - dzI); put('流喜', 9 - dzI);
+    put('年解', 10 - dzI);
+    return at;
+  }
   // 長生起點：水土申、木亥、金巳、火寅
   var CHANGSHENG_START = { '水': 8, '土': 8, '木': 11, '金': 5, '火': 2 };
 
@@ -168,6 +236,44 @@ window.Ziwei = (function() {
     putMinor('火星', HUO_START[trio] + hIdx); putMinor('鈴星', LING_START[trio] + hIdx);
     putMinor('地空', 11 - hIdx); putMinor('地劫', 11 + hIdx);
 
+    // 雜曜（38 顆）
+    var adjAt = {};
+    function putAdj(name, pos) { pos = mod12(pos); (adjAt[pos] = adjAt[pos] || []).push(name); }
+    var mi = m - 1;                 // 正月 = 0
+    var di = lunar.day - 1;         // 初一 = 0
+    var zuo = 4 + mi, you = 10 - mi, chang = 10 - hIdx, qu = 4 + hIdx;
+    var luan = 3 - dzI;
+    putAdj('紅鸞', luan); putAdj('天喜', luan + 6);
+    putAdj('天姚', 1 + mi); putAdj('天刑', 9 + mi);
+    putAdj('咸池', XIANCHI_POS[trio]); putAdj('華蓋', HUAGAI_POS[trio]);
+    putAdj('解神', 8 + 2 * Math.floor(mi / 2));
+    putAdj('三台', zuo + di); putAdj('八座', you - di);
+    putAdj('恩光', chang + di - 1); putAdj('天貴', qu + di - 1);
+    putAdj('龍池', 4 + dzI); putAdj('鳳閣', 10 - dzI);
+    putAdj('天才', mingPos + dzI); putAdj('天壽', shenPos + dzI);
+    putAdj('台輔', 6 + hIdx); putAdj('封誥', 2 + hIdx);
+    putAdj('天巫', TIANWU_POS[mi % 4]); putAdj('天月', TIANYUE_POS[mi]); putAdj('陰煞', YINSHA_POS[mi % 6]);
+    putAdj('天官', TIANGUAN_POS[tgI]); putAdj('天福', TIANFU_ADJ_POS[tgI]); putAdj('天廚', TIANCHU_POS[tgI]);
+    putAdj('天德', 9 + dzI); putAdj('月德', 5 + dzI);
+    putAdj('天空', dzI + 1);
+    putAdj('截路', JIELU_POS[tgI % 5]); putAdj('空亡', KONGWANG_POS[tgI % 5]);
+    var xun = mod12(dzI + 10 - tgI);
+    if (dzI % 2 !== xun % 2) xun = mod12(xun + 1);
+    putAdj('旬空', xun);
+    var gg = guGua(dzI);
+    putAdj('孤辰', gg[0]); putAdj('寡宿', gg[1]);
+    putAdj('蜚廉', FEILIAN_POS[dzI]); putAdj('破碎', POSUI_POS[dzI % 3]);
+    putAdj('天哭', 6 - dzI); putAdj('天虛', 6 + dzI);
+    putAdj('天使', mingPos - 5); putAdj('天傷', mingPos - 7); // 疾厄宮、交友宮
+    putAdj('年解', 10 - dzI);
+
+    // 小限：依生年三合定起宮，男順女逆，一歲一宮（虛歲）
+    var xxAt = {};
+    if (gender === 'male' || gender === 'female') {
+      var xxStart = XIAOXIAN_START[trio];
+      for (var k = 0; k < 12; k++) xxAt[mod12(xxStart + (gender === 'male' ? k : -k))] = k + 1;
+    }
+
     // 十二長生：依五行局定長生位，陽男陰女順行、陰男陽女逆行（需要性別）
     var csAt = {};
     if (gender === 'male' || gender === 'female') {
@@ -189,13 +295,20 @@ window.Ziwei = (function() {
         branch: DI_ZHI[pos],
         ganzhi: TIAN_GAN[palaceTG(pos)] + DI_ZHI[pos],
         stars: stars,
+        pos: pos,
+        tg: palaceTG(pos),
         minorStars: minorAt[pos] || [],
+        adjStars: adjAt[pos] || [],
+        brightness: stars.map(function(s) { return brightnessOf(s, borrowed ? mod12(pos + 6) : pos); }),
+        minorBrightness: (minorAt[pos] || []).map(function(s) { return brightnessOf(s, pos); }),
+        xiaoxianAge: xxAt[pos] || null,
         changsheng: csAt[pos] || '',
         borrowed: borrowed,
         star: stars.join('、') + (borrowed ? '（借）' : ''),
         starDesc: stars.map(function(s) { return s + '：' + STARS[s].desc; }).join(' '),
         starEle: first ? first.el : '土',
         starGlory: stars.map(function(s) { return STARS[s].g; }).join('/'),
+        starText: stars.map(function(s) { var b = brightnessOf(s, borrowed ? mod12(pos + 6) : pos); return s + (b ? '（' + b + '）' : ''); }).join('、') + (borrowed ? '（借）' : ''),
         isMing: i === 0,
         isShen: pos === shenPos
       };
@@ -230,7 +343,63 @@ window.Ziwei = (function() {
       mingGlory: mingPalace.starGlory,
       mingDesc: (mingPalace.borrowed ? '命宮無主星，借對宮（遷移宮）' + mingPalace.stars.join('、') + '論。' : '') + mingPalace.starDesc,
       sihua: getSihua(yearTG, palaces),
-      decadal: hasGender ? { forward: forward, current: currentDecadal, nowAge: nowAge } : null
+      decadal: hasGender ? { forward: forward, current: currentDecadal, nowAge: nowAge } : null,
+      birthLunarYear: lunar.year,
+      gender: hasGender ? gender : ''
+    };
+  }
+
+  function brightnessOf(star, pos) {
+    var row = BRIGHTNESS[star];
+    if (!row) return '';
+    var c = row.charAt(pos);
+    return c === '－' ? '' : c;
+  }
+
+  /** 某天干的四化落在盤上哪一宮 */
+  function sihuaOf(tg, palaces) {
+    var table = SIHUA_TABLE[tg];
+    return Object.keys(table).map(function(type) {
+      var star = table[type];
+      var palace = palaces.filter(function(p) {
+        return (!p.borrowed && p.stars.indexOf(star) >= 0) || p.minorStars.indexOf(star) >= 0;
+      })[0] || null;
+      return { type: type, star: star, palace: palace };
+    });
+  }
+
+  /**
+   * 運限：指定農曆年的大限、小限、流年（需要出生時辰與性別）
+   * @param chart getZiweiChart 的結果
+   * @param lunarYear 要看的農曆年（例如 2026 = 丙午年）
+   */
+  function getHoroscope(chart, lunarYear) {
+    if (!chart || chart.needHour || !chart.gender) return null;
+    var age = lunarYear - chart.birthLunarYear + 1; // 虛歲
+    if (age < 1) return null;
+    var yIdx = ((lunarYear - 4) % 60 + 60) % 60;
+    var tgI = yIdx % 10, dzI = yIdx % 12;
+    var byPos = {};
+    chart.palaces.forEach(function(p) { byPos[p.pos] = p; });
+
+    var decadal = chart.palaces.filter(function(p) { return p.decadal && age >= p.decadal.start && age <= p.decadal.end; })[0] || null;
+    var xiaoxian = chart.palaces.filter(function(p) { return p.xiaoxianAge && (age - p.xiaoxianAge) % 12 === 0; })[0] || null;
+
+    // 流年十二宮：流年命宮在流年地支，其餘逆排
+    var yearlyNames = {};
+    PALACES.forEach(function(p, i) { yearlyNames[mod12(dzI - i)] = '流' + p.n.replace('宮', ''); });
+
+    return {
+      year: lunarYear,
+      ganzhi: TIAN_GAN[tgI] + DI_ZHI[dzI],
+      age: age,
+      decadal: decadal,
+      decadalSihua: decadal ? sihuaOf(TIAN_GAN[decadal.tg], chart.palaces) : null,
+      xiaoxian: xiaoxian,
+      yearlyMing: byPos[dzI],
+      yearlyNames: yearlyNames,
+      yearlySihua: sihuaOf(TIAN_GAN[tgI], chart.palaces),
+      yearlyStars: yearlyStarsAt(tgI, dzI)
     };
   }
 
@@ -284,6 +453,9 @@ window.Ziwei = (function() {
   return {
     getZiweiChart: getZiweiChart,
     ziweiNameCompare: ziweiNameCompare,
+    getHoroscope: getHoroscope,
+    FLOWER_STARS: FLOWER_STARS,
+    HELPER_STARS: HELPER_STARS,
     STARS: STARS,
     SHA_STARS: SHA_STARS,
     PALACES: PALACES

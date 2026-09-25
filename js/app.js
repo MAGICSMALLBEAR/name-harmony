@@ -55,6 +55,13 @@
   // ============ 初始化 ============
   function init() {
     initPlaceSelects(document);
+    // 紫微運限：切換年份時只重算該區塊
+    document.addEventListener('change', function(e) {
+      if (!e.target.classList || !e.target.classList.contains('zw-year')) return;
+      var box = e.target.closest('.zw-horoscope');
+      var zw = box ? zwCharts[+box.dataset.zw] : null;
+      if (zw) box.querySelector('.zw-horo-body').innerHTML = renderZiweiHoroscope(zw, +e.target.value);
+    });
     var tstToggle = document.getElementById('tstToggle');
     if (tstToggle) {
       try { tstToggle.checked = localStorage.getItem('name-harmony-tst') === 'true'; } catch (e) {}
@@ -422,6 +429,7 @@
   // ============ 分析 ============
   function handleAnalyze() {
     formError.classList.add('hidden');
+    zwCharts = [];
     showLoading();
     try {
       doAnalyze();
@@ -615,6 +623,77 @@
   }
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  // ============ 紫微：宮位表與運限 ============
+  var zwCharts = []; // 供運限年份切換重新計算
+
+  function currentLunarYear() {
+    var d = new Date();
+    var l = window.Lunar ? window.Lunar.fromSolar(d.getFullYear(), d.getMonth() + 1, d.getDate()) : null;
+    return l ? l.year : d.getFullYear();
+  }
+
+  function zwStarSpan(name, extra) {
+    var Z = window.Ziwei;
+    var color = Z.SHA_STARS.indexOf(name) >= 0 || /^流(羊|陀)$/.test(name) ? 'var(--color-danger, #c0392b)'
+      : Z.FLOWER_STARS.indexOf(name) >= 0 || /^流(鸞|喜)$/.test(name) ? '#d4769b'
+      : 'inherit';
+    return '<span style="color:' + color + ';">' + name + (extra || '') + '</span>';
+  }
+
+  function renderZiweiPalaces(zw) {
+    var html = '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin-top:8px;font-size:0.7rem;">';
+    zw.palaces.forEach(function(p) {
+      html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + p.name
+        + '<br><span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '')
+        + (p.changsheng ? '・' + p.changsheng : '') + '</span></span>';
+      html += '<span style="color:var(--color-gold-light);' + (p.isMing ? 'font-weight:700;' : '') + '">' + (p.starText || '空宮')
+        + (p.minorStars.length ? ' <span style="font-size:0.62rem;color:var(--color-text-secondary);">' + p.minorStars.map(function(n, i) {
+            var b = p.minorBrightness[i];
+            return zwStarSpan(n, b ? '（' + b + '）' : '');
+          }).join('、') + '</span>' : '')
+        + (p.adjStars.length ? '<br><span style="font-size:0.58rem;color:var(--color-text-muted);">' + p.adjStars.map(function(n) { return zwStarSpan(n); }).join(' ') + '</span>' : '')
+        + '</span>';
+    });
+    html += '</div>';
+    html += '<p style="font-size:0.62rem;color:var(--color-text-muted);margin:2px 0;">（）內為亮度：廟 旺 得 利 平 不 陷；紅字為煞星、粉字為桃花星；小字為雜曜'
+      + (zw.decadal ? '；宮名下方為大限歲數與十二長生' : '；填性別後顯示大限與十二長生') + '</p>';
+    return html;
+  }
+
+  function renderZiweiHoroscope(zw, year) {
+    var h = window.Ziwei.getHoroscope(zw, year);
+    if (!h) return '<p style="font-size:0.72rem;color:var(--color-text-muted);">這一年還沒出生</p>';
+    var line = function(label, body) {
+      return '<p style="font-size:0.74rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + label + '</strong> ' + body + '</p>';
+    };
+    var palaceName = function(p) { return p ? p.name + '（' + p.branch + '）' : '—'; };
+    var sihuaText = function(list) {
+      return list.map(function(s) {
+        var t = s.star + s.type + (s.palace ? '在' + s.palace.name : '');
+        return s.type === '化忌' ? '<span style="color:var(--color-danger, #c0392b);">' + t + '</span>' : t;
+      }).join('、');
+    };
+    var html = '<p style="font-size:0.8rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + h.ganzhi + '年・虛歲 ' + h.age + '</p>';
+    html += line('大限', h.decadal
+      ? palaceName(h.decadal) + ' ' + h.decadal.ganzhi + '，' + h.decadal.decadal.start + '–' + h.decadal.decadal.end + ' 歲，主星 ' + (h.decadal.starText || '空宮')
+      : '尚未起大限（童限期間）');
+    if (h.decadalSihua) html += line('大限四化', sihuaText(h.decadalSihua));
+    html += line('小限', palaceName(h.xiaoxian));
+    html += line('流年命宮', '落在本命' + palaceName(h.yearlyMing) + '，主星 ' + (h.yearlyMing.starText || '空宮'));
+    html += line('流年四化', sihuaText(h.yearlySihua));
+    var liu = [];
+    zw.palaces.forEach(function(p) {
+      var list = h.yearlyStars[p.pos];
+      if (list) liu.push(list.map(function(n) { return zwStarSpan(n); }).join('、') + '在' + p.name);
+    });
+    html += line('流曜', liu.join('；'));
+    var ji = h.yearlySihua.filter(function(s) { return s.type === '化忌'; })[0];
+    if (ji && ji.palace) {
+      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0 0;">💡 今年化忌落在' + ji.palace.name + '：' + ji.palace.desc + '這方面的事宜多留意、放慢步調。</p>';
+    }
+    return html;
+  }
 
   function parseBirthday(str) {
     if (!str) return null;
@@ -847,24 +926,29 @@
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
           var zc = window.Ziwei.ziweiNameCompare(zw, r.cn);
           if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 命宮vs姓名：' + zc.reading + '</p>';
-          // 12宮簡表
-          html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:8px;font-size:0.7rem;">';
-          zw.palaces.forEach(function(p) {
-            html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + p.name + ' <span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '') + '</span></span>';
-            html += '<span style="color:var(--color-gold-light);' + (p.isMing?'font-weight:700;':'') + '">' + (p.star || '空宮') + ' <span style="font-size:0.6rem;">' + p.starGlory + '</span>'
-              + (p.minorStars.length ? ' <span style="font-size:0.6rem;color:var(--color-text-secondary);">' + p.minorStars.map(function(n) {
-                  return window.Ziwei.SHA_STARS.indexOf(n) >= 0 ? '<span style="color:var(--color-danger, #c0392b);">' + n + '</span>' : n;
-                }).join('、') + '</span>' : '')
-              + (p.changsheng ? ' <span style="font-size:0.6rem;color:var(--color-text-muted);">〔' + p.changsheng + '〕</span>' : '') + '</span>';
-          });
-          html += '</div>';
-          html += '<p style="font-size:0.65rem;color:var(--color-text-muted);margin:2px 0;">紅字為煞星（擎羊、陀羅、火星、鈴星、地空、地劫）；〔 〕為十二長生' + (zw.decadal ? '' : '（填性別後顯示）') + '</p>';
+          // 12宮簡表：主星（亮度）、輔星、雜曜、十二長生
+          html += renderZiweiPalaces(zw);
           if (zw.sihua && zw.sihua.list.length) {
             html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）</div>';
             zw.sihua.list.forEach(function(s) {
               var color = s.type === '化忌' ? 'var(--color-danger, #c0392b)' : 'var(--color-gold-light)';
               html += '<p style="font-size:0.75rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + s.reading + '</p>';
             });
+          }
+          // 運限（大限、小限、流年）：可切換年份
+          if (zw.gender) {
+            var zwIdx = zwCharts.push(zw) - 1;
+            var thisYear = currentLunarYear();
+            html += '<div class="zw-horoscope" data-zw="' + zwIdx + '" style="margin-top:10px;padding:8px 10px;background:rgba(212,168,67,0.06);border-radius:8px;">';
+            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">🗓️ 運限 <select class="form-input zw-year" style="width:auto;padding:2px 6px;font-size:0.75rem;">';
+            for (var yy = zw.birthLunarYear; yy <= zw.birthLunarYear + 100; yy++) {
+              html += '<option value="' + yy + '"' + (yy === thisYear ? ' selected' : '') + '>' + yy + '</option>';
+            }
+            html += '</select></label>';
+            html += '<div class="zw-horo-body">' + renderZiweiHoroscope(zw, thisYear) + '</div>';
+            html += '</div>';
+          } else {
+            html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">填入性別即可查看大限、小限與流年</p>';
           }
           html += '</details>';
         }
