@@ -198,7 +198,7 @@
     ttsBtn.innerHTML = '<span>🔊</span> <span data-i18n="speakBtn">朗讀</span>';
     ttsBtn.addEventListener('click', function() {
       if (!currentData) return;
-      speakText(buildShareText(), '正在朗讀分析摘要...');
+      speakText(buildShareText(), '正在朗讀分析摘要...', ttsBtn);
     });
     actionBar.insertBefore(ttsBtn, backBtn);
 
@@ -1510,6 +1510,7 @@
         html += '<div class="wuxing-ring-level">' + d.level + '</div>';
         html += '</div>';
       });
+      html += '</div>';
 
       // 等級說明
       html += '<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:0.7rem;color:var(--color-text-muted);margin-top:8px;">';
@@ -1692,8 +1693,10 @@
         var idx = parseInt(this.dataset.idx);
         var item = currentData.results[idx];
         if (!item || !item.result.cn) return;
-        var report = window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac);
-        speakText(window.Professional.reportToText(report), '正在朗讀' + item.person.label + '的鑑定書...');
+        var card = this.closest('.report-certificate');
+        var text = card ? reportCardToSpeech(card)
+          : window.Professional.reportToText(window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac));
+        speakText(text, '正在朗讀' + item.person.label + '的鑑定書...', this);
       });
     });
   }
@@ -1715,10 +1718,40 @@
       html += '<h2 class="card-title"><span class="title-icon">💎</span>' + item.person.label + ' 開運指南</h2>';
       html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是專屬的開運建議：</p>';
       html += window.LuckyItems.generateGuide(el);
-      html += '<div class="report-actions"><button class="btn-download-img speak-guide-btn" data-idx="' + idx + '" data-i18n="speakGuideBtn">🔊 朗讀開運指南</button></div>';
+      var ld = luckyDaysFor(item);
+      if (ld) {
+        html += '<div style="margin-top:12px;padding:10px 12px;background:rgba(212,168,67,0.06);border-radius:8px;font-size:0.8rem;color:var(--color-text-secondary);line-height:1.7;">';
+        html += '<strong style="color:var(--color-gold-primary);">📅 近期吉日</strong>（喜神' + ld.xiShen + (ld.jiShen ? '、避忌神' + ld.jiShen : '') + '，不沖生肖與日支）<br>';
+        html += ld.list.length
+          ? ld.list.slice(0, 6).map(function(e) { return '<span style="white-space:nowrap;">' + e.m + '/' + e.d + ' ' + e.ganzhi + (e.level === '大吉' ? ' <strong style="color:var(--color-gold-light);">大吉</strong>' : ' 吉') + '</span>'; }).join('、')
+            + '<br><span style="font-size:0.72rem;color:var(--color-text-muted);">未來 90 天共 ' + ld.list.length + ' 個吉日，可匯出到手機或電腦行事曆，當天早上 8 點提醒</span>'
+          : '未來 90 天沒有符合條件的吉日';
+        html += '</div>';
+      } else {
+        html += '<p style="margin-top:10px;font-size:0.75rem;color:var(--color-text-muted);">填入生日即可推算個人吉日並匯出行事曆提醒</p>';
+      }
+      html += '<div class="report-actions"><button class="btn-download-img speak-guide-btn" data-idx="' + idx + '" data-i18n="speakGuideBtn">🔊 朗讀開運指南</button>'
+        + (ld && ld.list.length ? '<button class="btn-download-img ics-btn" data-idx="' + idx + '">📅 匯出吉日提醒（.ics）</button>' : '') + '</div>';
       html += '</div>';
     });
     luckyContent.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text" data-i18n="emptyNeedCnLucky">請輸入中文姓名後分析</div></div>';
+
+    // 綁定吉日 .ics 匯出
+    luckyContent.querySelectorAll('.ics-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var item = currentData.results[parseInt(this.dataset.idx)];
+        var ld = item && luckyDaysFor(item);
+        if (!ld || !ld.list.length) return;
+        var name = item.result.cn.parsed.surname + item.result.cn.parsed.givenName;
+        var ics = window.LuckyDays.toICS(ld.list, { name: name, xiShen: ld.xiShen });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+        a.download = name + '-吉日.ics';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+        toast('📅 已下載 ' + ld.list.length + ' 個吉日，開啟檔案即可加入行事曆');
+      });
+    });
 
     // 綁定朗讀開運指南按鈕
     luckyContent.querySelectorAll('.speak-guide-btn').forEach(function(btn) {
@@ -1727,7 +1760,7 @@
         var item = currentData.results[idx];
         if (!item || !item.result.cn) return;
         var el = item.result.cn.grids.ren.element;
-        speakText(window.LuckyItems.guideToText(el), '正在朗讀' + item.person.label + '的開運指南...');
+        speakText(window.LuckyItems.guideToText(el), '正在朗讀' + item.person.label + '的開運指南...', this);
       });
     });
   }
@@ -2080,17 +2113,89 @@
     else copyText(text);
   }
 
-  /** 語音朗讀：清除emoji/符號後交由瀏覽器TTS朗讀 */
-  function speakText(text, statusMsg) {
+  /** 個人吉日：需要八字（生日）與鑑定書的喜用神 */
+  function luckyDaysFor(item) {
+    var r = item.result, z = r.zodiac;
+    if (!window.LuckyDays || !window.Professional || !r.cn || !z || !z.pillars) return null;
+    var report = window.Professional.generateReport(item.person, r.cn, r.en, z);
+    if (!report || !report.xiYong) return null;
+    var xy = report.xiYong;
+    return {
+      xiShen: xy.xiShen,
+      jiShen: xy.jiShen,
+      list: window.LuckyDays.find({ xiShen: xy.xiShen, jiShen: xy.jiShen, yearDZ: z.pillars[0].dz, dayDZ: z.pillars[2].dz }, new Date(), 90)
+    };
+  }
+
+  /** 把畫面上的鑑定書轉成適合朗讀的文字：表格唸成「欄位 值」，略過按鈕與印章 */
+  function reportCardToSpeech(card) {
+    var box = card.cloneNode(true);
+    box.querySelectorAll('.report-actions, .report-cert-stamp, button').forEach(function(el) { el.remove(); });
+    // 五行環：每個五行合成一句「木 1次 (20%) 偏弱」
+    box.querySelectorAll('.wuxing-ring-item').forEach(function(it) {
+      var p = document.createElement('p');
+      p.textContent = [].slice.call(it.querySelectorAll('.wuxing-ring-label, .wuxing-ring-level')).map(function(el) { return el.textContent.trim(); }).join(' ') + '。';
+      it.parentNode.replaceChild(p, it);
+    });
+    box.querySelectorAll('table').forEach(function(t) {
+      var rows = [].slice.call(t.rows).map(function(tr) { return [].slice.call(tr.cells).map(function(c) { return c.textContent.trim(); }); });
+      var head = t.rows[0] && t.rows[0].querySelector('th') ? rows.shift() : null;
+      var spoken = rows.map(function(cells) {
+        return cells.map(function(v, i) { return head && head[i] ? head[i] + ' ' + v : v; }).join('，');
+      }).join('。');
+      var p = document.createElement('p'); p.textContent = spoken + '。';
+      t.parentNode.replaceChild(p, t);
+    });
+    // innerText 需要元素已排版：暫時放到畫面外
+    box.style.cssText = 'position:absolute;left:-9999px;top:0;width:600px;';
+    document.body.appendChild(box);
+    var text = box.innerText;
+    box.remove();
+    return text;
+  }
+
+  var ttsActiveBtn = null, ttsLabel = '';
+  function ttsReset() {
+    if (ttsActiveBtn) { ttsActiveBtn.innerHTML = ttsLabel; ttsActiveBtn = null; }
+  }
+
+  /**
+   * 語音朗讀：清除 emoji／符號後分句排入佇列（Chrome 單段過長會中途停止）
+   * 傳入 btn 時，朗讀中按鈕變成「停止」，再按一次即停止
+   */
+  function speakText(text, statusMsg, btn) {
     if (!text) return;
-    // 移除emoji、box-drawing符號等不利朗讀的字元，保留中英文/數字/標點
-    var clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}─-╿]/gu, ' ').replace(/\s{2,}/g, ' ').trim();
-    if (!clean) return;
     if (!('speechSynthesis' in window)) { toast('您的瀏覽器不支援語音朗讀'); return; }
-    var u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'zh-TW'; u.rate = 0.9;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    var synth = window.speechSynthesis;
+    var wasSame = btn && btn === ttsActiveBtn;
+    synth.cancel();
+    ttsReset();
+    if (wasSame) { toast('⏹ 已停止朗讀'); return; }
+
+    // 移除emoji、box-drawing符號等不利朗讀的字元，保留中英文/數字/標點
+    var clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}─-╿]/gu, ' ').replace(/\.{3}|…+/g, ' ');
+    var chunks = [];
+    clean.split(/\n+/).forEach(function(line) {
+      line = line.replace(/\s{2,}/g, ' ').replace(/^[\s，、]+/, '').trim();
+      if (!line) return;
+      // 句末標點後的右引號、右括號跟著前一句，不單獨成段
+      (line.match(/[^。！？；]+[。！？；]*[」』）)]*/g) || []).forEach(function(s) {
+        s = s.replace(/^[\s，、。]+/, '');
+        s = s.trim();
+        while (s.length > 120) { chunks.push(s.slice(0, 120)); s = s.slice(120); }
+        if (s) chunks.push(s);
+      });
+    });
+    if (!chunks.length) return;
+
+    if (btn) { ttsActiveBtn = btn; ttsLabel = btn.innerHTML; btn.innerHTML = '⏹ 停止朗讀'; }
+    var mine = btn || {};
+    chunks.forEach(function(s, i) {
+      var u = new SpeechSynthesisUtterance(s);
+      u.lang = 'zh-TW'; u.rate = 0.9;
+      if (i === chunks.length - 1) u.onend = function() { if (ttsActiveBtn === mine) ttsReset(); };
+      synth.speak(u);
+    });
     toast('🔊 ' + (statusMsg || '正在朗讀...'));
   }
 
