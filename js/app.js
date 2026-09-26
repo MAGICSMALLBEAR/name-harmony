@@ -57,10 +57,19 @@
     initPlaceSelects(document);
     // 紫微運限：切換年份時只重算該區塊
     document.addEventListener('change', function(e) {
-      if (!e.target.classList || !e.target.classList.contains('zw-year')) return;
+      var cl = e.target.classList;
+      if (!cl || !(cl.contains('zw-year') || cl.contains('zw-month') || cl.contains('zw-day'))) return;
       var box = e.target.closest('.zw-horoscope');
       var zw = box ? zwCharts[+box.dataset.zw] : null;
-      if (zw) box.querySelector('.zw-horo-body').innerHTML = renderZiweiHoroscope(zw, +e.target.value);
+      if (!zw) return;
+      var monthSel = box.querySelector('.zw-month'), daySel = box.querySelector('.zw-day');
+      var year = +box.querySelector('.zw-year').value;
+      if (cl.contains('zw-year')) {
+        box.querySelector('.zw-horo-body').innerHTML = renderZiweiHoroscope(zw, year);
+        monthSel.innerHTML = zwMonthOptions(year, monthSel.value);
+      }
+      if (!cl.contains('zw-day')) daySel.innerHTML = zwDayOptions(year, monthSel.value, +daySel.value);
+      box.querySelector('.zw-md-body').innerHTML = renderZiweiMonthDaily(zw, year, monthSel.value, +daySel.value);
     });
     var tstToggle = document.getElementById('tstToggle');
     if (tstToggle) {
@@ -633,10 +642,82 @@
     return l ? l.year : d.getFullYear();
   }
 
+  function todayLunar() {
+    var d = new Date();
+    return (window.Lunar && window.Lunar.fromSolar(d.getFullYear(), d.getMonth() + 1, d.getDate())) || { year: d.getFullYear(), month: 1, day: 1, leap: false };
+  }
+
+  var LUNAR_MONTH_NAMES = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+  var LUNAR_DAY_NAMES = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+    '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+    '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
+
+  /** 流月選單：值為「月份」或「月份L」（閏月）；原本選的月份在新的一年不存在時改選同月 */
+  function zwMonthOptions(year, selKey) {
+    var months = window.Lunar.monthsOf(year) || [];
+    var keys = months.map(function(mo) { return mo.month + (mo.leap ? 'L' : ''); });
+    if (keys.indexOf(selKey) < 0) selKey = String(parseInt(selKey, 10) || 1);
+    return months.map(function(mo, i) {
+      return '<option value="' + keys[i] + '"' + (keys[i] === selKey ? ' selected' : '') + '>' + (mo.leap ? '閏' : '') + LUNAR_MONTH_NAMES[mo.month - 1] + '月</option>';
+    }).join('');
+  }
+
+  /** 流日選單：依該月大小列出初一到廿九或三十 */
+  function zwDayOptions(year, monthKey, selDay) {
+    var months = window.Lunar.monthsOf(year) || [];
+    var mo = months.filter(function(x) { return x.month + (x.leap ? 'L' : '') === monthKey; })[0];
+    var days = mo ? mo.days : 29;
+    selDay = Math.min(Math.max(selDay || 1, 1), days);
+    var html = '';
+    for (var i = 1; i <= days; i++) html += '<option value="' + i + '"' + (i === selDay ? ' selected' : '') + '>' + LUNAR_DAY_NAMES[i - 1] + '</option>';
+    return html;
+  }
+
+  function renderZiweiMonthDaily(zw, year, monthKey, day) {
+    var month = parseInt(monthKey, 10), leap = /L$/.test(monthKey);
+    var dateKey = function(y, m, lp, d) { return ((y * 13 + m) * 2 + (lp ? 1 : 0)) * 31 + d; }; // 閏月排在同月之後
+    if (dateKey(year, month, leap, day) < dateKey(zw.lunar.year, zw.lunar.month, zw.lunar.leap, zw.lunar.day)) {
+      return '<p style="font-size:0.72rem;color:var(--color-text-muted);">這一天還沒出生</p>';
+    }
+    var md = window.Ziwei.getMonthlyDaily(zw, year, month, leap, day);
+    if (!md) return '';
+    var line = function(label, body) {
+      return '<p style="font-size:0.74rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + label + '</strong> ' + body + '</p>';
+    };
+    var sihuaText = function(list) {
+      return list.map(function(s) {
+        var t = s.star + s.type + (s.palace ? '在' + s.palace.name : '');
+        return s.type === '化忌' ? '<span style="color:var(--color-danger, #c0392b);">' + t + '</span>' : t;
+      }).join('、');
+    };
+    var starsText = function(stars) {
+      var out = [];
+      zw.palaces.forEach(function(p) {
+        var list = stars[p.pos];
+        if (list) out.push(list.map(function(n) { return zwStarSpan(n); }).join('、') + '在' + p.name);
+      });
+      return out.join('；');
+    };
+    var html = '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:4px 0 2px;">國曆 ' + md.solar.year + '/' + md.solar.month + '/' + md.solar.day
+      + '・斗君（流年正月）在' + md.douJun.name + '（' + md.douJun.branch + '）</p>';
+    [['流月', md.monthly, '這個月'], ['流日', md.daily, '這一天']].forEach(function(row) {
+      var label = row[0], f = row[1];
+      html += '<p style="font-size:0.78rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + label + '・' + f.ganzhi + '</p>';
+      html += line(label + '命宮', '落在本命' + f.ming.name + '（' + f.ming.branch + '），主星 ' + (f.ming.starText || '空宮'));
+      html += line(label + '四化', sihuaText(f.sihua));
+      html += line(label.charAt(1) + '曜', starsText(f.stars));
+      var ji = f.sihua.filter(function(s) { return s.type === '化忌'; })[0];
+      if (ji && ji.palace) {
+        html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0 0;">💡 ' + row[2] + '化忌落在' + ji.palace.name + '：' + ji.palace.desc + '</p>';
+      }
+    });
+    return html;
+  }
+
   function zwStarSpan(name, extra) {
     var Z = window.Ziwei;
-    var color = Z.SHA_STARS.indexOf(name) >= 0 || /^流(羊|陀)$/.test(name) ? 'var(--color-danger, #c0392b)'
-      : Z.FLOWER_STARS.indexOf(name) >= 0 || /^流(鸞|喜)$/.test(name) ? '#d4769b'
+    var color = Z.SHA_STARS.indexOf(name) >= 0 || /^[流月日](羊|陀)$/.test(name) ? 'var(--color-danger, #c0392b)'
+      : Z.FLOWER_STARS.indexOf(name) >= 0 || /^[流月日](鸞|喜)$/.test(name) ? '#d4769b'
       : 'inherit';
     return '<span style="color:' + color + ';">' + name + (extra || '') + '</span>';
   }
@@ -946,6 +1027,15 @@
             }
             html += '</select></label>';
             html += '<div class="zw-horo-body">' + renderZiweiHoroscope(zw, thisYear) + '</div>';
+            // 流月、流日：預設今天的農曆日期
+            var today = todayLunar();
+            var mKey = today.month + (today.leap ? 'L' : '');
+            html += '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed rgba(212,168,67,0.25);">';
+            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">📆 流月、流日 '
+              + '<select class="form-input zw-month" style="width:auto;padding:2px 6px;font-size:0.75rem;">' + zwMonthOptions(thisYear, mKey) + '</select> '
+              + '<select class="form-input zw-day" style="width:auto;padding:2px 6px;font-size:0.75rem;">' + zwDayOptions(thisYear, mKey, today.day) + '</select></label>';
+            html += '<div class="zw-md-body">' + renderZiweiMonthDaily(zw, thisYear, mKey, today.day) + '</div>';
+            html += '</div>';
             html += '</div>';
           } else {
             html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">填入性別即可查看大限、小限與流年</p>';

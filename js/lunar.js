@@ -77,5 +77,41 @@ window.Lunar = (function() {
     return null;
   }
 
-  return { fromSolar: fromSolar };
+  /**
+   * 某農曆年的月份清單（依序，含閏月）
+   * @return [{ month, leap, days }] 或超出範圍時回傳 null
+   */
+  function monthsOf(year) {
+    var info = INFO[year - FIRST_YEAR];
+    if (info == null) return null;
+    var list = [];
+    for (var m = 1; m <= 12; m++) {
+      list.push({ month: m, leap: false, days: monthDays(info, m) });
+      if (m === leapMonth(info)) list.push({ month: m, leap: true, days: leapDays(info) });
+    }
+    return list;
+  }
+
+  /**
+   * 農曆轉國曆
+   * @return { year, month, day } 或日期不存在時回傳 null
+   */
+  function toSolar(year, month, day, leap) {
+    var months = monthsOf(year);
+    if (!months) return null;
+    var offset = 0;
+    for (var i = 0; i < year - FIRST_YEAR; i++) offset += yearDays(INFO[i]);
+    for (var k = 0; k < months.length; k++) {
+      var mo = months[k];
+      if (mo.month === month && mo.leap === !!leap) {
+        if (day < 1 || day > mo.days) return null;
+        var d = new Date(FIRST_NEW_YEAR + (offset + day - 1) * 86400000);
+        return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+      }
+      offset += mo.days;
+    }
+    return null;
+  }
+
+  return { fromSolar: fromSolar, toSolar: toSolar, monthsOf: monthsOf };
 })();

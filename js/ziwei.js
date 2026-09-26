@@ -137,17 +137,20 @@ window.Ziwei = (function() {
     return [[5, 1], [8, 4], [11, 7], [2, 10]][g];
   }
 
-  /** 流曜（流年用）：依天干、地支安流魁鉞昌曲祿羊陀馬鸞喜與年解 */
-  function yearlyStarsAt(tgI, dzI) {
+  /**
+   * 流曜：依天干、地支安魁鉞昌曲祿羊陀馬鸞喜
+   * prefix 為「流」（流年，另加年解）、「月」（流月）或「日」（流日）
+   */
+  function flowStarsAt(tgI, dzI, prefix) {
     var at = {};
-    function put(n, pos) { pos = mod12(pos); (at[pos] = at[pos] || []).push(n); }
+    function put(n, pos) { pos = mod12(pos); (at[pos] = at[pos] || []).push(prefix + n); }
     var lu = LUCUN_POS[tgI];
-    put('流魁', KUI_YUE[tgI][0]); put('流鉞', KUI_YUE[tgI][1]);
-    put('流昌', CHANG_BY_TG[tgI]); put('流曲', QU_BY_TG[tgI]);
-    put('流祿', lu); put('流羊', lu + 1); put('流陀', lu - 1);
-    put('流馬', TIANMA_POS[SAN_HE[dzI]]);
-    put('流鸞', 3 - dzI); put('流喜', 9 - dzI);
-    put('年解', 10 - dzI);
+    put('魁', KUI_YUE[tgI][0]); put('鉞', KUI_YUE[tgI][1]);
+    put('昌', CHANG_BY_TG[tgI]); put('曲', QU_BY_TG[tgI]);
+    put('祿', lu); put('羊', lu + 1); put('陀', lu - 1);
+    put('馬', TIANMA_POS[SAN_HE[dzI]]);
+    put('鸞', 3 - dzI); put('喜', 9 - dzI);
+    if (prefix === '流') (at[mod12(10 - dzI)] = at[mod12(10 - dzI)] || []).push('年解');
     return at;
   }
   // 長生起點：水土申、木亥、金巳、火寅
@@ -345,6 +348,8 @@ window.Ziwei = (function() {
       sihua: getSihua(yearTG, palaces),
       decadal: hasGender ? { forward: forward, current: currentDecadal, nowAge: nowAge } : null,
       birthLunarYear: lunar.year,
+      birthMonth: m,        // 閏月已調整（後半月算下個月），流月起斗君用
+      hourIndex: hIdx,
       gender: hasGender ? gender : ''
     };
   }
@@ -399,7 +404,61 @@ window.Ziwei = (function() {
       yearlyMing: byPos[dzI],
       yearlyNames: yearlyNames,
       yearlySihua: sihuaOf(TIAN_GAN[tgI], chart.palaces),
-      yearlyStars: yearlyStarsAt(tgI, dzI)
+      yearlyStars: flowStarsAt(tgI, dzI, '流')
+    };
+  }
+
+  /**
+   * 流月、流日（需要出生時辰與性別）
+   * 斗君：由流年地支起正月，逆數到生月，再順數到生時，即流年正月所在宮，之後一月一宮；
+   * 流日由流月命宮起初一，一日一宮。流月干支以農曆初一換月（五虎遁起月干）
+   * @param lunarYear、lunarMonth、leap、lunarDay 要看的農曆日期（閏月後半月算下個月）
+   */
+  function getMonthlyDaily(chart, lunarYear, lunarMonth, leap, lunarDay) {
+    if (!chart || chart.needHour || !chart.gender || !window.Lunar) return null;
+    var solar = window.Lunar.toSolar(lunarYear, lunarMonth, lunarDay, leap);
+    if (!solar) return null;
+    var byPos = {};
+    chart.palaces.forEach(function(p) { byPos[p.pos] = p; });
+
+    var yIdx = ((lunarYear - 4) % 60 + 60) % 60;
+    var yearDZ = yIdx % 12;
+    var mm = lunarMonth + (leap && lunarDay > 15 ? 1 : 0); // 1..13（閏十二月後半算下一年正月）
+    var douJun = mod12(yearDZ - (chart.birthMonth - 1) + chart.hourIndex);
+    var monthPos = mod12(douJun + mm - 1);
+    var dayPos = mod12(monthPos + lunarDay - 1);
+
+    // 流月干支：五虎遁，寅月起
+    var mTG = ([2, 4, 6, 8, 0][yIdx % 10 % 5] + mm - 1) % 10;
+    var mDZ = mod12(2 + mm - 1);
+    // 流日干支：儒略日推算（2000-01-01 戊午）
+    var jdn = Math.round(Date.UTC(solar.year, solar.month - 1, solar.day) / 86400000) + 2440588;
+    var dIdx = (jdn + 49) % 60;
+    var dTG = dIdx % 10, dDZ = dIdx % 12;
+
+    function namesFrom(pos) {
+      var names = {};
+      PALACES.forEach(function(p, i) { names[mod12(pos - i)] = p.n.replace('宮', ''); });
+      return names;
+    }
+
+    return {
+      solar: solar,
+      douJun: byPos[douJun],
+      monthly: {
+        ganzhi: TIAN_GAN[mTG] + DI_ZHI[mDZ],
+        ming: byPos[monthPos],
+        names: namesFrom(monthPos),
+        sihua: sihuaOf(TIAN_GAN[mTG], chart.palaces),
+        stars: flowStarsAt(mTG, mDZ, '月')
+      },
+      daily: {
+        ganzhi: TIAN_GAN[dTG] + DI_ZHI[dDZ],
+        ming: byPos[dayPos],
+        names: namesFrom(dayPos),
+        sihua: sihuaOf(TIAN_GAN[dTG], chart.palaces),
+        stars: flowStarsAt(dTG, dDZ, '日')
+      }
     };
   }
 
@@ -454,6 +513,7 @@ window.Ziwei = (function() {
     getZiweiChart: getZiweiChart,
     ziweiNameCompare: ziweiNameCompare,
     getHoroscope: getHoroscope,
+    getMonthlyDaily: getMonthlyDaily,
     FLOWER_STARS: FLOWER_STARS,
     HELPER_STARS: HELPER_STARS,
     STARS: STARS,
