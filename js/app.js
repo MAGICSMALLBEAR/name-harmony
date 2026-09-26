@@ -706,12 +706,19 @@
       html += line(label + '命宮', '落在本命' + f.ming.name + '（' + f.ming.branch + '），主星 ' + (f.ming.starText || '空宮'));
       html += line(label + '四化', sihuaText(f.sihua));
       html += line(label.charAt(1) + '曜', starsText(f.stars));
-      var ji = f.sihua.filter(function(s) { return s.type === '化忌'; })[0];
-      if (ji && ji.palace) {
-        html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0 0;">💡 ' + row[2] + '化忌落在' + ji.palace.name + '：' + ji.palace.desc + '</p>';
-      }
+      html += zwSihuaTips(f.sihua, row[2]);
     });
     return html;
+  }
+
+  /** 四化提示：化祿與化忌各一句，說明落入的宮位代表什麼 */
+  function zwSihuaTips(list, when) {
+    var R = window.ZiweiReading;
+    return list.filter(function(s) { return (s.type === '化祿' || s.type === '化忌') && s.palace; }).map(function(s) {
+      var text = R ? R.sihuaIn(s.type, s.palace.name) : s.palace.desc;
+      return '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0 0;line-height:1.6;">' + (s.type === '化祿' ? '🍀 ' : '⚠️ ')
+        + when + s.type + '入' + s.palace.name + '：' + text + '</p>';
+    }).join('');
   }
 
   function zwStarSpan(name, extra) {
@@ -775,10 +782,8 @@
     };
     html += line('歲前', shenText(h.yearly12.suiqian));
     html += line('將前', shenText(h.yearly12.jiangqian));
-    var ji = h.yearlySihua.filter(function(s) { return s.type === '化忌'; })[0];
-    if (ji && ji.palace) {
-      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0 0;">💡 今年化忌落在' + ji.palace.name + '：' + ji.palace.desc + '這方面的事宜多留意、放慢步調。</p>';
-    }
+    if (h.decadalSihua) html += zwSihuaTips(h.decadalSihua, '這十年');
+    html += zwSihuaTips(h.yearlySihua, '今年');
     return html;
   }
 
@@ -1010,16 +1015,32 @@
           } else {
             html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">填入性別即可排出十年大限</p>';
           }
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
+          var zr = window.ZiweiReading && window.ZiweiReading.mingReading(zw);
+          if (zr) {
+            html += '<p style="font-size:0.82rem;color:var(--color-gold-light);margin:6px 0 2px;font-weight:600;">📖 ' + zr.title + '</p>';
+            zr.paragraphs.forEach(function(t) { html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;margin:2px 0;">' + t + '</p>'; });
+          } else {
+            html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
+          }
           var zc = window.Ziwei.ziweiNameCompare(zw, r.cn);
           if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 命宮vs姓名：' + zc.reading + '</p>';
           // 12宮簡表：主星（亮度）、輔星、雜曜、十二長生
           html += renderZiweiPalaces(zw);
+          if (window.ZiweiReading) {
+            html += '<details style="margin-top:6px;"><summary style="font-size:0.75rem;color:var(--color-gold-primary);cursor:pointer;">📜 十二宮重點</summary>';
+            window.ZiweiReading.palaceReadings(zw).forEach(function(pr) {
+              html += '<p style="font-size:0.72rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + pr.palace.name + '</strong> '
+                + pr.text + '<span style="color:var(--color-text-muted);">' + pr.palace.desc + '</span></p>';
+            });
+            html += '</details>';
+          }
           if (zw.sihua && zw.sihua.list.length) {
             html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）</div>';
             zw.sihua.list.forEach(function(s) {
               var color = s.type === '化忌' ? 'var(--color-danger, #c0392b)' : 'var(--color-gold-light)';
-              html += '<p style="font-size:0.75rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + s.reading + '</p>';
+              var inText = s.palace && window.ZiweiReading ? window.ZiweiReading.sihuaIn(s.type, s.palace.name) : '';
+              html += '<p style="font-size:0.75rem;color:' + color + ';margin:2px 0;line-height:1.6;">'
+                + (inText ? s.star + s.type + '入' + s.palace.name + '：' + inText : s.reading) + '</p>';
             });
           }
           // 運限（大限、小限、流年）：可切換年份
