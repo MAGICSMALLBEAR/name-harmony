@@ -83,6 +83,23 @@ window.Ziwei = (function() {
 
   var CHANGSHENG = ['長生','沐浴','冠帶','臨官','帝旺','衰','病','死','墓','絕','胎','養'];
 
+  // 神煞：博士十二神（祿存起）、歲前十二神（年支起歲建）、將前十二神（三合定將星）
+  var BOSHI_12 = ['博士','力士','青龍','小耗','將軍','奏書','飛廉','喜神','病符','大耗','伏兵','官府'];
+  var SUIQIAN_12 = ['歲建','晦氣','喪門','貫索','官符','小耗','歲破','龍德','白虎','天德','弔客','病符']; // 第七位依中州派稱歲破
+  var JIANGQIAN_12 = ['將星','攀鞍','歲驛','息神','華蓋','劫煞','災煞','天煞','指背','咸池','月煞','亡神'];
+  var JIANGXING_POS = [0, 9, 6, 3];   // 申子辰子、巳酉丑酉、寅午戌午、亥卯未卯
+
+  /** 歲前、將前十二神：依年支排，回傳 { suiqian: {宮位: 名}, jiangqian: {宮位: 名} } */
+  function yearly12(dzI) {
+    var sq = {}, jq = {};
+    var jStart = JIANGXING_POS[SAN_HE[dzI]];
+    for (var i = 0; i < 12; i++) {
+      sq[mod12(dzI + i)] = SUIQIAN_12[i];
+      jq[mod12(jStart + i)] = JIANGQIAN_12[i];
+    }
+    return { suiqian: sq, jiangqian: jq };
+  }
+
   // 星曜亮度（廟旺得利平不陷），字串第 n 個字 = 地支 n（子起）；「－」表示該宮不入
   // 資料取自 iztro（MIT License）預設表
   var BRIGHTNESS = {
@@ -285,6 +302,14 @@ window.Ziwei = (function() {
       CHANGSHENG.forEach(function(name, i) { csAt[mod12(csStart + (csForward ? i : -i))] = name; });
     }
 
+    // 博士十二神：由祿存起，陽男陰女順行、陰男陽女逆行（需要性別）
+    var bsAt = {};
+    if (gender === 'male' || gender === 'female') {
+      BOSHI_12.forEach(function(name, i) { bsAt[mod12(lu + (csForward ? i : -i))] = name; });
+    }
+    // 歲前、將前十二神：本命盤依生年地支
+    var y12 = yearly12(dzI);
+
     // 12宮：由命宮逆排
     var palaces = PALACES.map(function(p, i) {
       var pos = mod12(mingPos - i);
@@ -306,6 +331,9 @@ window.Ziwei = (function() {
         minorBrightness: (minorAt[pos] || []).map(function(s) { return brightnessOf(s, pos); }),
         xiaoxianAge: xxAt[pos] || null,
         changsheng: csAt[pos] || '',
+        boshi: bsAt[pos] || '',
+        suiqian: y12.suiqian[pos],
+        jiangqian: y12.jiangqian[pos],
         borrowed: borrowed,
         star: stars.join('、') + (borrowed ? '（借）' : ''),
         starDesc: stars.map(function(s) { return s + '：' + STARS[s].desc; }).join(' '),
@@ -404,7 +432,8 @@ window.Ziwei = (function() {
       yearlyMing: byPos[dzI],
       yearlyNames: yearlyNames,
       yearlySihua: sihuaOf(TIAN_GAN[tgI], chart.palaces),
-      yearlyStars: flowStarsAt(tgI, dzI, '流')
+      yearlyStars: flowStarsAt(tgI, dzI, '流'),
+      yearly12: yearly12(dzI)
     };
   }
 

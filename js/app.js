@@ -727,7 +727,8 @@
     zw.palaces.forEach(function(p) {
       html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + p.name
         + '<br><span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '')
-        + (p.changsheng ? '・' + p.changsheng : '') + '</span></span>';
+        + (p.changsheng ? '・' + p.changsheng : '') + '</span>'
+        + '<br><span style="font-size:0.56rem;color:var(--color-text-muted);">' + [p.boshi, p.jiangqian, p.suiqian].filter(Boolean).join('・') + '</span></span>';
       html += '<span style="color:var(--color-gold-light);' + (p.isMing ? 'font-weight:700;' : '') + '">' + (p.starText || '空宮')
         + (p.minorStars.length ? ' <span style="font-size:0.62rem;color:var(--color-text-secondary);">' + p.minorStars.map(function(n, i) {
             var b = p.minorBrightness[i];
@@ -738,7 +739,7 @@
     });
     html += '</div>';
     html += '<p style="font-size:0.62rem;color:var(--color-text-muted);margin:2px 0;">（）內為亮度：廟 旺 得 利 平 不 陷；紅字為煞星、粉字為桃花星；小字為雜曜'
-      + (zw.decadal ? '；宮名下方為大限歲數與十二長生' : '；填性別後顯示大限與十二長生') + '</p>';
+      + (zw.decadal ? '；宮名下方為大限歲數與十二長生，再下一行為博士・將前・歲前十二神' : '；宮名下方為將前・歲前十二神，填性別後另顯示大限、十二長生與博士十二神') + '</p>';
     return html;
   }
 
@@ -769,6 +770,11 @@
       if (list) liu.push(list.map(function(n) { return zwStarSpan(n); }).join('、') + '在' + p.name);
     });
     html += line('流曜', liu.join('；'));
+    var shenText = function(map) {
+      return zw.palaces.map(function(p) { return map[p.pos] + '在' + p.name.replace('宮', ''); }).join('、');
+    };
+    html += line('歲前', shenText(h.yearly12.suiqian));
+    html += line('將前', shenText(h.yearly12.jiangqian));
     var ji = h.yearlySihua.filter(function(s) { return s.type === '化忌'; })[0];
     if (ji && ji.palace) {
       html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0 0;">💡 今年化忌落在' + ji.palace.name + '：' + ji.palace.desc + '這方面的事宜多留意、放慢步調。</p>';
