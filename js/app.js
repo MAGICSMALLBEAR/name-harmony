@@ -642,6 +642,35 @@
     return l ? l.year : d.getFullYear();
   }
 
+  /** 音韻與諧音：中文聲調、拗口、諧音、綽號；英文音節、重音、難發音、俚語 */
+  function renderPhonetics(cn, en) {
+    if (!cn && !en) return '';
+    var gradeColor = function(g) { return g === '良好' ? 'var(--color-fortune-good)' : g === '尚可' ? 'var(--color-fortune-neutral)' : 'var(--color-danger, #c0392b)'; };
+    var p = function(text, color) { return '<p style="font-size:0.76rem;color:' + (color || 'var(--color-text-secondary)') + ';margin:2px 0;line-height:1.6;">' + text + '</p>'; };
+    var summary = [cn ? '中文' + cn.grade : '', en ? '英文' + en.grade : ''].filter(Boolean).join('・');
+    var worst = [cn && cn.grade, en && en.grade].indexOf('需注意') >= 0 ? '需注意' : [cn && cn.grade, en && en.grade].indexOf('尚可') >= 0 ? '尚可' : '良好';
+    var html = '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🗣️ 音韻與諧音：<span style="color:' + gradeColor(worst) + ';">' + summary + '</span></summary>';
+    if (cn) {
+      html += p('<strong style="color:var(--color-gold-light);">中文</strong> ' + cn.toneText);
+      cn.homophones.forEach(function(h) {
+        var how = h.level === 3 ? '同音' : h.level === 2 ? '口音相近（zh/z、sh/s、ing/in 等不分時）' : '音近（聲調不同）';
+        html += p('⚠️ 「' + h.text + '」與「' + h.word + '」' + how + '，屬' + h.cat + '聯想', h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)');
+      });
+      cn.warns.forEach(function(t) { html += p('⚠️ ' + t, 'var(--color-fortune-neutral)'); });
+      cn.nicknames.forEach(function(t) { html += p('🏷️ 綽號風險：' + t, 'var(--color-text-muted)'); });
+      cn.notes.forEach(function(t) { html += p('・' + t); });
+      if (!cn.homophones.length) html += p('✅ 沒有發現常見的不雅諧音', 'var(--color-fortune-good)');
+    }
+    if (en) {
+      html += p('<strong style="color:var(--color-gold-light);">英文 ' + en.name + '</strong> ' + en.notes.join('；'));
+      if (en.slang) html += p('⚠️ ' + en.slang, 'var(--color-danger, #c0392b)');
+      en.hard.forEach(function(t) { html += p('🔤 難點：' + t, 'var(--color-fortune-neutral)'); });
+      en.warns.forEach(function(t) { html += p('・' + t); });
+    }
+    html += '</details>';
+    return html;
+  }
+
   function todayLunar() {
     var d = new Date();
     return (window.Lunar && window.Lunar.fromSolar(d.getFullYear(), d.getMonth() + 1, d.getDate())) || { year: d.getFullYear(), month: 1, day: 1, leap: false };
@@ -1079,22 +1108,6 @@
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;">' + kabReading + '</p></details>';
       }
 
-      // 語音和諧度
-      if (r.cn && r.en) {
-        var cnChars = r.cn.parsed.givenNameChars;
-        var enName = r.enReport ? r.enReport.name.toUpperCase().replace(/[^A-Z]/g,'') : '';
-        var cnVowels = 0, strongSounds = 0;
-        cnChars.forEach(function(c) {
-          // 簡易判斷：開口音多→陽剛；閉口音多→陰柔
-          var code = c.charCodeAt(0);
-          if (code >= 0x4E00 && code <= 0x9FFF) cnVowels++;
-        });
-        var enVowels = (enName.match(/[AEIOU]/gi) || []).length;
-        var harmony = Math.abs(cnVowels - enVowels) <= 2 ? '和諧' : Math.abs(cnVowels - enVowels) <= 4 ? '尚可' : '差異';
-        var harmonyColor = harmony === '和諧' ? 'var(--color-fortune-good)' : harmony === '尚可' ? 'var(--color-fortune-neutral)' : 'var(--color-text-secondary)';
-        html += '<p style="font-size:0.78rem;color:' + harmonyColor + ';margin:2px 0;">🗣️ 語音和諧度：<strong>' + harmony + '</strong>（中' + cnVowels + '音節 vs 英' + enVowels + '母音）</p>';
-      }
-
       // 今日幸運
       if (r.en && window.FunExtras) {
         var el = r.cn ? r.cn.grids.ren.element : '?';
@@ -1134,6 +1147,12 @@
           html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + '：' + meaning + '</p>';
         }
       });
+    }
+
+    // 音韻與諧音（只看名字，不需要生日）
+    if (window.Phonetics && (r.cn || r.en)) {
+      var enName = r.enReport ? r.enReport.name : (r.en ? r.en.name : '');
+      html += renderPhonetics(r.cn ? window.Phonetics.checkChinese(r.cn.parsed) : null, enName ? window.Phonetics.checkEnglish(enName) : null);
     }
 
     if (r.enReport) {

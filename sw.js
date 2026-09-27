@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v12';
+var CACHE_NAME = 'name-harmony-v14';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -12,6 +12,11 @@ var ASSETS_TO_CACHE = [
   './css/style.css',
   './js/data/stroke-db.js',
   './js/data/s2t-map.js',
+  './js/data/pinyin-db.js',
+  './js/data/english-phonetics.js',
+  './js/phonetics.js',
+  './js/data/english-translit.js',
+  './js/foreign-name.js',
   './js/data/fortune-81.js',
   './js/data/english-names.js',
   './js/data/english-number-meanings.js',
@@ -36,7 +41,8 @@ var ASSETS_TO_CACHE = [
   './js/pair-harmony.js',
   './js/i18n.js',
   './js/birth-place.js',
-  './js/app.js'
+  './js/app.js',
+  './js/naming-tools.js'
 ];
 
 // Install: 快取所有靜態資源

@@ -213,6 +213,18 @@
           <span class="btn-text" data-i18n="manualStrokeBtn">重新分析</span>
         </button>
       </div>
+
+      <!-- 取名工具 -->
+      <div id="toolsCard" class="card form-card tools-card">
+        <h2 class="card-title">
+          <span class="title-icon">🧰</span>
+          <span id="toolsTitle">取名工具</span>
+        </h2>
+        <details class="tool-block">
+          <summary id="toolForeignSummary">🌏 外國人取中文名</summary>
+          <div id="toolForeign"></div>
+        </details>
+      </div>
     </section>
 
     <!-- 隱藏模板：額外成員 -->
@@ -395,6 +407,9 @@
   <!-- Scripts -->
   <script src="js/data/stroke-db.js"></script>
   <script src="js/data/s2t-map.js"></script>
+  <script src="js/data/pinyin-db.js"></script>
+  <script src="js/data/english-phonetics.js"></script>
+  <script src="js/phonetics.js"></script>
   <script src="js/data/fortune-81.js"></script>
   <script src="js/zodiac-bazi.js"></script>
   <script src="js/name-generator.js"></script>
@@ -415,11 +430,14 @@
   <script src="js/data/english-number-meanings.js"></script>
   <script src="js/chinese-numerology.js"></script>
   <script src="js/english-numerology.js"></script>
+  <script src="js/data/english-translit.js"></script>
+  <script src="js/foreign-name.js"></script>
   <script src="js/harmony.js"></script>
   <script src="js/pair-harmony.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/birth-place.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/naming-tools.js"></script>
 
   <!-- PWA Registration -->
   <script>
