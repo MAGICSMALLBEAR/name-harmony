@@ -2661,3 +2661,12 @@ body {
 .tool-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .tool-actions .btn-action { padding: 6px 12px; font-size: 0.8rem; flex: 0 0 auto; }
 .tool-actions a.btn-action { text-decoration: none; display: inline-flex; align-items: center; }
+.tool-grids { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.tool-grid { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(212,168,67,0.25); }
+.domain-free { color: var(--color-fortune-good); border-color: var(--color-fortune-good); }
+.domain-taken { color: var(--color-fortune-bad); }
+.domain-error, .domain-pending { color: var(--color-text-muted); }
+.trend-bars { display: flex; align-items: flex-end; gap: 4px; height: 84px; margin: 8px 0 4px; }
+.trend-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+.trend-bar-fill { width: 100%; max-width: 28px; background: var(--color-gold-primary); border-radius: 3px 3px 0 0; }
+.trend-bar small { font-size: 0.65rem; color: var(--color-text-muted); margin-top: 2px; }
