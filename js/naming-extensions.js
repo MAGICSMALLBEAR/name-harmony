@@ -45,7 +45,28 @@ window.NamingExtensions = (function () {
     el.innerHTML='<p class="tool-desc">10 題 Big Five 自我觀察（娛樂／反思用途，非心理診斷）。完成後可與姓名分析中的 MBTI 趣味推估並列閱讀。</p>'+rows+'<button type="button" class="btn-download-img" id="bfGo">🧠 產生人格對照</button><div id="bfResult"></div>';
   }
   function runPersonality(){var sums={O:0,C:0,E:0,A:0,N:0},cnt={O:0,C:0,E:0,A:0,N:0};[].forEach.call(document.querySelectorAll('.bf'),function(x){var q=FACTORS[+x.dataset.i],v=+x.value;sums[q[0]]+=q[2]>0?v:6-v;cnt[q[0]]++;});var rows=Object.keys(sums).map(function(k){var n=Math.round(sums[k]/cnt[k]*20);return '<p class="tool-line"><strong>'+factorName[k]+'</strong> '+n+'/100　'+(n>=70?'偏高':n<=40?'偏低':'中等')+'</p>';}).join('');document.getElementById('bfResult').innerHTML='<div class="tool-cand">'+rows+'<p class="tool-note">把這份自評與主分析中的靈數→MBTI 趣味對照放在一起看，可作為「自我感受與系統敘事」的討論起點，不應用於招聘、醫療或任何高風險判斷。</p></div>';}
-  function render(){renderTrends();renderBrand();renderPersonality();}
-  document.addEventListener('click',function(e){if(e.target.id==='trendGo')runTrend();if(e.target.id==='brandGo')runBrand();if(e.target.id==='bfGo')runPersonality();});
+  function renderFamily() {
+    var el=document.getElementById('toolFamily'); if(!el)return;
+    el.innerHTML='<p class="tool-desc">比較候選名字與父母、手足的重字、讀音及五格人格五行。所有資料僅在此裝置的瀏覽器計算。</p><div class="tool-row"><label class="tool-field" style="flex:1"><span>父／母中文姓名（選填）</span><input id="familyParentA" class="form-input" placeholder="例如 王大明"></label><label class="tool-field" style="flex:1"><span>另一位家長（選填）</span><input id="familyParentB" class="form-input" placeholder="例如 林小美"></label></div><label class="tool-field"><span>候選完整姓名</span><input id="familyCandidate" class="form-input" placeholder="例如 王怡蘊"></label><label class="tool-field"><span>手足姓名（選填，以逗號分隔）</span><input id="familySiblings" class="form-input" placeholder="例如 王子晴、王子安"></label><button type="button" class="btn-download-img" id="familyGo">👨‍👩‍👧 檢查家庭一致性</button><div id="familyResult"></div>';
+  }
+  function validName(name) { var r=window.ChineseNumerology&&window.ChineseNumerology.analyze(name); return r&&!r.error?r:null; }
+  function runFamily() {
+    var candidate=document.getElementById('familyCandidate').value.trim(), out=document.getElementById('familyResult');
+    var cn=validName(candidate); if(!cn){out.innerHTML='<p class="tool-msg">請輸入資料庫可分析的完整中文姓名（至少姓＋名）。</p>';return;}
+    var parents=[document.getElementById('familyParentA').value.trim(),document.getElementById('familyParentB').value.trim()].filter(Boolean);
+    var siblings=document.getElementById('familySiblings').value.split(/[、,，\s]+/).map(function(x){return x.trim();}).filter(Boolean);
+    var given=cn.parsed.givenNameChars.join(''), notes=[], checks=[];
+    var all=parents.concat(siblings); var chars=all.join('');
+    if(chars.indexOf(given.charAt(0))>=0||chars.indexOf(given.charAt(1))>=0) notes.push('候選名與家庭成員有重字；若是刻意的輩分傳承可保留，否則可考慮替換。'); else notes.push('與已輸入家人沒有重字，辨識度良好。');
+    if(siblings.indexOf(candidate)>=0) notes.push('此候選姓名與手足完全相同，不能使用。');
+    var rows=parents.map(function(n){var r=validName(n);if(!r)return '<p class="tool-line">'+esc(n)+'：字庫不足，略過五格比對。</p>';var h=window.PairHarmony&&window.PairHarmony.cncnHarmony(r,cn);return '<p class="tool-line">'+esc(n)+' × '+esc(candidate)+'：'+(h?h.score+'/100（'+h.tier+'）':'無法比對')+'</p>';}).join('');
+    var siblingRows=siblings.map(function(n){var r=validName(n);if(!r)return '';var h=window.PairHarmony&&window.PairHarmony.cncnHarmony(r,cn);return '<p class="tool-line">手足 '+esc(n)+' × '+esc(candidate)+'：'+(h?h.score+'/100（'+h.tier+'）':'無法比對')+'</p>';}).join('');
+    var ph=window.Phonetics&&window.Phonetics.checkChinese(cn.parsed);
+    checks.push('候選人格五行：'+cn.grids.ren.element+'；總格：'+cn.grids.zong.number+' '+(cn.grids.zong.fortune?cn.grids.zong.fortune.glory:'未收錄'));
+    if(ph)checks.push('候選音韻：'+ph.grade+(ph.warns.length?'（'+ph.warns[0]+'）':''));
+    out.innerHTML='<div class="tool-cand"><div class="tool-cand-head"><span class="tool-cand-name">'+esc(candidate)+'</span><span class="tool-badge">家庭規劃</span></div><p class="tool-line">'+checks.join('；')+'</p>'+rows+siblingRows+'<p class="tool-line">'+esc(notes.join(' '))+'</p><p class="tool-note">此工具協助比較命名的一致性與可辨識性，不替代家人的偏好、文化傳承或法律姓名登記判斷。</p></div>';
+  }
+  function render(){renderTrends();renderBrand();renderPersonality();renderFamily();}
+  document.addEventListener('click',function(e){if(e.target.id==='trendGo')runTrend();if(e.target.id==='brandGo')runBrand();if(e.target.id==='bfGo')runPersonality();if(e.target.id==='familyGo')runFamily();});
   return {render:render};
 })();

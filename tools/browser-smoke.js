@@ -20,18 +20,23 @@
     });
   }
   var result = await evaluate(`(() => {
-    ['toolBaby', 'toolTrends', 'toolBrand', 'toolPersonality'].forEach(id => document.getElementById(id).parentElement.open = true);
+    ['toolBaby', 'toolTrends', 'toolBrand', 'toolPersonality', 'toolFamily'].forEach(id => document.getElementById(id).parentElement.open = true);
     document.getElementById('bbSurname').value = '王';
     document.getElementById('bbGender').value = 'female';
     document.getElementById('bbGo').click();
     document.getElementById('trendName').value = 'Olivia'; document.getElementById('trendGo').click();
     document.getElementById('brandName').value = '森月'; document.getElementById('brandGo').click();
     document.getElementById('bfGo').click();
+    document.getElementById('familyParentA').value = '王大明';
+    document.getElementById('familyParentB').value = '林小美';
+    document.getElementById('familyCandidate').value = '王怡蘊';
+    document.getElementById('familySiblings').value = '王子晴'; document.getElementById('familyGo').click();
     return {
       baby: document.getElementById('bbResults').innerText,
       trend: document.getElementById('trendResult').innerText,
       brand: document.getElementById('brandResult').innerText,
-      personality: document.getElementById('bfResult').innerText
+      personality: document.getElementById('bfResult').innerText,
+      family: document.getElementById('familyResult').innerText
     };
   })()`);
   Object.keys(result).forEach(function (key) {
