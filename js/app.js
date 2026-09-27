@@ -863,9 +863,11 @@
   function switchTab(tab) {
     tabNav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport', lucky: 'panelLucky', history: 'panelHistory' };
+    var m = { members: 'panelMembers', matrix: 'panelMatrix', team: 'panelTeam', report: 'panelReport', lucky: 'panelLucky', ai: 'panelAi', history: 'panelHistory' };
     var panel = document.getElementById(m[tab] || 'panelMembers');
     if (panel) panel.classList.add('active');
+    // AI 面板的文字跟著目前語言重繪
+    if (tab === 'ai' && window.AiReading) window.AiReading.render();
   }
 
   // ============ 渲染 ============
@@ -877,6 +879,8 @@
     renderProfessionalReports();
     renderLuckyGuide();
     renderHistoryPanel();
+    // 分析結果換了，舊的 AI 對話不再適用
+    if (window.AiReading) window.AiReading.reset();
     if (window.I18N) window.I18N.apply(window.I18N.getLang());
   }
 

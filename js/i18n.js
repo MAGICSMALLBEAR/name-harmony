@@ -38,6 +38,8 @@ window.I18N = (function() {
     tabReport: 'Report',
     tabLucky: 'Lucky Guide',
     tabHistory: 'History',
+    tabAi: 'AI Reading',
+    aiTitle: 'AI Synthesis',
     matrixTitle: 'Pairing Matrix',
     teamTitle: 'Team Numerology Report',
     historyPanelTitle: 'Analysis History',

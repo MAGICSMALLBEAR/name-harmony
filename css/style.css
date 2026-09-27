@@ -2670,3 +2670,26 @@ body {
 .trend-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
 .trend-bar-fill { width: 100%; max-width: 28px; background: var(--color-gold-primary); border-radius: 3px 3px 0 0; }
 .trend-bar small { font-size: 0.65rem; color: var(--color-text-muted); margin-top: 2px; }
+.ai-key { margin-bottom: 8px; }
+.ai-check { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--color-text-secondary); margin: 4px 0 10px; }
+.ai-small { display: inline-flex; flex: 0 0 auto; min-width: 0; padding: 3px 10px; font-size: 0.75rem; vertical-align: middle; margin-left: 4px; }
+.ai-log { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ai-msg { border: 1px solid rgba(212,168,67,0.2); border-radius: var(--radius-md); padding: 10px 12px; }
+.ai-user { background: rgba(212,168,67,0.06); }
+.ai-who { font-size: 0.72rem; color: var(--color-gold-primary); margin-bottom: 4px; }
+.ai-body { font-size: 0.88rem; color: var(--color-text-secondary); line-height: 1.8; overflow-wrap: anywhere; white-space: normal; }
+.ai-user .ai-body { white-space: pre-wrap; }
+.ai-body p { margin: 6px 0; }
+.ai-body ul, .ai-body ol { margin: 6px 0; padding-left: 1.4em; }
+.ai-body li { margin: 2px 0; }
+.ai-body strong { color: var(--color-gold-light); }
+.ai-body .ai-h { color: var(--color-gold-primary); font-family: var(--font-heading); margin: 12px 0 4px; font-size: 1rem; }
+.ai-body h3.ai-h { font-size: 1.1rem; }
+.ai-body hr { border: 0; border-top: 1px solid rgba(212,168,67,0.2); margin: 10px 0; }
+.ai-pending { color: var(--color-text-muted); animation: aiPulse 1.4s ease-in-out infinite; }
+@keyframes aiPulse { 50% { opacity: 0.4; } }
+.ai-error { color: var(--color-fortune-bad); }
+.ai-usage { margin: 4px 0 0; }
+.ai-ask { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.ai-ask textarea { flex: 1; min-width: 0; resize: vertical; font-size: 0.9rem; }
+.ai-ask .btn-download-img { flex: 0 0 auto; }

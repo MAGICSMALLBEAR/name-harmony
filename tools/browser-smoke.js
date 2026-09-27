@@ -80,6 +80,42 @@
     $('familyCandidate').value = '王明軒'; $('familySiblings').value = '王子晴';
     $('familyGo').click();
     out.family = $('familyResult').innerText;
+
+    // AI 解讀：用模擬的 SDK 跑對話流程（不需要金鑰、不會呼叫 API）
+    [...document.querySelectorAll('button')].find(b => /示範|Demo/.test(b.textContent)).click();
+    $('analyzeBtn').click();
+    await wait(() => $('reportContent') && $('reportContent').textContent.trim().length > 100);
+    out.aiContext = window.AiReading.collectContext().match(/^# .*/gm).join(',');
+    const calls = [], sleep = ms => new Promise(r => setTimeout(r, ms));
+    class APIError extends Error {}
+    class APIUserAbortError extends APIError {}
+    const fakeStream = params => {
+      calls.push(JSON.parse(JSON.stringify(params)));
+      let done, fail, stop = false;
+      const fin = new Promise((a, b) => { done = a; fail = b; });
+      return {
+        abort() { stop = true; fail(new APIUserAbortError('aborted')); },
+        finalMessage() { return fin; },
+        async *[Symbol.asyncIterator]() {
+          for (const c of ['## 總覽\\n', '**互補**的一對']) { if (stop) return; await sleep(200); yield { type: 'content_block_delta', delta: { type: 'text_delta', text: c } }; }
+          if (!stop) done({ stop_reason: 'end_turn', model: 'claude-opus-5', content: [{ type: 'thinking', thinking: '', signature: 's' }, { type: 'text', text: '## 總覽\\n**互補**的一對' }], usage: { input_tokens: 10, output_tokens: 5 } });
+        }
+      };
+    };
+    window.AiReading._useSdk({ default: class { constructor() { this.beta = { messages: { stream: fakeStream } }; } }, APIError, APIUserAbortError,
+      APIConnectionError: class extends APIError {}, AuthenticationError: class extends APIError {}, PermissionDeniedError: class extends APIError {}, RateLimitError: class extends APIError {} });
+    document.querySelector('.tab-btn[data-tab="ai"]').click();
+    if ($('aiKey')) { $('aiKey').value = 'sk-ant-fake'; $('aiSaveKey').click(); }
+    $('aiGo').click();
+    await wait(() => !$('aiStop'));
+    $('aiAsk').value = '追問'; $('aiSend').click();
+    await wait(() => calls.length === 2 && !$('aiStop'));
+    $('aiAsk').value = '停止測試'; $('aiSend').click();
+    await sleep(250); $('aiStop').click();
+    await wait(() => !$('aiStop'));
+    out.ai = [calls[0].model, calls[0].fallbacks, calls[1].messages.map(m => m.role).join('/'), window.AiReading._messages().length,
+      document.querySelector('.ai-bot h4') ? 'h4' : 'no-h4', $('aiLog').innerText.includes('已停止') ? 'stopped' : 'not-stopped'].join(' ');
+    $('aiRemoveKey').click();
     return out;
   })()`);
 
@@ -91,7 +127,9 @@
     brand: /senyue\.com：(已被註冊|查無登記)/,
     brandTaken: /google\.com：已被註冊/,
     personality: /開放性 50\/100/,          // 正向題 5 分、反向題也 5 分 → 平均 3 → 50
-    family: /用了家長「王大明」名字中的「明」/
+    family: /用了家長「王大明」名字中的「明」/,
+    aiContext: /^# 成員分析,# 配對矩陣,# 團隊報告,# 鑑定書$/,
+    ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/
   };
   var failed = 0;
   Object.keys(expect).forEach(function(key) {

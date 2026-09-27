@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v19';
+var CACHE_NAME = 'name-harmony-v20';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -22,6 +22,7 @@ var ASSETS_TO_CACHE = [
   './js/baby-name.js',
   './js/naming-extensions.js',
   './js/data/name-trends.js',
+  './js/ai-reading.js',
   './js/data/fortune-81.js',
   './js/data/english-names.js',
   './js/data/english-number-meanings.js',
@@ -103,6 +104,8 @@ self.addEventListener('notificationclick', function(event) {
 
 // Fetch: Cache-First with font caching
 self.addEventListener('fetch', function(event) {
+  // API 呼叫（POST）與串流回覆不經過快取
+  if (event.request.method !== 'GET') return;
   // Google Fonts: cache for offline
   if (event.request.url.indexOf('fonts.googleapis.com') >= 0 ||
       event.request.url.indexOf('fonts.gstatic.com') >= 0) {

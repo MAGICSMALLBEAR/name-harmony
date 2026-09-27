@@ -310,6 +310,10 @@
           <span class="tab-icon">💎</span>
           <span class="tab-label" data-i18n="tabLucky">開運指南</span>
         </button>
+        <button class="tab-btn" data-tab="ai">
+          <span class="tab-icon">🤖</span>
+          <span class="tab-label" data-i18n="tabAi">AI 解讀</span>
+        </button>
         <button class="tab-btn" data-tab="history">
           <span class="tab-icon">📋</span>
           <span class="tab-label" data-i18n="tabHistory">歷史</span>
@@ -345,6 +349,14 @@
       <!-- 開運指南面板 -->
       <div class="tab-panel" id="panelLucky">
         <div id="luckyContent"></div>
+      </div>
+
+      <!-- AI 綜合解讀面板 -->
+      <div class="tab-panel" id="panelAi">
+        <div class="card">
+          <h2 class="card-title"><span class="title-icon">🤖</span><span data-i18n="aiTitle">AI 綜合解讀</span></h2>
+          <div id="aiContent"></div>
+        </div>
       </div>
 
       <!-- 歷史記錄面板 -->
@@ -462,6 +474,7 @@
   <script src="js/birth-place.js"></script>
   <script src="js/app.js"></script>
   <script src="js/naming-tools.js"></script>
+  <script src="js/ai-reading.js"></script>
 
   <!-- PWA Registration -->
   <script>
