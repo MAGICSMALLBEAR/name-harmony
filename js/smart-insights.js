@@ -137,7 +137,7 @@ window.SmartInsights = (function() {
     candidateNames.forEach(function(name) {
       var full = surname + name;
       var r = window.ChineseNumerology.analyze(full);
-      if (r.error) return;
+      if (r.error || (r.unknownChars && r.unknownChars.length)) return; // 筆劃庫沒有的字無法計算
       var good = (r.fortuneCounts['大吉']||0)+(r.fortuneCounts['吉']||0)+(r.fortuneCounts['中吉']||0);
       var bad = (r.fortuneCounts['凶']||0)+(r.fortuneCounts['大凶']||0);
       results.push({

@@ -5,3 +5,4 @@ node_modules/
 # 本機測試產物
 .edge-test-profile/
 ui-manual-stroke-test.js
+tools/unihan/

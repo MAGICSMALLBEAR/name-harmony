@@ -335,7 +335,7 @@ window.ForeignName = (function() {
       if (seen[name]) return;
       seen[name] = 1;
       var cn = window.ChineseNumerology.analyze(name);
-      if (!cn || cn.error || cn.needsManual) return;
+      if (!cn || cn.error || (cn.unknownChars && cn.unknownChars.length)) return;
       var ph = window.Phonetics ? window.Phonetics.checkChinese(cn.parsed) : null;
       if (ph && ph.grade === '需注意') return;
       var good = (cn.fortuneCounts['大吉'] || 0) + (cn.fortuneCounts['吉'] || 0) + (cn.fortuneCounts['中吉'] || 0);
