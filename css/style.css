@@ -2660,3 +2660,4 @@ body {
 .tool-meta { color: var(--color-text-muted); }
 .tool-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .tool-actions .btn-action { padding: 6px 12px; font-size: 0.8rem; flex: 0 0 auto; }
+.tool-actions a.btn-action { text-decoration: none; display: inline-flex; align-items: center; }

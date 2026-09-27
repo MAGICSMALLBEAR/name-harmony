@@ -9,6 +9,12 @@ window.NamingTools = (function() {
     zh: {
       title: '取名工具',
       foreignTitle: '🌏 外國人取中文名',
+      babyTitle: '👶 寶寶取名', babyDesc: '依姓氏、出生資料、喜忌五行與家庭限制，推薦兼顧字義、五格、三才和音韻的名字。',
+      nameLen: '名字長度', double: '雙名', singleName: '單名', birth: '出生日期', birthTime: '出生時間（可留空）',
+      favEl: '偏好的五行', unfavEl: '避開的五行', genChar: '輩分字', genPos: '輩分字位置', pos1: '名字第 1 字', pos2: '名字第 2 字',
+      avoid: '避諱字／讀音', avoidPh: '例如：祖父母名字、不要的讀音', babyGo: '✨ 產生寶寶名字', noBirth: '填入出生資料後，會自動計算簡化的喜用神。',
+      useGod: '用神', joyGod: '喜神', avoidGod: '忌神', missing: '五行缺', xyNote: '喜用神採簡化扶抑法，僅供取名參考。', noHour: '未填出生時間，時柱未納入計算。',
+      excluded: '已排除', tianNote: '天格由姓氏決定；推薦評分著重人格、地格、總格、三才與音韻。', printReport: '🖨️ 列印／另存 PDF 報告',
       foreignDesc: '輸入英文名字，挑幾個想要的特質，會給出音義兼顧的中文名，並檢查五格與諧音。',
       enName: '英文名字（名 姓）',
       enNamePh: '例：Michael Smith',
@@ -34,6 +40,12 @@ window.NamingTools = (function() {
     en: {
       title: 'Naming Tools',
       foreignTitle: '🌏 Get a Chinese Name',
+      babyTitle: '👶 Baby Name Finder', babyDesc: 'Suggestions balance surname, birth details, preferred elements, family constraints, stroke grids, and phonetics.',
+      nameLen: 'Name length', double: 'Two characters', singleName: 'One character', birth: 'Birth date', birthTime: 'Birth time (optional)',
+      favEl: 'Preferred elements', unfavEl: 'Avoid elements', genChar: 'Generation character', genPos: 'Generation position', pos1: 'First given character', pos2: 'Second given character',
+      avoid: 'Avoid characters / sounds', avoidPh: 'e.g. family names or sounds to avoid', babyGo: '✨ Suggest baby names', noBirth: 'Add birth details to estimate favourable elements.',
+      useGod: 'Useful element', joyGod: 'Supporting element', avoidGod: 'Avoid', missing: 'Missing', xyNote: 'Element balance uses a simplified naming heuristic. ', noHour: 'Birth time is not included.',
+      excluded: 'Excluded', tianNote: 'Heaven grid is determined by the surname. Suggestions focus on the other grids, San Cai, and phonetics.', printReport: '🖨️ Print / Save as PDF',
       foreignDesc: 'Enter your English name and pick a few traits. You get Chinese names that echo your name\'s sound and carry good meanings, checked for stroke numerology and awkward homophones.',
       enName: 'English name (first last)',
       enNamePh: 'e.g. Michael Smith',
@@ -347,13 +359,18 @@ window.NamingTools = (function() {
   function onClick(e) {
     var el = e.target;
     if (el.id === 'fnGo') return runForeign();
+    if (el.id === 'bbGo') return runBaby();
+    if (el.id === 'bbPrint') return printBabyReport();
     var chip = el.closest && el.closest('.tool-chip');
     if (chip && el.tagName === 'INPUT') { chip.classList.toggle('on', el.checked); return; }
-    var btn = el.closest && el.closest('.fn-analyze, .fn-copy');
-    if (!btn || !state.result || !state.result.candidates) return;
-    var c = state.result.candidates[+btn.dataset.i];
+    var btn = el.closest && el.closest('.fn-analyze, .fn-copy, .bb-analyze, .bb-copy');
+    if (!btn) return;
+    var result = btn.classList.contains('bb-analyze') || btn.classList.contains('bb-copy') ? baby.result : state.result;
+    if (!result || !result.candidates) return;
+    var c = result.candidates[+btn.dataset.i];
     if (!c) return;
     if (btn.classList.contains('fn-analyze')) return analyzeName(c.name, state.english.trim());
+    if (btn.classList.contains('bb-analyze')) return analyzeName(c.name, '');
     if (navigator.clipboard) navigator.clipboard.writeText(c.name).then(function() { btn.textContent = '✅ ' + t('copied'); }).catch(function() {});
   }
 
@@ -364,14 +381,26 @@ window.NamingTools = (function() {
     if (sum) sum.textContent = t('foreignTitle');
     var box = document.getElementById('toolForeign');
     if (box && box.innerHTML) readForeignForm();
+    if (document.getElementById('bbSurname')) readBabyForm();
     renderForeign();
+    var babySum = document.getElementById('toolBabySummary');
+    if (babySum) babySum.textContent = t('babyTitle');
+    if (document.getElementById('toolBaby')) renderBaby();
+    if (window.NamingExtensions) window.NamingExtensions.render();
   }
 
   function init() {
     var card = document.getElementById('toolsCard');
     if (!card) return;
     card.addEventListener('click', onClick);
-    card.addEventListener('keydown', function(e) { if (e.key === 'Enter' && e.target.id === 'fnEnglish') runForeign(); });
+    card.addEventListener('change', function(e) {
+      if (e.target && (e.target.id === 'bbDate' || e.target.id === 'bbTime')) updateBazi();
+    });
+    card.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      if (e.target.id === 'fnEnglish') runForeign();
+      if (e.target.id === 'bbSurname') runBaby();
+    });
     // 語言切換後重畫（等 I18N 存好新語言）
     var lt = document.getElementById('langToggle');
     if (lt) lt.addEventListener('click', function() { setTimeout(render, 0); });
