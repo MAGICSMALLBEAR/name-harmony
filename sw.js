@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v15';
+var CACHE_NAME = 'name-harmony-v16';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -15,8 +15,11 @@ var ASSETS_TO_CACHE = [
   './js/data/pinyin-db.js',
   './js/data/english-phonetics.js',
   './js/phonetics.js',
+  './js/data/name-chars.js',
+  './js/data/char-element.js',
   './js/data/english-translit.js',
   './js/foreign-name.js',
+  './js/baby-name.js',
   './js/data/fortune-81.js',
   './js/data/english-names.js',
   './js/data/english-number-meanings.js',
