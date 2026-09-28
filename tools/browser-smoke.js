@@ -83,6 +83,21 @@
     $('bbSurname').value = '温'; $('bbGender').value = 'female'; $('bbGo').click();
     out.baby = $('bbResults').innerText;
 
+    // 列印報告：iframe 是 document.write 出來的，要自己帶 @font-face；攔下 print()，看列印當下字型是否已載入
+    const printed = new Promise(resolve => {
+      new MutationObserver((list, obs) => list.forEach(m => m.addedNodes.forEach(n => {
+        if (n.tagName !== 'IFRAME') return;
+        obs.disconnect();
+        n.contentWindow.print = () => {
+          const d = n.contentDocument, name = d.querySelector('.nm').textContent;
+          resolve([[...d.fonts].some(f => /Noto Serif TC/.test(f.family) && f.status === 'loaded') ? 'loaded' : 'not-loaded',
+            d.fonts.check('16px "Noto Serif TC"', name) ? 'check' : 'no-check'].join(' '));
+        };
+      }))).observe(document.body, { childList: true });
+    });
+    $('bbPrint').click();
+    out.printFonts = await Promise.race([printed, new Promise(r => setTimeout(() => r('timeout'), 8000))]);
+
     $('trendName').value = 'Linda'; $('trendGender').value = ''; $('trendGo').click();
     await wait(() => /時代感/.test($('trendResult').innerText));
     out.trendEnglish = $('trendResult').innerText;
@@ -148,6 +163,7 @@
     fonts: /^Ma Shan Zheng:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
     fontChecks: /^sans serif display$/,
     baby: /温/,
+    printFonts: /^loaded check$/,
     trendEnglish: /Linda[\s\S]*1940 年代[\s\S]*時代感/,
     trendBars: /^9$/,
     trendChinese: /家豪[\s\S]*全國男性第 1 大/,

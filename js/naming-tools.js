@@ -337,12 +337,33 @@ window.NamingTools = (function() {
     frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(frame);
     var d = frame.contentWindow.document;
-    d.open(); d.write(doc); d.close();
-    setTimeout(function() {
+    d.open(); d.write(doc.replace('<style>', '<style>' + fontFaceCss())); d.close();
+    // 等報告用到的字型載入完才列印，最多等 3 秒
+    var text = d.body.textContent;
+    var ready = d.fonts ? Promise.all(['400', '700'].map(function(w) { return d.fonts.load(w + ' 16px "Noto Serif TC"', text); })) : Promise.resolve();
+    var timeout = new Promise(function(resolve) { setTimeout(resolve, 3000); });
+    Promise.race([ready, timeout]).catch(function() {}).then(function() {
       frame.contentWindow.focus();
       frame.contentWindow.print();
       setTimeout(function() { frame.remove(); }, 1000);
-    }, 300);
+    });
+  }
+
+  /** 主頁的 @font-face 規則（網址改成絕對路徑），給 document.write 產生的文件用：@font-face 只在自己的文件內有效 */
+  function fontFaceCss() {
+    var css = '';
+    Array.prototype.forEach.call(document.styleSheets, function(sheet) {
+      var rules;
+      try { rules = sheet.cssRules; } catch (e) { return; }  // 跨來源樣式表讀不到
+      var base = sheet.href || document.baseURI;
+      Array.prototype.forEach.call(rules || [], function(rule) {
+        if (rule.type !== CSSRule.FONT_FACE_RULE) return;
+        css += rule.cssText.replace(/url\((["']?)([^"')]+)\1\)/g, function(m, q, u) {
+          return 'url("' + new URL(u, base).href + '")';
+        });
+      });
+    });
+    return css;
   }
 
   /** 把名字填進甲方並開始分析 */
