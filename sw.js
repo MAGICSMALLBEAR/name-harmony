@@ -3,13 +3,16 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v20';
+var CACHE_NAME = 'name-harmony-v21';
 
 var ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './fonts/NotoSansTC-subset.woff2',
+  './fonts/NotoSerifTC-subset.woff2',
+  './fonts/MaShanZheng-display.woff2',
   './js/data/stroke-db.js',
   './js/data/s2t-map.js',
   './js/data/pinyin-db.js',
@@ -102,26 +105,10 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
-// Fetch: Cache-First with font caching
+// Fetch: Cache-First
 self.addEventListener('fetch', function(event) {
   // API 呼叫（POST）與串流回覆不經過快取
   if (event.request.method !== 'GET') return;
-  // Google Fonts: cache for offline
-  if (event.request.url.indexOf('fonts.googleapis.com') >= 0 ||
-      event.request.url.indexOf('fonts.gstatic.com') >= 0) {
-    event.respondWith(
-      caches.match(event.request).then(function(cached) {
-        return cached || fetch(event.request).then(function(response) {
-          var responseClone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, responseClone);
-          });
-          return response;
-        });
-      })
-    );
-    return;
-  }
 
   // Static assets: cache-first
   event.respondWith(

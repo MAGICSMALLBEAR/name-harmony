@@ -15,18 +15,30 @@
   var ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise(function(resolve, reject) { ws.onopen = resolve; ws.onerror = reject; });
 
-  var requestId = 0, waiting = {}, errors = [];
-  // 只算這個網站的錯誤；瀏覽器擴充功能（chrome-extension://）的錯誤略過
-  var fromApp = function(st, url) {
+  var requestId = 0, waiting = {}, errors = [], requests = [];
+  var PAGE_ORIGIN = 'http://127.0.0.1:8765';
+  // 只算這個網站的錯誤。瀏覽器擴充功能會把內容腳本注入頁面，它們的錯誤網址也是頁面網址，
+  // 但執行環境的來源是 chrome-extension://（--disable-extensions 擋不住已安裝的擴充功能），
+  // 所以用 executionContextId 對應的來源判斷，而不是錯誤本身的網址。
+  var contextOrigin = {};
+  var fromApp = function(contextId, st, url) {
+    var origin = contextOrigin[contextId];
+    if (origin) return origin.indexOf(PAGE_ORIGIN) === 0;
     var u = url || (st && st.callFrames && st.callFrames[0] && st.callFrames[0].url) || '';
-    return u === '' || /^http:\/\/127\.0\.0\.1:8765\//.test(u);
+    return u === '' || u.indexOf(PAGE_ORIGIN) === 0;
   };
   ws.onmessage = function(event) {
     var data = JSON.parse(event.data), p = data.params;
-    if (data.method === 'Runtime.exceptionThrown' && fromApp(p.exceptionDetails.stackTrace, p.exceptionDetails.url)) {
+    if (data.method === 'Runtime.executionContextCreated') contextOrigin[p.context.id] = p.context.origin;
+    if (data.method === 'Runtime.executionContextsCleared') contextOrigin = {};
+    if (data.method === 'Network.requestWillBeSent') {
+      var st = p.initiator && p.initiator.stack;
+      requests.push({ url: p.request.url, from: (st && st.callFrames && st.callFrames[0] && st.callFrames[0].url) || '' });
+    }
+    if (data.method === 'Runtime.exceptionThrown' && fromApp(p.exceptionDetails.executionContextId, p.exceptionDetails.stackTrace, p.exceptionDetails.url)) {
       errors.push(p.exceptionDetails.exception ? p.exceptionDetails.exception.description : p.exceptionDetails.text);
     }
-    if (data.method === 'Runtime.consoleAPICalled' && p.type === 'error' && fromApp(p.stackTrace)) {
+    if (data.method === 'Runtime.consoleAPICalled' && p.type === 'error' && fromApp(p.executionContextId, p.stackTrace)) {
       errors.push(p.args.map(function(a) { return a.value || a.description; }).join(' '));
     }
     if (data.id && waiting[data.id]) { waiting[data.id](data); delete waiting[data.id]; }
@@ -42,6 +54,8 @@
 
   await send('Runtime.enable');
   await send('Page.enable');
+  await send('DOM.enable');
+  await send('CSS.enable');
   // 重新載入，確保用到最新的檔案（略過 Service Worker 快取）
   await send('Network.enable');
   await send('Network.setBypassServiceWorker', { bypass: true });
@@ -54,6 +68,17 @@
     ['toolBaby', 'toolTrends', 'toolBrand', 'toolPersonality', 'toolFamily'].forEach(id => $(id).parentElement.open = true);
     if (!await wait(() => $('bbSurname') && $('trendName') && $('familyCandidate'))) return { error: '取名工具表單沒有出現' };
     const out = {};
+
+    // 自架字型：三套都要載入（瀏覽器擴充功能也注入了一堆字型，只看自家的三套）
+    await document.fonts.ready;
+    out.fonts = [...document.fonts]
+      .filter(f => /^(Noto Sans TC|Noto Serif TC|Ma Shan Zheng)$/.test(f.family.replace(/"/g, '')))
+      .map(f => f.family.replace(/"/g, '') + ':' + f.status).sort().join(' ');
+    out.fontChecks = [
+      document.fonts.check('16px "Noto Sans TC"', '姓名') ? 'sans' : 'NO-sans',
+      document.fonts.check('16px "Noto Serif TC"', '姓名') ? 'serif' : 'NO-serif',
+      document.fonts.check('16px "Ma Shan Zheng"', '姓名') ? 'display' : 'NO-display'
+    ].join(' ');
 
     $('bbSurname').value = '温'; $('bbGender').value = 'female'; $('bbGo').click();
     out.baby = $('bbResults').innerText;
@@ -120,6 +145,8 @@
   })()`);
 
   var expect = {
+    fonts: /^Ma Shan Zheng:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
+    fontChecks: /^sans serif display$/,
     baby: /温/,
     trendEnglish: /Linda[\s\S]*1940 年代[\s\S]*時代感/,
     trendBars: /^9$/,
@@ -131,6 +158,18 @@
     aiContext: /^# 成員分析,# 配對矩陣,# 團隊報告,# 鑑定書$/,
     ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/
   };
+  // 標題實際用哪個字型畫的（比 document.fonts 更直接：字型有沒有真的套用）
+  // 書法體是簡體字型，標題「姓名和盤」的「盤」會退回 Noto Serif TC，所以只要求前段是書法體
+  var titleFonts = '';
+  try {
+    var doc = await send('DOM.getDocument', { depth: -1 });
+    var node = await send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector: '.app-title' });
+    var fonts = await send('CSS.getPlatformFontsForNode', { nodeId: node.result.nodeId });
+    titleFonts = (fonts.result.fonts || []).map(function(x) { return x.familyName + '(' + x.glyphCount + ')'; }).join(', ');
+  } catch (e) { titleFonts = 'error: ' + e.message; }
+  expect.titleFonts = /^Ma Shan Zheng\([1-9]\d*\)/;
+  result.titleFonts = titleFonts;
+
   var failed = 0;
   Object.keys(expect).forEach(function(key) {
     var v = String(result[key]);
@@ -139,6 +178,15 @@
     console.log((bad ? '✗ ' : '✓ ') + key + (bad ? '\n' + v : ''));
   });
   if (errors.length) { failed++; console.log('✗ console 錯誤：\n' + errors.join('\n')); }
+  // 不依賴 CDN：除了本站與品牌工具刻意查詢的 RDAP，不該有別的 http(s) 請求
+  // （擴充功能自己發出的請求不算：它們的發起者是 chrome-extension://）
+  var RDAP = /^https:\/\/(rdap\.verisign\.com|rdap\.identitydigital\.services|pubapi\.registry\.google)\//;
+  var external = requests.filter(function(r) {
+    return /^https?:/.test(r.url) && r.url.indexOf(PAGE_ORIGIN) !== 0 && !RDAP.test(r.url) &&
+      (r.from === '' || r.from.indexOf(PAGE_ORIGIN) === 0);
+  }).map(function(r) { return r.url; });
+  if (external.length) { failed++; console.log('✗ 有外部請求（離線時會失效）：\n' + external.join('\n')); }
+  else console.log('✓ 沒有外部請求');
   ws.close();
   if (failed) process.exit(1);
   console.log('瀏覽器冒煙測試通過');

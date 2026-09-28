@@ -2,6 +2,30 @@
    姓名和盤 — 傳統中國風主題樣式
    ============================================================ */
 
+/* === 自架字型（由 tools/gen-fonts.py 產生，離線時字型也正常） === */
+@font-face {
+  font-family: 'Noto Sans TC';
+  src: url('../fonts/NotoSansTC-subset.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif TC';
+  src: url('../fonts/NotoSerifTC-subset.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+/* 書法體為簡體字型，沒有的繁體字（含標題的「盤」）自動退回 Noto Serif TC */
+@font-face {
+  font-family: 'Ma Shan Zheng';
+  src: url('../fonts/MaShanZheng-display.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* === CSS Custom Properties === */
 :root {
   /* 主色調 — 硃砂紅系 */
