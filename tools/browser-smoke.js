@@ -184,6 +184,31 @@
       document.querySelector('.ai-bot h4') ? 'h4' : 'no-h4', $('aiLog').innerText.includes('已停止') ? 'stopped' : 'not-stopped'].join(' ');
     $('aiRemoveKey').click();
 
+    // 喜用神：日主強弱要看八字（扶抑法），不能因為名字不同而改變；吉日與幸運色沿用它
+    $('proModeToggle').checked = true;
+    $('proModeToggle').dispatchEvent(new Event('change'));
+    $('backBtn').click();
+    // 兩人同一個時辰出生、名字不同 → 喜用神必須相同（示範資料原本給兩人不同的生日）
+    [$('cnA'), $('cnB')].forEach(function(inp, i) {
+      const card = inp.closest('.person-section');
+      card.querySelector('.bday-input').value = '1990-05-15';
+      card.querySelector('.btime-input').value = '10:30';
+      inp.value = i ? '林大維' : '陳小明';
+    });
+    $('analyzeBtn').click();
+    await wait(() => !$('resultsSection').classList.contains('hidden'));
+    document.querySelector('.tab-btn[data-tab="report"]').click();
+    await wait(() => /喜用神/.test($('reportContent').innerText));
+    out.xiYongUi = $('reportContent').innerText.replace(/\\s+/g, ' ');
+    // 兩個名字不同、生日相同的人，鑑定書上的命格／用神／喜神必須一模一樣
+    const strengths = [...out.xiYongUi.matchAll(/命格：(\\S+?) 用神：([木火土金水]) 喜神：([木火土金水])/g)].map(m => m.slice(1).join('/'));
+    out.xiYongSame = strengths.length >= 2 && new Set(strengths).size === 1 ? 'same:' + strengths[0] : 'diff:' + strengths.join(' ');
+    // 風水方位要跟喜用神走，不能又退回人格五行
+    out.fengshui = (out.xiYongUi.match(/依命格用神屬[木火土金水]，居家/) || ['（沒跟喜用神）'])[0];
+    document.querySelector('.tab-btn[data-tab="lucky"]').click();
+    await wait(() => /近期吉日|填入生日/.test($('luckyContent').innerText));
+    out.luckyDays = $('luckyContent').innerText.replace(/\\s+/g, ' ');
+
     // 手動筆劃：筆劃庫沒有的字，補上筆劃後要真的完成分析（先前輸入值不會被套用，會卡在手動輸入卡）
     $('backBtn').click();
     $('cnA').value = '龘小明'; $('cnB').value = '王大明';
@@ -219,6 +244,12 @@
     ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/,
     genRefresh: /^changed$/,
     genGender: /^rendered$/,
+    // 鑑定書的喜用神區塊：日主（天干）、命格、用神、喜神都要出現
+    xiYongUi: /日主：[木火土金水]（[甲乙丙丁戊己庚辛壬癸]） 命格：(身強|中和偏強|中和偏弱|身弱) 用神：[木火土金水] 喜神：[木火土金水]/,
+    xiYongSame: /^same:/,
+    fengshui: /^依命格用神屬[木火土金水]，居家$/,
+    luckyDays: /近期吉日（喜用[木火土金水]、[木火土金水]、避忌神/,
+
     // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離（離為火）；
     // 總格 27 % 6 = 3 → 三爻動，下卦離 101 翻第三爻成 100（震）→ 火雷噬嗑
     hexagram: /^離為火 上離下離 3爻→火雷噬嗑$/,

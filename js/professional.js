@@ -57,48 +57,47 @@ window.Professional = (function() {
   }
 
   // ============ 喜用神分析 ============
-  function analyzeXiYongShen(yearPillar, dayMaster, nameElements) {
-    if (!yearPillar || !dayMaster) return null;
+  /**
+   * 日主強弱一律由八字（扶抑法）判定，名字只負責「補」。
+   * 舊版拿名字五格的五行數量去推日主強弱，那等於讓名字決定命格——同一個時辰出生的人
+   * 會因為名字不同而得到不同的喜用神，吉日、幸運色也跟著跑掉。現改為呼叫 ZodiacBazi.xiYongShen。
+   * @param bazi ZodiacBazi.fullBazi 的結果
+   * @param nameElements 五格五行，用來檢查名字有沒有補到喜用神
+   */
+  function analyzeXiYongShen(bazi, nameElements) {
+    if (!bazi || !bazi.pillars || !window.ZodiacBazi || !window.ZodiacBazi.xiYongShen) return null;
+    var base = window.ZodiacBazi.xiYongShen(bazi);
+    if (!base) return null;
 
-    // 日主五行
-    var dm = dayMaster;
-    // 統計名字五格中的五行分佈
+    // 命格決定「該補什麼」，名字決定「補到了沒」
     var elementCount = { '木':0,'火':0,'土':0,'金':0,'水':0 };
-    nameElements.forEach(function(el) { if (elementCount[el] !== undefined) elementCount[el]++; });
+    (nameElements || []).forEach(function(el) { if (elementCount[el] !== undefined) elementCount[el]++; });
+    var nameHits = base.favorable.filter(function(e) { return elementCount[e] > 0; });
+    var nameMissing = base.favorable.filter(function(e) { return !elementCount[e]; });
 
-    // 判斷日主強弱（簡化：以名字同五行數量判斷）
-    var sameCount = elementCount[dm] || 0;
-    var totalCount = nameElements.length || 5;
-
-    // 喜用神判斷
-    var xiShen, jiShen, analysis;
-
-    if (sameCount >= 3) {
-      // 日主過強，喜剋洩
-      var overcomeBy = { '木':'金','火':'水','土':'木','金':'火','水':'土' };
-      var generatedBy = { '木':'水','火':'木','土':'火','金':'土','水':'金' };
-      xiShen = overcomeBy[dm];
-      jiShen = dm;
-      analysis = '日主' + dm + '過強（五格中佔' + sameCount + '/' + totalCount + '），宜用' + xiShen + '來剋制平衡，或用洩氣之五行來疏導過旺的能量。若名字中缺' + xiShen + '，建議補充。';
-    } else if (sameCount <= 1) {
-      // 日主偏弱，喜生扶
-      var generatedBy = { '木':'水','火':'木','土':'火','金':'土','水':'金' };
-      xiShen = generatedBy[dm];
-      jiShen = { '木':'金','火':'水','土':'木','金':'火','水':'土' }[dm];
-      analysis = '日主' + dm + '偏弱（五格中僅佔' + sameCount + '/' + totalCount + '），宜用' + xiShen + '來生扶。建議名字中增加' + xiShen + '屬性的字，以增強日主能量。';
-    } else {
-      xiShen = dm;
-      jiShen = null;
-      analysis = '日主' + dm + '五行適中（佔' + sameCount + '/' + totalCount + '），保持平衡即可。名字與命格五行配合良好。';
-    }
+    var pct = Math.round(base.ratio * 100);
+    var analysis = '日主' + base.dayMaster + '（' + base.dayMasterTG + '）生於' + base.monthBranch + '月，' +
+      (base.deLing ? '得令' : '失令') + '；同黨（比劫、印）佔 ' + pct + '%，屬' + base.strength + '。' +
+      (base.hasHour ? '' : '未填出生時辰，時柱未納入，強弱為概估。') +
+      '用神取' + base.yong + '、喜神取' + base.xi + '。' +
+      (nameMissing.length
+        ? '名字五格' + (nameHits.length ? '已補' + nameHits.join('、') + '，但未見' + nameMissing.join('、') : '未見' + nameMissing.join('、')) + '，建議以該五行的字補強。'
+        : '名字五格已見' + nameHits.join('、') + '，與命格相輔。');
 
     return {
-      dayMaster: dm,
-      xiShen: xiShen,
-      jiShen: jiShen,
-      elementCount: elementCount,
+      // 主要欄位（沿用既有欄位名，吉日／幸運色依 xiShen 計算）
+      dayMaster: base.dayMaster,
+      dayMasterTG: base.dayMasterTG,
+      xiShen: base.yong,
+      jiShen: base.unfavorable[0] || null,
       analysis: analysis,
-      quote: getClassicalQuote('五行', sameCount >= 1 && sameCount <= 3)
+      quote: getClassicalQuote('五行', nameMissing.length === 0),
+      // 完整資訊
+      yong: base.yong, xi: base.xi,
+      favorable: base.favorable, unfavorable: base.unfavorable,
+      strength: base.strength, ratio: base.ratio, score: base.score,
+      deLing: base.deLing, hasHour: base.hasHour, missing: base.missing,
+      elementCount: elementCount, nameHits: nameHits, nameMissing: nameMissing
     };
   }
 
@@ -185,11 +184,11 @@ window.Professional = (function() {
     // 五行診斷
     var elementDiag = diagnoseElements(grids);
 
-    // 喜用神
+    // 喜用神（需要完整八字，不是只有年柱）
     var xiYong = null;
-    if (zodiacData && zodiacData.yearPillar && zodiacData.dayMaster) {
+    if (zodiacData && zodiacData.bazi) {
       var els = gridDetails.map(function(g) { return g.element; });
-      xiYong = analyzeXiYongShen(zodiacData.yearPillar, zodiacData.dayMaster, els);
+      xiYong = analyzeXiYongShen(zodiacData.bazi, els);
     }
 
     // 八字
@@ -198,7 +197,8 @@ window.Professional = (function() {
       baziInfo = {
         year: zodiacData.yearPillar.tianGan + zodiacData.yearPillar.diZhi,
         zodiac: zodiacData.zodiac,
-        dayMaster: zodiacData.dayMaster
+        dayMaster: zodiacData.dayMaster,
+        monthBranch: zodiacData.bazi ? zodiacData.bazi.pillars[1].dz : null
       };
     }
 
@@ -288,11 +288,13 @@ window.Professional = (function() {
     }
     lines.push('');
     if (report.xiYong) {
+      var xy = report.xiYong;
       lines.push('【喜用神】');
-      lines.push('  日主：' + report.xiYong.dayMaster);
-      lines.push('  喜神：' + report.xiYong.xiShen);
-      if (report.xiYong.jiShen) lines.push('  忌神：' + report.xiYong.jiShen);
-      lines.push('  分析：' + report.xiYong.analysis);
+      lines.push('  日主：' + xy.dayMaster + (xy.dayMasterTG ? '（' + xy.dayMasterTG + '）' : '') + '　' + (xy.strength || ''));
+      lines.push('  用神：' + xy.yong + '　喜神：' + xy.xi);
+      if (xy.unfavorable && xy.unfavorable.length) lines.push('  忌神：' + xy.unfavorable.join('、'));
+      if (xy.missing && xy.missing.length) lines.push('  八字缺：' + xy.missing.join('、'));
+      lines.push('  分析：' + xy.analysis);
       lines.push('');
     }
     lines.push('【綜合評語】');
@@ -357,8 +359,12 @@ window.Professional = (function() {
   }
 
   // ========== 風水方位 ==========
-  function fengshuiAdvice(nameElement, dayMaster) {
-    var el = dayMaster || nameElement || '木';
+  /**
+   * @param nameElement 人格五行（沒有八字時的退路）
+   * @param preferElement 喜用神的用神；有八字時以它為準，風水才不會和喜用神打架
+   */
+  function fengshuiAdvice(nameElement, preferElement) {
+    var el = preferElement || nameElement || '木';
     var advice = {
       '木':{door:'東或東南',bed:'頭朝東',desk:'面東而坐',decor:'綠色植物、木質家具',avoid:'過多金屬裝飾'},
       '火':{door:'南',bed:'頭朝南',desk:'面南而坐',decor:'紅色系、三角形擺設',avoid:'過多黑色/藍色'},

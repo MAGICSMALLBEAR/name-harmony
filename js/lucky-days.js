@@ -28,14 +28,20 @@ window.LuckyDays = (function() {
     return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1900, 0, 1)) / 86400000);
   }
 
+  /** 喜用神／忌神可傳單一五行或五行陣列 */
+  function asList(v) { return v == null ? [] : (Array.isArray(v) ? v : [v]); }
+
   /**
    * 找出從 start 起 days 天內的吉日
    * @param opts { xiShen, jiShen, yearDZ, dayDZ }（地支為「子」「丑」…）
+   *             xiShen／jiShen 可為單一五行或五行陣列（用神＋喜神、忌神全列）
    * @param start Date（取本地年月日）
    * @return [{ y, m, d, ganzhi, level, reason }]
    */
   function find(opts, start, days) {
-    if (!opts || !opts.xiShen) return [];
+    if (!opts) return [];
+    var fav = asList(opts.xiShen), unfav = asList(opts.jiShen);
+    if (!fav.length) return [];
     var clash = [opts.yearDZ, opts.dayDZ].filter(Boolean).map(function(z) { return DI_ZHI[(DI_ZHI.indexOf(z) + 6) % 12]; });
     var list = [];
     for (var i = 0; i < days; i++) {
@@ -44,9 +50,10 @@ window.LuckyDays = (function() {
       var n = dayIndex(y, m, d);
       var tg = ((n % 10) + 10) % 10, dz = ((n + 10) % 12 + 12) % 12;
       var tgEle = TG_ELE[tg], dzEle = DZ_ELE[dz];
-      if (opts.jiShen && (tgEle === opts.jiShen || dzEle === opts.jiShen)) continue;
+      if (unfav.indexOf(tgEle) >= 0 || unfav.indexOf(dzEle) >= 0) continue;
       if (clash.indexOf(DI_ZHI[dz]) >= 0) continue;
-      var hits = (tgEle === opts.xiShen ? 1 : 0) + (dzEle === opts.xiShen ? 1 : 0);
+      var tgHit = fav.indexOf(tgEle) >= 0, dzHit = fav.indexOf(dzEle) >= 0;
+      var hits = (tgHit ? 1 : 0) + (dzHit ? 1 : 0);
       if (!hits) continue;
       var ganzhi = TIAN_GAN[tg] + DI_ZHI[dz];
       list.push({
@@ -54,8 +61,8 @@ window.LuckyDays = (function() {
         ganzhi: ganzhi,
         level: hits === 2 ? '大吉' : '吉',
         reason: hits === 2
-          ? ganzhi + '日天干地支皆屬' + opts.xiShen + '，正合喜神'
-          : ganzhi + '日' + (tgEle === opts.xiShen ? '天干' + TIAN_GAN[tg] : '地支' + DI_ZHI[dz]) + '屬' + opts.xiShen + '，合喜神'
+          ? ganzhi + '日天干屬' + tgEle + '、地支屬' + dzEle + '，皆合喜用'
+          : ganzhi + '日' + (tgHit ? '天干' + TIAN_GAN[tg] + '屬' + tgEle : '地支' + DI_ZHI[dz] + '屬' + dzEle) + '，合喜用'
       });
     }
     return list;
@@ -90,13 +97,14 @@ window.LuckyDays = (function() {
   /**
    * 產生 .ics 內容
    * @param list find() 的結果
-   * @param info { name, xiShen }
+   * @param info { name, xiShen }（xiShen 可為單一五行或五行陣列）
    */
   function toICS(list, info) {
     var now = new Date();
     var stamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + 'T'
       + pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + 'Z';
-    var tip = ELE_TIPS[info.xiShen] || { color: '', dir: '' };
+    var fav = asList(info.xiShen);
+    var tip = ELE_TIPS[fav[0]] || { color: '', dir: '' };
     var lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -108,7 +116,7 @@ window.LuckyDays = (function() {
     ];
     list.forEach(function(e) {
       var next = new Date(e.y, e.m - 1, e.d + 1);
-      var desc = e.reason + '。\n喜神' + info.xiShen + '：幸運色' + tip.color + '，幸運方位' + tip.dir + '。\n適合安排重要會面、簽約、開始新計畫。\n（依姓名和盤鑑定書的喜用神推算，僅供參考）';
+      var desc = e.reason + '。\n喜用' + fav.join('、') + '：幸運色' + tip.color + '，幸運方位' + tip.dir + '。\n適合安排重要會面、簽約、開始新計畫。\n（依姓名和盤鑑定書的喜用神推算，僅供參考）';
       lines.push(
         'BEGIN:VEVENT',
         'UID:' + ymd(e.y, e.m, e.d) + '-' + encodeURIComponent(info.name).replace(/%/g, '') + '@name-harmony',

@@ -5,12 +5,6 @@
  */
 window.BabyName = (function() {
 
-  var ELEMENTS = ['木', '火', '土', '金', '水'];
-  var GEN = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };       // 生
-  var CTRL = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };      // 剋
-  function genBy(e) { for (var k in GEN) if (GEN[k] === e) return k; }          // 生我者
-  function ctrlBy(e) { for (var k in CTRL) if (CTRL[k] === e) return k; }       // 剋我者
-
   // ---------- 字五行 ----------
   var RADICAL_MAP = null;
   // 五音：唇音羽水、舌音徵火、牙音角木、喉音宮土、齒音商金
@@ -36,57 +30,9 @@ window.BabyName = (function() {
   }
 
   // ---------- 喜用神（扶抑法） ----------
-  var HIDDEN = {
-    '子': '癸', '丑': '己癸辛', '寅': '甲丙戊', '卯': '乙', '辰': '戊乙癸', '巳': '丙庚戊',
-    '午': '丁己', '未': '己丁乙', '申': '庚壬戊', '酉': '辛', '戌': '戊辛丁', '亥': '壬甲'
-  };
-  var HIDDEN_W = [[1], [0.7, 0.3], [0.6, 0.3, 0.1]];
-  var STEM_ELE = { '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水' };
-  // 各位置權重：月支（月令）最重，日支次之
-  var W = { stem: 1, yearBranch: 1, monthBranch: 2.5, dayBranch: 1.5, hourBranch: 1 };
-
-  /**
-   * 由八字判斷日主強弱與喜用神
-   * @param bazi ZodiacBazi.fullBazi 的結果
-   */
+  // 實作在 zodiac-bazi.js，與專業鑑定書共用同一套，避免兩邊算出不同答案
   function xiYong(bazi) {
-    if (!bazi || !bazi.pillars) return null;
-    var dm = bazi.dayMaster;
-    var score = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 };
-    bazi.pillars.forEach(function(p, i) {
-      if (p.tg === '?' || !p.tg) return; // 沒有時辰
-      if (i !== 2) score[STEM_ELE[p.tg]] += W.stem;
-      var hs = HIDDEN[p.dz] || '';
-      var bw = [W.yearBranch, W.monthBranch, W.dayBranch, W.hourBranch][i];
-      hs.split('').forEach(function(s, k) { score[STEM_ELE[s]] += bw * HIDDEN_W[hs.length - 1][k]; });
-    });
-    var yin = genBy(dm), bi = dm, shi = GEN[dm], cai = CTRL[dm], guan = ctrlBy(dm);
-    var self = score[bi] + score[yin];
-    var sum = ELEMENTS.reduce(function(a, e) { return a + score[e]; }, 0);
-    var ratio = sum ? self / sum : 0.5;
-    var strong = ratio >= 0.5;
-    var strength = ratio > 0.6 ? '身強' : ratio >= 0.5 ? '中和偏強' : ratio >= 0.4 ? '中和偏弱' : '身弱';
-    var yong, xi, ji, reason;
-    var monthEle = STEM_ELE[(HIDDEN[bazi.pillars[1].dz] || ' ').charAt(0)];
-    var deLing = monthEle === bi || monthEle === yin;
-    var pct = Math.round(ratio * 100);
-    if (strong) {
-      // 身強：印多用財破印，比劫多用官殺制身；食傷洩秀為喜
-      if (score[yin] > score[bi]) { yong = cai; xi = shi; reason = '印星（' + yin + '）偏重，用財（' + cai + '）制印，食傷（' + shi + '）洩秀'; }
-      else { yong = guan; xi = shi; reason = '比劫（' + bi + '）偏重，用官殺（' + guan + '）制身，食傷（' + shi + '）洩秀'; }
-      ji = [yin, bi];
-    } else {
-      yong = yin; xi = bi;
-      reason = '日主（' + dm + '）力量不足，用印（' + yin + '）生身、比劫（' + bi + '）幫身';
-      ji = [guan, cai];
-    }
-    var missing = ELEMENTS.filter(function(e) { return score[e] === 0; });
-    return {
-      dayMaster: dm, dayMasterTG: bazi.dayMasterTG, score: score, ratio: ratio, strength: strength, deLing: deLing,
-      yong: yong, xi: xi, favorable: [yong, xi], unfavorable: ji, missing: missing, hasHour: bazi.hasHour,
-      text: '日主' + bazi.dayMasterTG + dm + (deLing ? '，生於' + bazi.pillars[1].dz + '月得令' : '，生於' + bazi.pillars[1].dz + '月失令') +
-        '；同黨（' + bi + '、' + yin + '）佔 ' + pct + '%，屬' + strength + '。' + reason + '。'
-    };
+    return window.ZodiacBazi ? window.ZodiacBazi.xiYongShen(bazi) : null;
   }
 
   // ---------- 取名 ----------

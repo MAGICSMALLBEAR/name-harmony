@@ -1597,14 +1597,19 @@
         html += '</div>';
       }
 
-      // 喜用神（專業模式才有）
+      // 喜用神（專業模式才有）；日主強弱由八字扶抑法判定，與寶寶取名共用同一套
       if (isProMode && report.xiYong) {
+        var xy = report.xiYong;
+        var elems = function(list) { return list.map(function(e) { return '<strong class="element-' + e + '">' + e + '</strong>'; }).join('、'); };
         html += '<div class="report-section">';
         html += '<div class="report-section-title">🔮 喜用神分析</div>';
-        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">日主：<strong class="element-' + report.xiYong.dayMaster + '">' + report.xiYong.dayMaster + '</strong></p>';
-        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">喜神：<strong class="element-' + report.xiYong.xiShen + '">' + report.xiYong.xiShen + '</strong></p>';
-        if (report.xiYong.jiShen) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">忌神：<strong class="element-' + report.xiYong.jiShen + '">' + report.xiYong.jiShen + '</strong></p>';
-        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + report.xiYong.analysis + '</p>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">日主：<strong class="element-' + xy.dayMaster + '">' + xy.dayMaster + '</strong>' +
+          (xy.dayMasterTG ? '（' + xy.dayMasterTG + '）' : '') + (xy.strength ? '　命格：<strong>' + xy.strength + '</strong>' : '') + '</p>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">用神：<strong class="element-' + xy.yong + '">' + xy.yong + '</strong>　喜神：<strong class="element-' + xy.xi + '">' + xy.xi + '</strong></p>';
+        if (xy.unfavorable && xy.unfavorable.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">忌神：' + elems(xy.unfavorable) + '</p>';
+        if (xy.missing && xy.missing.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">八字缺：' + xy.missing.join('、') + '</p>';
+        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + xy.analysis + '</p>';
+        if (xy.quote) html += '<p class="quote-cell">📜 ' + xy.quote + '</p>';
         html += '</div>';
       }
 
@@ -1626,12 +1631,14 @@
 
       // 風水建議（專業模式）
       if (isProMode && r.cn && window.Professional) {
-        var fsEl = r.cn.grids.ren.element;
-        var fs = window.Professional.fengshuiAdvice(fsEl);
+        // 有八字時以用神為準，風水才不會和上面的喜用神互相矛盾
+        var fsEl = report.xiYong ? report.xiYong.yong : r.cn.grids.ren.element;
+        var fs = window.Professional.fengshuiAdvice(r.cn.grids.ren.element, fsEl);
         if (fs) {
           html += '<div class="report-section">';
           html += '<div class="report-section-title">🏠 風水方位建議</div>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">人格屬' + fsEl + '，居家/辦公建議：</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' +
+            (report.xiYong ? '依命格用神屬' + fsEl : '人格屬' + fsEl) + '，居家/辦公建議：</p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🚪 大門朝向：<strong>' + fs.door + '</strong></p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🛏️ 床頭方向：<strong>' + fs.bed + '</strong></p>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🪑 辦公座位：<strong>' + fs.desk + '</strong></p>';
@@ -1645,26 +1652,31 @@
       if (isProMode && report.xiYong && report.elementDiagnosis) {
         html += '<div class="report-section">';
         html += '<div class="report-section-title">✏️ 命名建議</div>';
+        var elemChars = {
+          '木': '林、森、桐、楠、柏、楷、楨、榮、樺、樹、木、禾、竹、柳、栩、桓、桂、桃、梅、梓',
+          '火': '炎、煒、煜、燁、熹、照、煥、輝、炫、烜、明、昌、旭、昊、昕、晟、昭、晉、晞、暄',
+          '土': '坤、坦、坪、培、基、堂、堅、聖、城、垣、均、圭、垚、堉、墩、壁、壘、圭、垚',
+          '金': '金、鈞、銘、鋒、銳、鎧、錦、鈴、釗、錡、鋼、銀、銓、銳、鋒、銘、鈞、鋼、錦',
+          '水': '水、泉、浩、涵、淳、清、澤、鴻、源、海、江、河、沛、泳、淵、瀚、濬、瀾、泓'
+        };
+        var charLine = function(el) {
+          return '<p style="font-size:0.8rem;margin:4px 0;"><span class="element-' + el + '">' + el + '：</span>' + (elemChars[el] || '') + '</p>';
+        };
+        // 主要建議看命格（喜用神），不是看名字自己缺什麼
+        var need = report.xiYong.nameMissing || [];
+        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">依命格宜補<strong>' + report.xiYong.favorable.join('、') +
+          '</strong>（用神' + report.xiYong.yong + '、喜神' + report.xiYong.xi + '）：</p>';
+        if (need.length === 0) html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">✅ 名字已帶喜用五行，無須再補。</p>';
+        need.forEach(function(el) { html += charLine(el); });
+        // 次要：名字本身的五行偏枯（排除已列過的）
         var diag = report.elementDiagnosis;
-        var missing = [];
+        var extra = [];
         Object.keys(diag.diagnosis).forEach(function(el) {
-          if (diag.diagnosis[el].level === '缺失' || diag.diagnosis[el].level === '偏弱') missing.push(el);
+          if ((diag.diagnosis[el].level === '缺失' || diag.diagnosis[el].level === '偏弱') && need.indexOf(el) < 0) extra.push(el);
         });
-        if (missing.length > 0) {
-          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">名字中缺少或偏弱的五行：<strong>' + missing.join('、') + '</strong></p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">建議選用以下五行屬性的漢字來補強：</p>';
-          var elemChars = {
-            '木': '林、森、桐、楠、柏、楷、楨、榮、樺、樹、木、禾、竹、柳、栩、桓、桂、桃、梅、梓',
-            '火': '炎、煒、煜、燁、熹、照、煥、輝、炫、烜、明、昌、旭、昊、昕、晟、昭、晉、晞、暄',
-            '土': '坤、坦、坪、培、基、堂、堅、聖、城、垣、均、圭、垚、堉、墩、壁、壘、圭、垚',
-            '金': '金、鈞、銘、鋒、銳、鎧、錦、鈴、釗、錡、鋼、銀、銓、銳、鋒、銘、鈞、鋼、錦',
-            '水': '水、泉、浩、涵、淳、清、澤、鴻、源、海、江、河、沛、泳、淵、瀚、濬、瀾、泓'
-          };
-          missing.forEach(function(el) {
-            html += '<p style="font-size:0.8rem;margin:4px 0;"><span class="element-' + el + '">' + el + '：</span>' + (elemChars[el] || '') + '</p>';
-          });
-        } else {
-          html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">✅ 名字五行分佈均衡，不需特別補強。</p>';
+        if (extra.length) {
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:8px;">名字本身偏弱或從缺的五行（次要）：<strong>' + extra.join('、') + '</strong></p>';
+          extra.forEach(function(el) { html += charLine(el); });
         }
         html += '</div>';
       }
@@ -1750,7 +1762,7 @@
       var ld = luckyDaysFor(item);
       if (ld) {
         html += '<div style="margin-top:12px;padding:10px 12px;background:rgba(212,168,67,0.06);border-radius:8px;font-size:0.8rem;color:var(--color-text-secondary);line-height:1.7;">';
-        html += '<strong style="color:var(--color-gold-primary);">📅 近期吉日</strong>（喜神' + ld.xiShen + (ld.jiShen ? '、避忌神' + ld.jiShen : '') + '，不沖生肖與日支）<br>';
+        html += '<strong style="color:var(--color-gold-primary);">📅 近期吉日</strong>（喜用' + ld.favorable.join('、') + (ld.unfavorable.length ? '、避忌神' + ld.unfavorable.join('、') : '') + '，不沖生肖與日支）<br>';
         html += ld.list.length
           ? ld.list.slice(0, 6).map(function(e) { return '<span style="white-space:nowrap;">' + e.m + '/' + e.d + ' ' + e.ganzhi + (e.level === '大吉' ? ' <strong style="color:var(--color-gold-light);">大吉</strong>' : ' 吉') + '</span>'; }).join('、')
             + '<br><span style="font-size:0.72rem;color:var(--color-text-muted);">未來 90 天共 ' + ld.list.length + ' 個吉日，可匯出到手機或電腦行事曆，當天早上 8 點提醒</span>'
@@ -2178,9 +2190,11 @@
     if (!report || !report.xiYong) return null;
     var xy = report.xiYong;
     return {
-      xiShen: xy.xiShen,
+      xiShen: xy.xiShen,          // 主要喜用（用神）：顯示與幸運色用
       jiShen: xy.jiShen,
-      list: window.LuckyDays.find({ xiShen: xy.xiShen, jiShen: xy.jiShen, yearDZ: z.pillars[0].dz, dayDZ: z.pillars[2].dz }, new Date(), 90)
+      favorable: xy.favorable, unfavorable: xy.unfavorable,
+      // 吉日以完整的用神＋喜神、忌神全列篩選
+      list: window.LuckyDays.find({ xiShen: xy.favorable, jiShen: xy.unfavorable, yearDZ: z.pillars[0].dz, dayDZ: z.pillars[2].dz }, new Date(), 90)
     };
   }
 

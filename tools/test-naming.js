@@ -13,7 +13,8 @@ vm.createContext(ctx);
 [
   'data/stroke-db', 'data/s2t-map', 'data/fortune-81', 'chinese-numerology',
   'data/pinyin-db', 'data/english-phonetics', 'phonetics', 'pair-harmony',
-  'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name', 'baby-name',
+  'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name',
+  'zodiac-bazi', 'baby-name', 'professional',
   'data/name-trends', 'naming-extensions', 'iching'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
@@ -313,6 +314,53 @@ section('易經起卦', function() {
   // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離
   var cn = ctx.ChineseNumerology.analyze('陳小明');
   ok(I.nameToHexagram(cn).hexName === '離為火', '陳小明應起得離為火');
+});
+
+section('喜用神（扶抑法）', function() {
+  var Z = ctx.ZodiacBazi, P = ctx.Professional, B = ctx.BabyName;
+  ok(Z && typeof Z.xiYongShen === 'function', 'ZodiacBazi.xiYongShen 存在（八字引擎擁有扶抑法）');
+
+  var bz = Z.fullBazi(1990, 5, 15, 10, 30, 8);
+  ok(!!bz && !!bz.dayMaster, '八字可計算');
+  // 取名與鑑定書必須是同一套實作
+  ok(JSON.stringify(B.xiYong(bz)) === JSON.stringify(Z.xiYongShen(bz)), 'BabyName.xiYong 與 ZodiacBazi.xiYongShen 同源');
+
+  var xy = Z.xiYongShen(bz);
+  ok(xy.favorable.length === 2, '喜用為用神＋喜神兩個');
+  ok(xy.favorable.indexOf(xy.yong) >= 0 && xy.favorable.indexOf(xy.xi) >= 0, 'favorable 含用神與喜神');
+  ok(xy.unfavorable.indexOf(xy.yong) < 0 && xy.unfavorable.indexOf(xy.xi) < 0, '忌神不與喜用重疊');
+  ok(xy.favorable.every(function(e) { return xy.unfavorable.indexOf(e) < 0; }), '喜用與忌神互斥');
+  ok(xy.score[xy.dayMaster] > 0, '日主本身有計分');
+  ok(xy.ratio >= 0 && xy.ratio <= 1, '同黨比例 ' + xy.ratio.toFixed(3));
+  ok((xy.ratio >= 0.5) === (xy.strength === '身強' || xy.strength === '中和偏強'), '強弱與比例一致：' + xy.strength);
+  ok(xy.missing.every(function(e) { return xy.score[e] === 0; }), '八字缺＝得分為 0 的五行');
+
+  // 五行生剋：身弱取印（生我）比（同我），身強取官殺／財／食傷
+  var GEN = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
+  var genBy = function(e) { for (var k in GEN) if (GEN[k] === e) return k; };
+  if (xy.strength === '身弱' || xy.strength === '中和偏弱') {
+    ok(xy.yong === genBy(xy.dayMaster) && xy.xi === xy.dayMaster, '身弱用印比：用' + xy.yong + '、喜' + xy.xi);
+  }
+
+  // 回歸測試：喜用神只看八字。舊版用名字五格的五行數量推日主強弱，
+  // 同一個時辰出生的人會因為名字不同而得到不同的喜用神。
+  var zodiac = Z.fullAnalysis(1990, 5, 15, 10, 30, 8);
+  var names = ['陳小明', '林大維', '黃美玲', '張家豪', '王金水', '李木火'];
+  var sigs = names.map(function(n) {
+    var rep = P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze(n), null, zodiac);
+    var x = rep && rep.xiYong;
+    return x ? [x.strength, x.yong, x.xi, x.favorable.join(''), x.unfavorable.join('')].join('|') : 'null';
+  });
+  ok(sigs.every(function(s) { return s !== 'null' && s === sigs[0]; }), '同一八字不同名字 → 相同喜用神（' + sigs.join(' / ') + '）');
+
+  // 名字只影響「補到了沒」，不影響命格判定
+  var withName = P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze('陳小明'), null, zodiac).xiYong;
+  ok(withName.nameHits.length + withName.nameMissing.length === 2, '名字命中／未命中加起來等於喜用數');
+  ok(withName.nameHits.every(function(e) { return withName.favorable.indexOf(e) >= 0; }), 'nameHits 只會是喜用五行');
+
+  // 沒有八字時不該硬生喜用神
+  ok(P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze('陳小明'), null, null).xiYong === null, '無八字 → 無喜用神');
+  ok(P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze('陳小明'), null, { yearPillar: null, dayMaster: null }).xiYong === null, '只有年柱 → 無喜用神');
 });
 
 var pending = 1;
