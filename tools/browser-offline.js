@@ -64,8 +64,11 @@
     const need = (sw.match(/[.][/]fonts[/][^']+/g) || []).map(f => f.slice(1));
     if (!version || need.length < 2) return 'NO-FONTS-IN-SW';
     // 只認目前版本的快取（舊版本的快取也可能剛好有同名檔案）
+    // 瀏覽器何時檢查 sw.js 有沒有新版不一定，主動要求檢查，不然新版可能遲遲不安裝
+    const reg = await navigator.serviceWorker.getRegistration();
     const t0 = Date.now();
     while (Date.now() - t0 < 60000) {
+      if (reg) await reg.update().catch(() => {});
       if ((await caches.keys()).includes(version)) {
         const keys = (await (await caches.open(version)).keys()).map(r => new URL(r.url).pathname);
         if (need.every(f => keys.includes(f))) return version + ':' + keys.length;
@@ -86,7 +89,7 @@
   var offline = await evaluate(`(async () => {
     await document.fonts.ready;
     const faces = [...document.fonts];
-    const loaded = ['Ma Shan Zheng', 'Noto Sans TC', 'Noto Serif TC'].map(fam =>
+    const loaded = ['Bakudai', 'Noto Sans TC', 'Noto Serif TC'].map(fam =>
       fam + ':' + (faces.some(f => f.family.replace(/"/g, '') === fam && f.status === 'loaded') ? 'loaded' : 'none')).join(' ');
     return { online: navigator.onLine, title: document.title, fonts: loaded,
       heading: (document.querySelector('.app-title') || {}).textContent || '',
@@ -103,8 +106,8 @@
   var expect = {
     cached: /^name-harmony-v\d+:\d+$/,
     offline: /^false$/,                         // navigator.onLine 為 false：確實斷網了
-    fonts: /^Ma Shan Zheng:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
-    titleFonts: /^Ma Shan Zheng\([1-9]\d*\)/,
+    fonts: /^Bakudai:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
+    titleFonts: /^Bakudai\([1-9]\d*\)/,
     heading: /姓名和盤/,
     body: /^[1-9]\d{2,}$/                       // 畫面有真的畫出來，不是空白頁
   };

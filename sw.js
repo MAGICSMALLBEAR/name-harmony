@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v23';
+var CACHE_NAME = 'name-harmony-v25';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -12,15 +12,15 @@ var ASSETS_TO_CACHE = [
   './css/style.css',
   // fonts:start（由 tools/gen-fonts.py 產生；其餘切片用到時才下載，下載後由 fetch 存進快取）
   './fonts/fonts.css',
-  './fonts/NotoSansTC-0.28af6ee3.woff2',
-  './fonts/NotoSansTC-1.d90605c1.woff2',
-  './fonts/NotoSansTC-2.82894176.woff2',
-  './fonts/NotoSansTC-3.79205d43.woff2',
-  './fonts/NotoSansTC-4.fa23ed54.woff2',
-  './fonts/NotoSerifTC-0.6acf0028.woff2',
-  './fonts/NotoSerifTC-1.e1ee6192.woff2',
-  './fonts/MaShanZheng-0.358392f9.woff2',
-  './fonts/MaShanZheng-1.fdb04ef6.woff2',
+  './fonts/NotoSansTC-0.c92f756d.woff2',
+  './fonts/NotoSansTC-1.02ff0d19.woff2',
+  './fonts/NotoSansTC-2.47bc99ed.woff2',
+  './fonts/NotoSansTC-3.9ca2b4f1.woff2',
+  './fonts/NotoSansTC-4.fb7539c1.woff2',
+  './fonts/NotoSerifTC-0.dd1dd758.woff2',
+  './fonts/NotoSerifTC-1.71cb4907.woff2',
+  './fonts/Bakudai-0.460e8837.woff2',
+  './fonts/Bakudai-1.8f26231c.woff2',
   // fonts:end
   './js/data/stroke-db.js',
   './js/data/s2t-map.js',

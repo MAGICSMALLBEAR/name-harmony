@@ -72,8 +72,8 @@
     // 自架字型：三套都要載入（瀏覽器擴充功能也注入了一堆字型，只看自家的三套）
     // 字型依 unicode-range 切片：每套至少有一片已載入，且首次畫面不該把整套都載入
     await document.fonts.ready;
-    const faces = [...document.fonts].filter(f => /^(Noto Sans TC|Noto Serif TC|Ma Shan Zheng)$/.test(f.family.replace(/"/g, '')));
-    out.fonts = ['Ma Shan Zheng', 'Noto Sans TC', 'Noto Serif TC'].map(fam => {
+    const faces = [...document.fonts].filter(f => /^(Noto Sans TC|Noto Serif TC|Bakudai)$/.test(f.family.replace(/"/g, '')));
+    out.fonts = ['Bakudai', 'Noto Sans TC', 'Noto Serif TC'].map(fam => {
       const mine = faces.filter(f => f.family.replace(/"/g, '') === fam);
       return fam + ':' + (mine.some(f => f.status === 'loaded') ? 'loaded' : 'none');
     }).join(' ');
@@ -81,8 +81,18 @@
     out.fontChecks = [
       document.fonts.check('16px "Noto Sans TC"', '姓名') ? 'sans' : 'NO-sans',
       document.fonts.check('16px "Noto Serif TC"', '姓名') ? 'serif' : 'NO-serif',
-      document.fonts.check('16px "Ma Shan Zheng"', '姓名') ? 'display' : 'NO-display'
+      document.fonts.check('16px "Bakudai"', '姓名') ? 'display' : 'NO-display'
     ].join(' ');
+
+    // 分享圖：canvas 不會等字型下載。拿最後一片 Sans 切片的字來畫，畫完那一片應該已載入
+    const lastSans = faces.filter(f => f.family.replace(/"/g, '') === 'Noto Sans TC').pop();
+    const rareChar = String.fromCodePoint(parseInt(lastSans.unicodeRange.split(',')[0].trim().slice(2).split('-')[0], 16));
+    const before = lastSans.status;
+    await window.ShareCard.drawWithFonts(() => {
+      const c = document.createElement('canvas'), ctx = c.getContext('2d');
+      ctx.font = '16px "Noto Sans TC", sans-serif'; ctx.fillText(rareChar, 0, 16); return c;
+    });
+    out.canvasFont = before + '→' + lastSans.status;
 
     $('bbSurname').value = '温'; $('bbGender').value = 'female'; $('bbGo').click();
     out.baby = $('bbResults').innerText;
@@ -164,11 +174,12 @@
   })()`);
 
   var expect = {
-    fonts: /^Ma Shan Zheng:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
+    fonts: /^Bakudai:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
     fontChecks: /^sans serif display$/,
     fontSlicesAtStart: /^([1-9]|1\d)\/\d{2,}$/,   // 首次畫面只載入少數幾片（不到 20 片）
     baby: /温/,
     printFonts: /^loaded check$/,
+    canvasFont: /^unloaded→loaded$/,
     trendEnglish: /Linda[\s\S]*1940 年代[\s\S]*時代感/,
     trendBars: /^9$/,
     trendChinese: /家豪[\s\S]*全國男性第 1 大/,
@@ -188,7 +199,7 @@
     var fonts = await send('CSS.getPlatformFontsForNode', { nodeId: node.result.nodeId });
     titleFonts = (fonts.result.fonts || []).map(function(x) { return x.familyName + '(' + x.glyphCount + ')'; }).join(', ');
   } catch (e) { titleFonts = 'error: ' + e.message; }
-  expect.titleFonts = /^Ma Shan Zheng\([1-9]\d*\)/;
+  expect.titleFonts = /^Bakudai\([1-9]\d*\)/;
   result.titleFonts = titleFonts;
 
   var failed = 0;

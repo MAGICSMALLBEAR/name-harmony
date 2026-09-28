@@ -47,7 +47,7 @@
   --color-wuxing-water: #42A5F5;
 
   /* 字型 */
-  --font-display: 'Ma Shan Zheng', 'Noto Serif TC', 'Songti TC', serif;
+  --font-display: 'Bakudai', 'Noto Serif TC', 'Songti TC', serif;
   --font-heading: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
   --font-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --font-en: 'Georgia', 'Times New Roman', serif;
@@ -81,6 +81,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* 表單元素預設不繼承字型（瀏覽器用 Arial，中文退回系統字型），統一用網站字型 */
+button, input, select, textarea {
+  font-family: inherit;
 }
 
 html {

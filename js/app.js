@@ -186,8 +186,7 @@
     igBtn.addEventListener('click', function() {
       if (!currentData) return;
       if (window.ShareCard && window.ShareCard.downloadIG) {
-        window.ShareCard.downloadIG(currentData);
-        toast('IG 分享圖已下載！');
+        window.ShareCard.downloadIG(currentData).then(function() { toast('IG 分享圖已下載！'); });
       }
     });
     actionBar.insertBefore(igBtn, backBtn);
@@ -273,8 +272,7 @@
     dlBtn.innerHTML = '<span>🖼️</span> 圖片';
     dlBtn.addEventListener('click', function() {
       if (!currentData) return;
-      window.ShareCard.downloadImage(currentData);
-      toast('圖片已下載！');
+      window.ShareCard.downloadImage(currentData).then(function() { toast('圖片已下載！'); });
     });
     actionBar.insertBefore(dlBtn, backBtn);
   }

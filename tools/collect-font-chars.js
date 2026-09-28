@@ -39,9 +39,9 @@ var path = require('path');
   await sleep(3000);
 
   // 有排版的文字（含輸入框的提示字與值、下拉選單的選項），依 font-family 列出的自架字型分組。
-  // 書法體沒有的字會退回 Noto Serif TC，所以書法體的字也算進 Serif。
+  // 書法體沒收錄的字會退回 Noto Serif TC，所以書法體的字也算進 Serif。
   var COLLECT = `(() => {
-    const FAMS = ['Noto Sans TC', 'Noto Serif TC', 'Ma Shan Zheng'];
+    const FAMS = ['Noto Sans TC', 'Noto Serif TC', 'Bakudai'];
     const out = {}; FAMS.forEach(f => out[f] = new Set());
     const add = (el, text, pseudo) => {
       if (!text || !el.getClientRects().length) return;
@@ -50,7 +50,7 @@ var path = require('path');
       const fams = cs.fontFamily.split(',').map(s => s.replace(/["']/g, '').trim());
       const first = fams.find(f => FAMS.includes(f));
       if (!first) return;
-      const targets = first === 'Ma Shan Zheng' && fams.includes('Noto Serif TC') ? [first, 'Noto Serif TC'] : [first];
+      const targets = first === 'Bakudai' && fams.includes('Noto Serif TC') ? [first, 'Noto Serif TC'] : [first];
       for (const c of text) targets.forEach(f => out[f].add(c));
     };
     // CSS 產生的文字（::before、::after 的 content，清單標記）也要算

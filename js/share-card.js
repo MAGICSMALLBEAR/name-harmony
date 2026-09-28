@@ -116,13 +116,35 @@ window.ShareCard = (function() {
     return canvas;
   }
 
-  function downloadImage(data) {
-    var canvas = generate(data);
+  /**
+   * 畫好再回傳 canvas：canvas 不會等字型下載，字型又依 unicode-range 切片，
+   * 用到的字所在的切片可能還沒載入（會畫成系統字型）。
+   * 先試畫一次記下每個 fillText 的字型與文字，載入對應切片後再正式畫（最多等 3 秒）。
+   */
+  function drawWithFonts(draw, data) {
+    var proto = CanvasRenderingContext2D.prototype, fillText = proto.fillText, used = [];
+    proto.fillText = function(text) {
+      used.push([this.font, String(text)]);
+      return fillText.apply(this, arguments);
+    };
+    try { draw(data); } finally { proto.fillText = fillText; }
+    var loads = document.fonts ? used.map(function(u) {
+      return document.fonts.load(u[0], u[1]).catch(function() {});
+    }) : [];
+    var timeout = new Promise(function(resolve) { setTimeout(resolve, 3000); });
+    return Promise.race([Promise.all(loads), timeout]).then(function() { return draw(data); });
+  }
+
+  function save(canvas, name) {
     var link = document.createElement('a');
-    link.download = '姓名和盤_' + new Date().toISOString().slice(0,10) + '.png';
+    link.download = name + '_' + new Date().toISOString().slice(0,10) + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     return true;
+  }
+
+  function downloadImage(data) {
+    return drawWithFonts(generate, data).then(function(canvas) { return save(canvas, '姓名和盤'); });
   }
 
   // IG 限動格式 (1080x1920)
@@ -184,12 +206,8 @@ window.ShareCard = (function() {
   }
 
   function downloadIG(data){
-    var canvas=generateIG(data);
-    var link=document.createElement('a');
-    link.download='姓名和盤_IG分享_'+new Date().toISOString().slice(0,10)+'.png';
-    link.href=canvas.toDataURL('image/png');
-    link.click();return true;
+    return drawWithFonts(generateIG, data).then(function(canvas) { return save(canvas, '姓名和盤_IG分享'); });
   }
 
-  return { generate: generate, downloadImage: downloadImage, generateIG: generateIG, downloadIG: downloadIG };
+  return { generate: generate, downloadImage: downloadImage, generateIG: generateIG, downloadIG: downloadIG, drawWithFonts: drawWithFonts };
 })();

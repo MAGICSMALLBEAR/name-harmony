@@ -2,12 +2,13 @@
 # 用法：
 #   1. pip install fonttools brotli
 #   2. 從 https://github.com/google/fonts 下載到 tools/fonts-src/（不進版控）：
-#        ofl/notosanstc/NotoSansTC[wght].ttf、ofl/notoseriftc/NotoSerifTC[wght].ttf、ofl/mashanzheng/MaShanZheng-Regular.ttf
+#        ofl/notosanstc/NotoSansTC[wght].ttf、ofl/notoseriftc/NotoSerifTC[wght].ttf、ofl/mashanzheng/MaShanZheng-Regular.ttf（已不使用）
+#      書法體從 https://github.com/max32002/bakudaifont 的 tw/ 下載 Bakudai-Bold.ttf（莫大毛筆，SIL OFL 1.1）
 #   3. 在專案根目錄執行 python tools/gen-fonts.py
 #
 # 內文字型（Noto Sans TC、Noto Serif TC，用於 --font-body 與 --font-heading）：
 #   收錄 index.html、css、js 全部原始碼出現的字（含筆劃庫的名字用字與解讀文字）+ ASCII + 常用標點。
-# 書法體（Ma Shan Zheng，用於 --font-display）：只用於標題、等級標籤與「產生的名字」等短字串，
+# 書法體（莫大毛筆 Bakudai，用於 --font-display；繁體字齊全，取代只有簡體的 Ma Shan Zheng）：只用於標題、等級標籤與「產生的名字」等短字串，
 #   只收會以書法體顯示的字（取名用字、常見姓氏、標籤），不跟著內文字型收完整字集，差約 1.7 MB。
 #   ⚠️ 新增以 --font-display 顯示的字串時，要把用字加進下面的 LABELS。
 # 兩者都不含使用者輸入的罕見字，瀏覽器會自動改用系統字型顯示那個字。
@@ -74,6 +75,9 @@ display_chars = {c for c in name_chars | set(SURNAMES) | set(LABELS) | {chr(c) f
 print('書法體收錄字元', len(display_chars), '（取名用字', len(name_chars), '）')
 
 priority = json.load(open('tools/font-priority.json', encoding='utf8'))
+# 書法體另收瀏覽器實際以書法體畫出的字（如「團隊」「評鑑」等不在 LABELS 的標題字）
+display_chars |= {c for k in ('initial', 'demo') for c in priority[k].get('Bakudai', '') if c.isprintable()}
+print('書法體加上畫面實際用字後', len(display_chars))
 
 
 def order(chars, family):
@@ -149,14 +153,14 @@ for old in glob.glob(OUT + '*.woff2'):
 css, precache = [], []
 for args in [('NotoSansTC[wght].ttf', 'Noto Sans TC', 'NotoSansTC', body_chars, '400 700', (400, 700)),
              ('NotoSerifTC[wght].ttf', 'Noto Serif TC', 'NotoSerifTC', body_chars, '400 900', (400, 900)),
-             ('MaShanZheng-Regular.ttf', 'Ma Shan Zheng', 'MaShanZheng', display_chars, '400', None)]:
+             ('Bakudai-Bold.ttf', 'Bakudai', 'Bakudai', display_chars, '400', None)]:
     rules, pre, files = build(*args)
     css += rules
     precache += pre
 
 header = ('/* 由 tools/gen-fonts.py 產生，請勿手動修改。\n'
           '   每套字型依 unicode-range 切片，瀏覽器只下載畫面上用到的字所在的切片。\n'
-          '   書法體為簡體字型，沒有的繁體字（含標題的「盤」）自動退回 Noto Serif TC。 */\n')
+          '   書法體（莫大毛筆）沒收錄的字自動退回 Noto Serif TC。 */\n')
 open(OUT + 'fonts.css', 'w', encoding='utf8', newline='\n').write(header + '\n'.join(css))
 
 # sw.js：預先快取 fonts.css 與初始、示範畫面會用到的切片
