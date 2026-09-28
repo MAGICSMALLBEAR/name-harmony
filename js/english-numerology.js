@@ -159,138 +159,167 @@ window.EnglishNumerology = (function() {
     };
   }
 
-  // ============ 生命週期分析 ============
+  // ============ 生日靈數（分項化簡法） ============
+  // 出生月、日、年先各自化簡（保留大師數）再相加。
+  // 生命靈數、個人年、高峰數、挑戰數、生命週期都只看出生日期，跟名字無關。
 
-  function getLifeCycleNumbers(destinyNumber) {
-    // 生命週期分為三個階段，根據命運數字計算
-    var cycles = {
-      1: { first: { age: '0-30歲', focus: '獨立發展期', desc: '建立自我認同、發展領導力與獨特性。' }, second: { age: '31-50歲', focus: '合作成長期', desc: '學習與人合作、平衡獨立與依賴。' }, third: { age: '51歲+', focus: '豐收傳承期', desc: '運用畢生智慧，領導和啟發他人。' } },
-      2: { first: { age: '0-30歲', focus: '敏感覺察期', desc: '培養直覺力與同理心，建立人際關係基礎。' }, second: { age: '31-50歲', focus: '平衡調和期', desc: '學習在合作中保持自我，發展外交能力。' }, third: { age: '51歲+', focus: '智慧分享期', desc: '以豐富的感受力與經驗滋養他人。' } },
-      3: { first: { age: '0-30歲', focus: '創意探索期', desc: '發掘藝術天分，培養表達與溝通能力。' }, second: { age: '31-50歲', focus: '社交拓展期', desc: '建立廣泛人脈，將創意轉化為實際成果。' }, third: { age: '51歲+', focus: '喜悅分享期', desc: '以樂觀與創意豐富自己與他人的生活。' } },
-      4: { first: { age: '0-30歲', focus: '基礎建設期', desc: '建立穩固的知識與技能基礎，培養紀律。' }, second: { age: '31-50歲', focus: '事業成就期', desc: '辛勤耕耘獲得回報，建立穩固的事業。' }, third: { age: '51歲+', focus: '穩固守成期', desc: '運用累積的經驗與資源，享受穩定生活。' } },
-      5: { first: { age: '0-30歲', focus: '自由探索期', desc: '多元嘗試，累積豐富的人生經驗。' }, second: { age: '31-50歲', focus: '資源整合期', desc: '將多方經驗整合，找到真正適合的方向。' }, third: { age: '51歲+', focus: '智慧傳承期', desc: '以豐富閱歷引導年輕人，享受自由人生。' } },
-      6: { first: { age: '0-30歲', focus: '責任培養期', desc: '學習關懷他人，建立家庭與社群觀念。' }, second: { age: '31-50歲', focus: '奉獻付出期', desc: '全心投入家庭與社區，承擔重要責任。' }, third: { age: '51歲+', focus: '圓滿收穫期', desc: '收穫愛與尊重，享受家人圍繞的幸福。' } },
-      7: { first: { age: '0-30歲', focus: '知識累積期', desc: '深度學習與研究，發展分析與思考能力。' }, second: { age: '31-50歲', focus: '專業精進期', desc: '在專業領域深耕，成為權威專家。' }, third: { age: '51歲+', focus: '靈性昇華期', desc: '追求更高層次的智慧與精神滿足。' } },
-      8: { first: { age: '0-30歲', focus: '能力鍛鍊期', desc: '建立自信與能力基礎，學習管理與領導。' }, second: { age: '31-50歲', focus: '權力巔峰期', desc: '事業達到高峰，實現財務與地位目標。' }, third: { age: '51歲+', focus: '影響力延續期', desc: '運用資源與影響力，回饋社會。' } },
-      9: { first: { age: '0-30歲', focus: '理想萌芽期', desc: '培養博愛精神，追尋人生的崇高意義。' }, second: { age: '31-50歲', focus: '奉獻實踐期', desc: '將理想轉化為行動，為社會做出貢獻。' }, third: { age: '51歲+', focus: '智慧圓滿期', desc: '以豐富的人生智慧，成為他人的燈塔。' } }
-    };
-
-    var num = reduceNumber(destinyNumber) || 1;
-    // 大師數字映射
-    if (num === 0) num = 1;
-    if (num === 11) num = 2;
-    if (num === 22) num = 4;
-    if (num === 33) num = 6;
-
-    return cycles[num] || cycles[1];
+  /** 化簡到個位數（大師數也拆掉），挑戰數、個人年、年齡計算用 */
+  function reduceSingle(num) {
+    num = Math.abs(num);
+    while (num > 9) num = String(num).split('').reduce(function(s, d) { return s + +d; }, 0);
+    return num;
   }
 
-  function getPersonalYear(destinyNumber, birthMonth, birthDay) {
-    var now = new Date();
-    var currentYear = now.getFullYear();
-    // 如果生日還沒到，用去年
-    var birthday = new Date(currentYear, (birthMonth || 1) - 1, birthDay || 1);
-    if (now < birthday) currentYear--;
-    // 年份數字和
-    var yearSum = String(currentYear).split('').reduce(function(s, d) { return s + parseInt(d); }, 0);
-    var personalYear = reduceNumber(destinyNumber + yearSum);
-    var meanings = {
-      1: { focus: '新開始', desc: '今年是開啟新篇章的一年。適合開始新計劃、新關係或新方向。' },
-      2: { focus: '合作等待', desc: '今年需要耐心與合作。適合培養關係、等待時機成熟。' },
-      3: { focus: '創意表達', desc: '今年充滿創意與社交能量。適合表達自己、拓展人脈。' },
-      4: { focus: '辛勤耕耘', desc: '今年需要努力打基礎。適合專注工作、建立秩序與紀律。' },
-      5: { focus: '改變冒險', desc: '今年充滿變化與機遇。適合旅行、嘗試新事物、突破框架。' },
-      6: { focus: '家庭責任', desc: '今年重心在家庭與關係。適合經營感情、承擔責任。' },
-      7: { focus: '內省學習', desc: '今年適合沉澱與學習。適合進修、研究、心靈成長。' },
-      8: { focus: '收穫成就', desc: '今年是收割成果的一年。適合追求事業目標與財務規劃。' },
-      9: { focus: '完結釋放', desc: '今年是循環的結束。適合清理舊事物、為新循環做準備。' }
-    };
-    return {
-      year: currentYear,
-      number: personalYear,
-      focus: (meanings[personalYear] || {}).focus || '',
-      desc: (meanings[personalYear] || {}).desc || ''
-    };
+  function birthParts(birth) {
+    if (!birth || !birth.year || !birth.month || !birth.day) return null;
+    return { m: reduceNumber(birth.month), d: reduceNumber(birth.day), y: reduceNumber(birth.year) };
   }
 
-  // ============ 高峰數字 (Pinnacle Numbers) ============
-  function getPinnacleNumbers(destinyNumber) {
-    var d = reduceNumber(destinyNumber);
-    var pinnacles = [];
-    // 四個高峰：用命運數字計算
-    var p1 = reduceNumber(36 - d);
-    var p2 = reduceNumber(9 + d);
-    var p3 = reduceNumber(p1 + p2);
-    var p4 = reduceNumber(d + (d % 10));
+  function getLifePath(birth) {
+    var p = birthParts(birth);
+    return p ? reduceNumber(p.m + p.d + p.y) : null;
+  }
 
-    var ageRanges = ['0-30歲','31-40歲','41-50歲','51歲+'];
-    [p1,p2,p3,p4].forEach(function(p, i) {
-      var m = getNumberMeaning(p) || {};
-      pinnacles.push({
-        number: p,
-        age: ageRanges[i],
-        title: (m.title || ''),
-        desc: (m.strengths || '').substring(0, 80) + '...'
-      });
+  // 各數字在三個生命週期的主題：[成長期標題, 說明, 生產期標題, 說明, 收穫期標題, 說明]
+  var CYCLE_TEXT = {
+    1: ['獨立發展期', '建立自我認同、發展領導力與獨特性。', '開創事業期', '主導自己的方向，適合創業、帶領團隊。', '自主傳承期', '運用畢生智慧，領導和啟發他人。'],
+    2: ['敏感覺察期', '培養直覺力與同理心，建立人際關係基礎。', '合作調和期', '在合作中保持自我，發展協調與外交能力。', '智慧分享期', '以豐富的感受力與經驗滋養他人。'],
+    3: ['創意探索期', '發掘藝術天分，培養表達與溝通能力。', '社交拓展期', '建立廣泛人脈，將創意轉化為實際成果。', '喜悅分享期', '以樂觀與創意豐富自己與他人的生活。'],
+    4: ['基礎建設期', '建立穩固的知識與技能基礎，培養紀律。', '事業耕耘期', '辛勤耕耘獲得回報，建立穩固的事業。', '穩固守成期', '運用累積的經驗與資源，享受穩定生活。'],
+    5: ['自由探索期', '多元嘗試，累積豐富的人生經驗。', '變動轉型期', '工作與環境變化多，把多方經驗整合成方向。', '自在遊歷期', '以豐富閱歷引導年輕人，享受自由人生。'],
+    6: ['責任培養期', '學習關懷他人，建立家庭與社群觀念。', '奉獻付出期', '全心投入家庭與社區，承擔重要責任。', '圓滿收穫期', '收穫愛與尊重，享受家人圍繞的幸福。'],
+    7: ['知識累積期', '深度學習與研究，發展分析與思考能力。', '專業精進期', '在專業領域深耕，成為權威專家。', '靈性昇華期', '追求更高層次的智慧與精神滿足。'],
+    8: ['能力鍛鍊期', '建立自信與能力基礎，學習管理與領導。', '成就權力期', '事業達到高峰，實現財務與地位目標。', '影響力延續期', '運用資源與影響力，回饋社會。'],
+    9: ['理想萌芽期', '培養博愛精神，追尋人生的崇高意義。', '奉獻實踐期', '將理想轉化為行動，為社會做出貢獻。', '智慧圓滿期', '以豐富的人生智慧，成為他人的燈塔。']
+  };
+
+  /** 第一高峰結束的年齡：36 − 生命靈數（化簡到個位數），之後每 9 年換一個高峰 */
+  function firstPeriodEnd(birth) {
+    return 36 - reduceSingle(getLifePath(birth));
+  }
+
+  /** 生命週期：出生月→成長週期、出生日→生產週期、出生年→收穫週期（分界與高峰數對齊） */
+  function getLifeCycleNumbers(birth) {
+    var p = birthParts(birth);
+    if (!p) return null;
+    var end1 = firstPeriodEnd(birth);
+    var nums = [p.m, p.d, p.y];
+    var bounds = [[0, end1], [end1 + 1, end1 + 27], [end1 + 28, null]];
+    var names = ['成長週期', '生產週期', '收穫週期'];
+    return nums.map(function(n, i) {
+      var t = CYCLE_TEXT[reduceSingle(n)], b = bounds[i];
+      return {
+        number: n, name: names[i], startAge: b[0], endAge: b[1],
+        age: b[1] == null ? b[0] + ' 歲以後' : b[0] + '–' + b[1] + ' 歲',
+        focus: t[i * 2], desc: t[i * 2 + 1]
+      };
     });
-    return pinnacles;
   }
 
-  /** 轉折年 (Turning Points) */
-  function getTurningYears(birthYear, destinyNumber) {
-    if (!birthYear) return null;
-    var d = reduceNumber(destinyNumber);
-    // 轉折年=出生年+命運數字，之後每9年一個
-    var base = birthYear + d;
-    var currentYear = new Date().getFullYear();
-    var years = [];
-    for (var y = base; y <= currentYear + 5; y += 9) {
-      years.push({
-        year: y,
-        age: y - birthYear,
-        description: y <= currentYear ? '已過轉折點' : '即將到來的轉折點',
-        isPast: y <= currentYear
-      });
-    }
-    return years;
+  var PERSONAL_YEAR = {
+    1: { focus: '新開始', desc: '九年循環的第一年。適合開始新計劃、新關係或新方向。' },
+    2: { focus: '合作等待', desc: '需要耐心與合作。適合培養關係、等待時機成熟。' },
+    3: { focus: '創意表達', desc: '充滿創意與社交能量。適合表達自己、拓展人脈。' },
+    4: { focus: '辛勤耕耘', desc: '需要努力打基礎。適合專注工作、建立秩序與紀律。' },
+    5: { focus: '改變冒險', desc: '充滿變化與機遇。適合旅行、嘗試新事物、突破框架。' },
+    6: { focus: '家庭責任', desc: '重心在家庭與關係。適合經營感情、承擔責任。' },
+    7: { focus: '內省學習', desc: '適合沉澱與學習。適合進修、研究、心靈成長。' },
+    8: { focus: '收穫成就', desc: '收割成果的一年。適合追求事業目標與財務規劃。' },
+    9: { focus: '完結釋放', desc: '九年循環的最後一年。適合清理舊事物、為新循環做準備。' }
+  };
+
+  /** 個人年：出生月＋出生日＋當年（西曆年，1 月 1 日換年） */
+  function getPersonalYear(birth, year) {
+    if (!birth || !birth.month || !birth.day) return null;
+    year = year || new Date().getFullYear();
+    var n = reduceSingle(reduceNumber(birth.month) + reduceNumber(birth.day) + reduceNumber(year));
+    return { year: year, number: n, focus: PERSONAL_YEAR[n].focus, desc: PERSONAL_YEAR[n].desc };
   }
 
-  // ============ 衍生數字 ============
-
-  function getChallengeNumbers(fullName) {
-    if (!fullName) return null;
-    var name = fullName.trim().toUpperCase().replace(/[^A-Z]/g, '');
-    if (name.length < 2) return null;
-    var first = letterToNumber(name[0]);
-    var last = letterToNumber(name[name.length - 1]);
-    return {
-      primary: reduceNumber(Math.abs(first - last)),
-      secondary: reduceNumber(Math.abs(first - last) + 1),
-      description: '挑戰數字代表此生需克服的主要障礙'
-    };
+  /** 高峰數：月＋日、日＋年、前兩者相加、月＋年 */
+  function getPinnacleNumbers(birth) {
+    var p = birthParts(birth);
+    if (!p) return null;
+    var p1 = reduceNumber(p.m + p.d), p2 = reduceNumber(p.d + p.y);
+    var nums = [p1, p2, reduceNumber(p1 + p2), reduceNumber(p.m + p.y)];
+    var end1 = firstPeriodEnd(birth);
+    return nums.map(function(n, i) {
+      var from = i === 0 ? 0 : end1 + 1 + (i - 1) * 9;
+      var to = i === 3 ? null : end1 + i * 9;
+      var m = getNumberMeaning(n) || {};
+      return {
+        number: n,
+        startAge: from, endAge: to,
+        age: to == null ? from + ' 歲以後' : from + '–' + to + ' 歲',
+        startYear: birth.year + from,
+        title: m.title || '',
+        keywords: m.keywords || ''
+      };
+    });
   }
 
-  function getMaturityNumber(analysis) {
-    if (!analysis) return null;
-    return reduceNumber(analysis.destiny + analysis.totalSum);
+  var CHALLENGE_TEXT = {
+    0: '選擇之課：沒有特定弱點，也因此要自己決定往哪裡用力，避免什麼都想做。',
+    1: '自我之課：學習獨立與自信，不被別人的意見左右，也不過度強勢。',
+    2: '敏感之課：學習不過度在意他人眼光，在合作中保有自己的立場。',
+    3: '表達之課：學習把情緒與想法說出來，不壓抑也不流於膚淺。',
+    4: '紀律之課：學習耐心與按部就班，克服懶散或過度死板。',
+    5: '自由之課：在自由與責任之間取得平衡，不因害怕改變而停滯，也不衝動放縱。',
+    6: '責任之課：學習照顧他人但不控制，放下完美主義與過高標準。',
+    7: '信任之課：學習信任他人與自己的直覺，不因懷疑而封閉。',
+    8: '物質之課：學習正確看待金錢與權力，不過度追逐也不刻意迴避。'
+  };
+
+  /** 挑戰數：月、日、年化簡到個位數後相減取絕對值 */
+  function getChallengeNumbers(birth) {
+    var p = birthParts(birth);
+    if (!p) return null;
+    var m = reduceSingle(p.m), d = reduceSingle(p.d), y = reduceSingle(p.y);
+    var c1 = Math.abs(m - d), c2 = Math.abs(d - y);
+    var nums = [c1, c2, Math.abs(c1 - c2), Math.abs(m - y)];
+    var names = ['第一挑戰', '第二挑戰', '主要挑戰', '第四挑戰'];
+    return nums.map(function(n, i) { return { number: n, name: names[i], desc: CHALLENGE_TEXT[n] }; });
   }
 
+  /** 轉折年：換下一個高峰的年份（共 3 次） */
+  function getTurningYears(birth, thisYear) {
+    var pins = getPinnacleNumbers(birth);
+    if (!pins) return null;
+    thisYear = thisYear || new Date().getFullYear();
+    return pins.slice(1).map(function(pn) {
+      return { year: pn.startYear, age: pn.startAge, isPast: pn.startYear <= thisYear };
+    });
+  }
+
+  /** 成熟數：生命靈數＋命運數 */
+  function getMaturityNumber(analysis, birth) {
+    var lp = getLifePath(birth);
+    if (!analysis || lp == null) return null;
+    return reduceNumber(lp + analysis.destiny);
+  }
+
+  /** 平衡數：全名各段首字母相加 */
   function getBalanceNumber(fullName) {
     if (!fullName) return null;
-    var parts = fullName.trim().toUpperCase().replace(/[^A-Z\s]/g, '').split(/\s+/);
-    if (parts.length < 1) return null;
-    var initials = parts.map(function(p) { return p[0] || ''; }).join('');
+    var parts = fullName.trim().toUpperCase().replace(/[^A-Z\s]/g, '').split(/\s+/).filter(Boolean);
+    if (!parts.length) return null;
     var sum = 0;
-    for (var i = 0; i < initials.length; i++) sum += letterToNumber(initials[i]);
+    parts.forEach(function(p) { sum += letterToNumber(p[0]); });
     return reduceNumber(sum);
   }
 
-  function getAdvancedNumbers(analysis, birthMonth, birthDay) {
-    if (!analysis) return null;
+  /** 進階數字；沒有完整出生日期時只有平衡數 */
+  function getAdvancedNumbers(analysis, birth) {
+    var hasBirth = !!birthParts(birth);
     return {
-      challenge: getChallengeNumbers(analysis.name),
-      maturity: getMaturityNumber(analysis),
-      balance: getBalanceNumber(analysis.name)
+      balance: analysis ? getBalanceNumber(analysis.name) : null,
+      lifePath: hasBirth ? getLifePath(birth) : null,
+      maturity: getMaturityNumber(analysis, birth),
+      personalYear: hasBirth ? getPersonalYear(birth) : null,
+      pinnacles: getPinnacleNumbers(birth),
+      challenges: getChallengeNumbers(birth),
+      cycles: getLifeCycleNumbers(birth),
+      turningYears: getTurningYears(birth)
     };
   }
 
@@ -298,6 +327,7 @@ window.EnglishNumerology = (function() {
     analyze: analyzeName,
     getMeaning: getNumberMeaning,
     getFullReport: getFullReport,
+    getLifePath: getLifePath,
     getLifeCycleNumbers: getLifeCycleNumbers,
     getPersonalYear: getPersonalYear,
     getChallengeNumbers: getChallengeNumbers,
@@ -309,6 +339,7 @@ window.EnglishNumerology = (function() {
     getAdvancedNumbers: getAdvancedNumbers,
     letterToNumber: letterToNumber,
     reduceNumber: reduceNumber,
+    reduceSingle: reduceSingle,
     PYTHAGOREAN_MAP: PYTHAGOREAN_MAP
   };
 

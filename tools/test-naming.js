@@ -1,6 +1,6 @@
 /**
  * 取名工具的大量檢查（不需要瀏覽器）：node tools/test-naming.js
- * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦
+ * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦、喜用神、生日靈數、改名對比
  */
 var vm = require('vm');
 var fs = require('fs');
@@ -15,7 +15,8 @@ vm.createContext(ctx);
   'data/pinyin-db', 'data/english-phonetics', 'phonetics', 'pair-harmony',
   'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name',
   'zodiac-bazi', 'baby-name', 'professional',
-  'data/name-trends', 'naming-extensions', 'iching'
+  'data/name-trends', 'naming-extensions', 'iching',
+  'data/english-number-meanings', 'english-numerology'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
@@ -361,6 +362,69 @@ section('喜用神（扶抑法）', function() {
   // 沒有八字時不該硬生喜用神
   ok(P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze('陳小明'), null, null).xiYong === null, '無八字 → 無喜用神');
   ok(P.generateReport({ label: '' }, ctx.ChineseNumerology.analyze('陳小明'), null, { yearPillar: null, dayMaster: null }).xiYong === null, '只有年柱 → 無喜用神');
+});
+
+section('生日靈數', function() {
+  var E = ctx.EnglishNumerology;
+  var VALID = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33];
+  var b = { year: 1990, month: 5, day: 15 };
+  // 手算：月 5、日 15→6、年 1990→19→10→1
+  ok(E.getLifePath(b) === 3, '1990-05-15 生命靈數 3');
+  ok(E.getPinnacleNumbers(b).map(function(p) { return p.number; }).join() === '11,7,9,6', '高峰數 11／7／9／6');
+  ok(E.getChallengeNumbers(b).map(function(c) { return c.number; }).join() === '1,5,4,4', '挑戰數 1／5／4／4');
+  ok(E.getPinnacleNumbers(b)[0].endAge === 33, '第一高峰到 36−3＝33 歲');
+  ok(E.getPersonalYear(b, 2026).number === 3, '2026 個人年 3（5＋6＋1＝12→3）');
+  ok(E.getLifeCycleNumbers(b).map(function(c) { return c.number; }).join() === '5,6,1', '生命週期取月、日、年');
+  // 名字不影響任何生日數字（與喜用神同一個教訓：生日的性質不能從名字推）
+  var a1 = E.getAdvancedNumbers(E.analyze('John Smith'), b), a2 = E.getAdvancedNumbers(E.analyze('Mary Ann Lee'), b);
+  ok(JSON.stringify([a1.lifePath, a1.pinnacles, a1.challenges, a1.cycles]) === JSON.stringify([a2.lifePath, a2.pinnacles, a2.challenges, a2.cycles]), '不同名字、同一生日 → 生日數字相同');
+  ok(a1.maturity === E.reduceNumber(a1.lifePath + E.analyze('John Smith').destiny), '成熟數＝生命靈數＋命運數');
+  var none = E.getAdvancedNumbers(E.analyze('John Smith'), null);
+  ok(none.balance && none.lifePath === null && none.pinnacles === null && none.maturity === null, '沒有生日 → 只有平衡數');
+  ok(E.getAdvancedNumbers(E.analyze('John Smith'), { year: 1990, month: 5 }).lifePath === null, '缺日 → 不計算');
+
+  // 1900–2100 每一天
+  var d = new Date(Date.UTC(1900, 0, 1)), end = Date.UTC(2100, 11, 31);
+  for (; d.getTime() <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    var bd = { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+    var tag = bd.year + '-' + bd.month + '-' + bd.day;
+    var lp = E.getLifePath(bd);
+    ok(VALID.indexOf(lp) >= 0, tag + ' 生命靈數 ' + lp);
+    var pins = E.getPinnacleNumbers(bd);
+    ok(pins[0].endAge === 36 - E.reduceSingle(lp) && pins[0].endAge >= 27 && pins[0].endAge <= 35, tag + ' 第一高峰結束年齡');
+    ok(pins[1].startAge === pins[0].endAge + 1 && pins[2].startAge === pins[1].endAge + 1 && pins[3].startAge === pins[2].endAge + 1 && pins[3].endAge === null, tag + ' 高峰年齡連續');
+    ok(pins.every(function(p) { return VALID.indexOf(p.number) >= 0; }), tag + ' 高峰數有效');
+    var ch = E.getChallengeNumbers(bd);
+    ok(ch.every(function(c) { return c.number >= 0 && c.number <= 8 && c.desc; }) && ch[2].number === Math.abs(ch[0].number - ch[1].number), tag + ' 挑戰數');
+    var cy = E.getLifeCycleNumbers(bd);
+    ok(cy[0].endAge === pins[0].endAge && cy[1].startAge === cy[0].endAge + 1 && cy[2].startAge === cy[1].endAge + 1, tag + ' 生命週期與高峰對齊');
+  }
+  // 個人年每年 +1，九年一輪（含 2009、2029 這類年份本身是大師數的情況）
+  for (var y = 1990; y < 2060; y++) {
+    var py = E.getPersonalYear(b, y).number, nx = E.getPersonalYear(b, y + 1).number;
+    ok(nx === py % 9 + 1, y + '→' + (y + 1) + ' 個人年 ' + py + '→' + nx);
+  }
+});
+
+section('改名對比', function() {
+  var P = ctx.Professional, CN = ctx.ChineseNumerology;
+  var same = P.compareNames('陳小明', '陳小明');
+  ok(same.improvement === 0 && same.gridChanges.every(function(g) { return !g.changed; }), '同名 → 無變化');
+  ok(same.verdict === '吉凶數相同', '同名 verdict：' + same.verdict);
+  var viaObj = P.compareNames(CN.analyze('陳小明'), '陳大明');
+  ok(viaObj.oldName === '陳小明' && !viaObj.error, '原名可傳分析結果');
+  ok(P.compareNames('陳小明', '陳龘明').error && P.compareNames('陳小明', '陳龘明').unknownChars[0] === '龘', '新名字有未知字 → 回報錯誤，不以 0 劃硬算');
+  ok(!P.compareNames('陳小明', '陳龘明', null, { '龘': 48 }).error, '手動筆劃可用於新名字');
+  var fav = ['火', '水'];
+  var c = P.compareNames('陳小明', '陳大維', fav);
+  ok(c.oldHits.every(function(e) { return fav.indexOf(e) >= 0; }) && c.newHits.every(function(e) { return fav.indexOf(e) >= 0; }), '喜用命中只會是喜用五行');
+  ok(P.compareNames('陳小明', '陳大維').oldHits === null, '沒給喜用 → 不比喜用');
+  // 隨機名字：improvement 與吉凶數一致
+  for (var i = 0; i < 3000; i++) {
+    var n1 = pick(SURNAMES) + pick(nameChars) + pick(nameChars), n2 = n1[0] + pick(nameChars) + pick(nameChars);
+    var r = P.compareNames(n1, n2);
+    ok(r && !r.error && r.improvement === (r.newGood - r.oldGood) + (r.oldBad - r.newBad), n1 + '→' + n2 + ' 改善分數一致');
+  }
 });
 
 var pending = 1;

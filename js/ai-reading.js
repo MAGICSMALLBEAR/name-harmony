@@ -141,7 +141,7 @@ window.AiReading = (function() {
   function panelToText(el) {
     var box = el.cloneNode(true);
     box.querySelectorAll('details').forEach(function(d) { d.open = true; });
-    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .action-bar').forEach(function(n) { n.remove(); });
+    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .rename-compare, .action-bar').forEach(function(n) { n.remove(); });
     box.querySelectorAll('.hidden').forEach(function(n) { n.classList.remove('hidden'); });
     box.querySelectorAll('table').forEach(function(tb) {
       var rows = [].slice.call(tb.rows).map(function(tr) { return [].slice.call(tr.cells).map(function(c) { return c.textContent.replace(/\s+/g, ' ').trim(); }); });

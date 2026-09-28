@@ -209,6 +209,26 @@
     await wait(() => /近期吉日|填入生日/.test($('luckyContent').innerText));
     out.luckyDays = $('luckyContent').innerText.replace(/\\s+/g, ' ');
 
+    // 行業建議跟風水同一個依據（用神）；改名對比要能輸入、比較，並列出喜用神補到了沒
+    out.career = (out.xiYongUi.match(/用神屬[木火土金水]，較能發揮的領域：\\S+/) || ['（沒有行業建議）'])[0];
+    document.querySelector('.tab-btn[data-tab="report"]').click();
+    const rename = document.querySelector('.rename-compare');
+    rename.querySelector('.rename-input').value = '陳大維';
+    rename.querySelector('.rename-btn').click();
+    out.rename = rename.querySelector('.rename-result').innerText.replace(/\\s+/g, ' ');
+    rename.querySelector('.rename-input').value = '陳龘明';
+    rename.querySelector('.rename-btn').click();
+    out.renameUnknown = rename.querySelector('.rename-result').innerText.trim();
+
+    // 生日靈數：1990-05-15 → 生命靈數 3、高峰 11/7/9/6；名字不同也一樣
+    document.querySelector('.tab-btn[data-tab="members"]').click();
+    await wait(() => document.querySelector('.birth-numerology'));
+    const bn = [...document.querySelectorAll('.birth-numerology')].map(el => el.innerText.replace(/\\s+/g, ' '));
+    out.lifePath = bn.length >= 2 && bn.every(t => /生命靈數 3 /.test(t)) ? 'both:3' : bn.join(' | ');
+    const bnd = document.querySelector('.birth-numerology-detail');
+    if (bnd) bnd.open = true;
+    out.pinnacles = bnd ? [...bnd.innerText.replace(/\\s+/g, ' ').matchAll(/第[一二三四]高峰 ([\\d–]+ 歲(?:以後)?) (\\d+)/g)].map(m => m[1] + ':' + m[2]).join(',') : 'none';
+
     // 手動筆劃：筆劃庫沒有的字，補上筆劃後要真的完成分析（先前輸入值不會被套用，會卡在手動輸入卡）
     $('backBtn').click();
     $('cnA').value = '龘小明'; $('cnB').value = '王大明';
@@ -249,6 +269,11 @@
     xiYongSame: /^same:/,
     fengshui: /^依命格用神屬[木火土金水]，居家$/,
     luckyDays: /近期吉日（喜用[木火土金水]、[木火土金水]、避忌神/,
+    career: /^用神屬[木火土金水]，較能發揮的領域：/,
+    rename: /陳小明 → 陳大維：.+（吉數 \d→\d、凶數 \d→\d）.*天格.*總格.*命格喜用[木火土金水]、[木火土金水]：原名(已補|未補).*新名(已補|未補)/,
+    renameUnknown: /「龘」不在筆劃庫，無法比較/,
+    lifePath: /^both:3$/,
+    pinnacles: /^0–33 歲:11,34–42 歲:7,43–51 歲:9,52 歲以後:6$/,
 
     // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離（離為火）；
     // 總格 27 % 6 = 3 → 三爻動，下卦離 101 翻第三爻成 100（震）→ 火雷噬嗑

@@ -830,7 +830,9 @@
     var hour = mt[4] != null ? parseInt(mt[4], 10) : null;
     var minute = mt[5] != null ? parseInt(mt[5], 10) : 0;
     if (hour != null && (hour > 23 || minute > 59)) { hour = null; minute = 0; }
-    return { year: y, month: m, day: d || 1, hour: hour, minute: minute };
+    // civil：使用者填的日期，不受夏令時間、真太陽時換算影響（西方靈數用）；沒填日時為 null
+    return { year: y, month: m, day: d || 1, hour: hour, minute: minute,
+      civil: mt[3] && d ? { year: y, month: m, day: d } : null };
   }
 
   // ============ 手動筆劃 ============
@@ -1174,17 +1176,55 @@
         html += '<div class="number-card"><div class="'+(isM?'number-circle master-number':'number-circle')+'">'+n.number+'</div><div class="number-info"><div class="number-name">'+n.name+'</div><div class="number-desc">'+ (n.meaning.title||'') +'</div></div></div>';
       });
       html += '</div>';
-
-      // 進階靈數
-      var adv = window.EnglishNumerology.getAdvancedNumbers(r.en);
-      if (adv) {
-        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">';
-        if (adv.challenge) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">⚔️ 挑戰:' + adv.challenge.primary + '/' + adv.challenge.secondary + '</span>';
-        if (adv.maturity) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">🌟 成熟:' + adv.maturity + '</span>';
-        if (adv.balance) html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;">⚖️ 平衡:' + adv.balance + '</span>';
-        html += '</div>';
-      }
     }
+
+    // 生日靈數：生命靈數、個人年、高峰、挑戰、生命週期只看出生日期；成熟數與平衡數要有英文名
+    var civil = bday && bday.civil;
+    if (civil || r.en) html += renderBirthNumerology(window.EnglishNumerology.getAdvancedNumbers(r.en, civil), !!civil);
+    return html;
+  }
+
+  function renderBirthNumerology(adv, hasBirth) {
+    var chip = 'font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;';
+    var E = window.EnglishNumerology;
+    var html = '<div class="birth-numerology" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">';
+    if (adv.lifePath) html += '<span style="' + chip + '">🧭 生命靈數 <strong>' + adv.lifePath + '</strong> ' + ((E.getMeaning(adv.lifePath) || {}).title || '') + '</span>';
+    if (adv.personalYear) html += '<span style="' + chip + '">📅 ' + adv.personalYear.year + ' 個人年 <strong>' + adv.personalYear.number + '</strong> ' + adv.personalYear.focus + '</span>';
+    if (adv.maturity) html += '<span style="' + chip + '">🌟 成熟數 <strong>' + adv.maturity + '</strong></span>';
+    if (adv.balance) html += '<span style="' + chip + '">⚖️ 平衡數 <strong>' + adv.balance + '</strong></span>';
+    html += '</div>';
+    if (!hasBirth) {
+      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0;">填入完整出生日期即可查看生命靈數、個人年、高峰數與挑戰數</p>';
+      return html;
+    }
+
+    var thisYear = new Date().getFullYear();
+    var row = function(label, sub, body, now) {
+      return '<div style="display:flex;gap:10px;align-items:baseline;padding:4px 0;' + (now ? 'color:var(--color-gold-primary);' : '') + '">'
+        + '<span style="min-width:7em;font-size:0.78rem;">' + label + '</span>'
+        + '<span style="font-size:0.8rem;line-height:1.6;">' + sub + (body ? '<br><span style="color:var(--color-text-muted);">' + body + '</span>' : '') + '</span></div>';
+    };
+    var nowAge = thisYear - adv.pinnacles[0].startYear;
+    var inRange = function(from, to) { return nowAge >= from && (to == null || nowAge <= to); };
+
+    html += '<details class="birth-numerology-detail" style="margin:6px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔢 生日靈數：高峰、挑戰與生命週期</summary>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin:6px 0;">' + adv.personalYear.year + ' 年是你的個人年 ' + adv.personalYear.number + '（' + adv.personalYear.focus + '）：' + adv.personalYear.desc + '</p>';
+
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⛰️ 高峰數</div>';
+    adv.pinnacles.forEach(function(p, i) {
+      html += row('第' + '一二三四'[i] + '高峰　' + p.age, '<strong>' + p.number + '</strong> ' + p.title, p.keywords, inRange(p.startAge, p.endAge));
+    });
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⚔️ 挑戰數</div>';
+    adv.challenges.forEach(function(c) { html += row(c.name, '<strong>' + c.number + '</strong>', c.desc, false); });
+
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">🌱 生命週期</div>';
+    adv.cycles.forEach(function(c) {
+      html += row(c.name + '　' + c.age, '<strong>' + c.number + '</strong> ' + c.focus, c.desc, inRange(c.startAge, c.endAge));
+    });
+    html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">🔄 轉折年：' + adv.turningYears.map(function(t) {
+      return t.year + '（' + t.age + ' 歲）' + (t.isPast ? '✓' : '');
+    }).join('、') + '。以出生月、日、年各自化簡後計算；目前所在的階段以金色標示。</p>';
+    html += '</details>';
     return html;
   }
 
@@ -1646,6 +1686,12 @@
           html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);">⚠️ 避免：' + fs.avoid + '</p>';
           html += '</div>';
         }
+        // 行業建議：與風水同一個五行依據
+        var career = window.Professional.careerSuggestions(fsEl);
+        html += '<div class="report-section">';
+        html += '<div class="report-section-title">💼 行業建議</div>';
+        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + (report.xiYong ? '用神' : '人格') + '屬<span class="element-' + career.element + '">' + career.element + '</span>，較能發揮的領域：<strong>' + career.suggestion + '</strong></p>';
+        html += '</div>';
       }
 
       // 改名建議（專業模式）
@@ -1679,6 +1725,16 @@
           extra.forEach(function(el) { html += charLine(el); });
         }
         html += '</div>';
+      }
+
+      // 改名對比（專業模式）
+      if (isProMode) {
+        html += '<div class="report-section rename-compare" data-idx="' + idx + '">';
+        html += '<div class="report-section-title">🔄 改名對比</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+        html += '<input type="text" class="form-input rename-input" placeholder="輸入想改的新名字（含姓）" maxlength="6" style="flex:1;min-width:10em;">';
+        html += '<button type="button" class="btn-download-img rename-btn">比較</button>';
+        html += '</div><div class="rename-result"></div></div>';
       }
 
       // 易經卦象（專業模式）
@@ -1715,6 +1771,22 @@
 
     reportContent.innerHTML = html;
 
+    // 改名對比
+    reportContent.querySelectorAll('.rename-compare').forEach(function(box) {
+      var input = box.querySelector('.rename-input');
+      var run = function() {
+        var item = currentData.results[parseInt(box.dataset.idx)];
+        var out = box.querySelector('.rename-result');
+        var newName = input.value.trim();
+        if (!item || !item.result.cn || !newName) { out.innerHTML = ''; return; }
+        var rep = window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac);
+        var cmp = window.Professional.compareNames(item.result.cn, newName, rep.xiYong ? rep.xiYong.favorable : null, manualStrokes);
+        out.innerHTML = renderRenameCompare(cmp);
+      };
+      box.querySelector('.rename-btn').addEventListener('click', run);
+      input.addEventListener('keydown', function(e) { if (e.key === 'Enter') run(); });
+    });
+
     // 綁定複製報告按鈕
     reportContent.querySelectorAll('.copy-report-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -1740,6 +1812,31 @@
         speakText(text, '正在朗讀' + item.person.label + '的鑑定書...', this);
       });
     });
+  }
+
+  function escHtml(s) { return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function renderRenameCompare(cmp) {
+    var muted = 'font-size:0.8rem;color:var(--color-text-muted);margin-top:6px;';
+    if (!cmp) return '<p style="' + muted + '">請輸入含姓氏的中文名字</p>';
+    if (cmp.error) return '<p style="' + muted + '">⚠️ ' + escHtml(cmp.error) + '</p>';
+    var good = cmp.improvement > 0;
+    var html = '<p style="font-size:0.85rem;margin-top:8px;">' + escHtml(cmp.oldName) + ' → <strong>' + escHtml(cmp.newName) + '</strong>：'
+      + '<strong style="color:' + (good ? 'var(--color-fortune-good)' : cmp.improvement < 0 ? 'var(--color-fortune-bad)' : 'var(--color-text-secondary)') + ';">' + cmp.verdict + '</strong>'
+      + '（吉數 ' + cmp.oldGood + '→' + cmp.newGood + '、凶數 ' + cmp.oldBad + '→' + cmp.newBad + '）</p>';
+    html += '<table class="rename-table" style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:4px;"><tbody>';
+    cmp.gridChanges.forEach(function(g) {
+      html += '<tr style="' + (g.changed ? '' : 'color:var(--color-text-muted);') + '"><td style="padding:2px 6px;">' + g.name + '</td>'
+        + '<td style="padding:2px 6px;">' + g.old.num + ' <span class="element-' + g.old.ele + '">' + g.old.ele + '</span> ' + g.old.glory + '</td>'
+        + '<td style="padding:2px 6px;">→</td>'
+        + '<td style="padding:2px 6px;">' + g.new.num + ' <span class="element-' + g.new.ele + '">' + g.new.ele + '</span> <strong>' + g.new.glory + '</strong></td></tr>';
+    });
+    html += '</tbody></table>';
+    if (cmp.favorable) {
+      var fmt = function(h) { return h.length ? '已補' + h.join('、') : '未補'; };
+      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">☯️ 命格喜用' + cmp.favorable.join('、') + '：原名' + fmt(cmp.oldHits) + '，新名' + fmt(cmp.newHits) + '</p>';
+    }
+    return html;
   }
 
   // ============ 開運指南 ============
@@ -2201,7 +2298,7 @@
   /** 把畫面上的鑑定書轉成適合朗讀的文字：表格唸成「欄位 值」，略過按鈕與印章 */
   function reportCardToSpeech(card) {
     var box = card.cloneNode(true);
-    box.querySelectorAll('.report-actions, .report-cert-stamp, button').forEach(function(el) { el.remove(); });
+    box.querySelectorAll('.report-actions, .report-cert-stamp, .rename-compare, button').forEach(function(el) { el.remove(); });
     // 五行環：每個五行合成一句「木 1次 (20%) 偏弱」
     box.querySelectorAll('.wuxing-ring-item').forEach(function(it) {
       var p = document.createElement('p');
