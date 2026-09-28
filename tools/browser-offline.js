@@ -57,18 +57,22 @@
   // 等 Service Worker 安裝完成、資源（含字型）都進快取
   var cached = await evaluate(`(async () => {
     await navigator.serviceWorker.ready;
-    const need = ['/fonts/NotoSansTC-subset.woff2', '/fonts/NotoSerifTC-subset.woff2', '/fonts/MaShanZheng-display.woff2'];
+    // 字型切片的檔名含雜湊，直接看 sw.js 的預先快取清單要哪些。
+    // 加查詢參數繞過 Service Worker：它是快取優先，會回傳快取裡的舊 sw.js
+    const sw = await (await fetch('sw.js?' + Date.now())).text();
+    const version = (sw.match(/CACHE_NAME = '([^']+)'/) || [])[1];
+    const need = (sw.match(/[.][/]fonts[/][^']+/g) || []).map(f => f.slice(1));
+    if (!version || need.length < 2) return 'NO-FONTS-IN-SW';
+    // 只認目前版本的快取（舊版本的快取也可能剛好有同名檔案）
     const t0 = Date.now();
     while (Date.now() - t0 < 60000) {
-      const names = (await caches.keys()).filter(k => /^name-harmony-/.test(k));
-      for (const n of names) {
-        const c = await caches.open(n);
-        const keys = (await c.keys()).map(r => new URL(r.url).pathname);
-        if (need.every(f => keys.includes(f))) return n + ':' + keys.length;
+      if ((await caches.keys()).includes(version)) {
+        const keys = (await (await caches.open(version)).keys()).map(r => new URL(r.url).pathname);
+        if (need.every(f => keys.includes(f))) return version + ':' + keys.length;
       }
       await new Promise(r => setTimeout(r, 500));
     }
-    return 'TIMEOUT';
+    return 'TIMEOUT ' + version;
   })()`);
   console.log('  快取：' + cached);
 
@@ -80,9 +84,10 @@
   await new Promise(function(r) { setTimeout(r, 4000); });
 
   var offline = await evaluate(`(async () => {
-    const loaded = [...document.fonts]
-      .filter(f => /^(Noto Sans TC|Noto Serif TC|Ma Shan Zheng)$/.test(f.family.replace(/"/g, '')))
-      .map(f => f.family.replace(/"/g, '') + ':' + f.status).sort().join(' ');
+    await document.fonts.ready;
+    const faces = [...document.fonts];
+    const loaded = ['Ma Shan Zheng', 'Noto Sans TC', 'Noto Serif TC'].map(fam =>
+      fam + ':' + (faces.some(f => f.family.replace(/"/g, '') === fam && f.status === 'loaded') ? 'loaded' : 'none')).join(' ');
     return { online: navigator.onLine, title: document.title, fonts: loaded,
       heading: (document.querySelector('.app-title') || {}).textContent || '',
       body: document.body.innerText.length };

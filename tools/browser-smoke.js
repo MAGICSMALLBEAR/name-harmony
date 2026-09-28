@@ -70,10 +70,14 @@
     const out = {};
 
     // 自架字型：三套都要載入（瀏覽器擴充功能也注入了一堆字型，只看自家的三套）
+    // 字型依 unicode-range 切片：每套至少有一片已載入，且首次畫面不該把整套都載入
     await document.fonts.ready;
-    out.fonts = [...document.fonts]
-      .filter(f => /^(Noto Sans TC|Noto Serif TC|Ma Shan Zheng)$/.test(f.family.replace(/"/g, '')))
-      .map(f => f.family.replace(/"/g, '') + ':' + f.status).sort().join(' ');
+    const faces = [...document.fonts].filter(f => /^(Noto Sans TC|Noto Serif TC|Ma Shan Zheng)$/.test(f.family.replace(/"/g, '')));
+    out.fonts = ['Ma Shan Zheng', 'Noto Sans TC', 'Noto Serif TC'].map(fam => {
+      const mine = faces.filter(f => f.family.replace(/"/g, '') === fam);
+      return fam + ':' + (mine.some(f => f.status === 'loaded') ? 'loaded' : 'none');
+    }).join(' ');
+    out.fontSlicesAtStart = faces.filter(f => f.status === 'loaded').length + '/' + faces.length;
     out.fontChecks = [
       document.fonts.check('16px "Noto Sans TC"', '姓名') ? 'sans' : 'NO-sans',
       document.fonts.check('16px "Noto Serif TC"', '姓名') ? 'serif' : 'NO-serif',
@@ -162,6 +166,7 @@
   var expect = {
     fonts: /^Ma Shan Zheng:loaded Noto Sans TC:loaded Noto Serif TC:loaded$/,
     fontChecks: /^sans serif display$/,
+    fontSlicesAtStart: /^([1-9]|1\d)\/\d{2,}$/,   // 首次畫面只載入少數幾片（不到 20 片）
     baby: /温/,
     printFonts: /^loaded check$/,
     trendEnglish: /Linda[\s\S]*1940 年代[\s\S]*時代感/,

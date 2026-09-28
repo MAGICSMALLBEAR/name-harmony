@@ -3,16 +3,25 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v22';
+var CACHE_NAME = 'name-harmony-v23';
 
 var ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
-  './fonts/NotoSansTC-subset.woff2',
-  './fonts/NotoSerifTC-subset.woff2',
-  './fonts/MaShanZheng-display.woff2',
+  // fonts:start（由 tools/gen-fonts.py 產生；其餘切片用到時才下載，下載後由 fetch 存進快取）
+  './fonts/fonts.css',
+  './fonts/NotoSansTC-0.28af6ee3.woff2',
+  './fonts/NotoSansTC-1.d90605c1.woff2',
+  './fonts/NotoSansTC-2.82894176.woff2',
+  './fonts/NotoSansTC-3.79205d43.woff2',
+  './fonts/NotoSansTC-4.fa23ed54.woff2',
+  './fonts/NotoSerifTC-0.6acf0028.woff2',
+  './fonts/NotoSerifTC-1.e1ee6192.woff2',
+  './fonts/MaShanZheng-0.358392f9.woff2',
+  './fonts/MaShanZheng-1.fdb04ef6.woff2',
+  // fonts:end
   './js/data/stroke-db.js',
   './js/data/s2t-map.js',
   './js/data/pinyin-db.js',
