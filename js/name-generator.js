@@ -79,6 +79,9 @@ window.NameGenerator = (function() {
       var c1 = shuffle(pool[c.s1].slice()).filter(function(x) { return !used[x]; })[0];
       var c2 = shuffle(pool[c.s2].slice()).filter(function(x) { return !used[x] && x !== c1; })[0];
       if (!c1 || !c2) continue;
+      // 「歐」＋「陽」會被當成複姓「歐陽」，五格就不是這組筆劃算出來的
+      var check = CN.analyze(surname + c1 + c2, manualStrokes);
+      if (!check || check.error || check.parsed.surname !== surname) continue;
       used[c1] = used[c2] = true;  // 同一批不重複用字，名字才有變化
       results.push({
         name: surname + c1 + c2,

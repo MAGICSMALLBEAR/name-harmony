@@ -232,6 +232,8 @@
     // 兩個名字不同、生日相同的人，鑑定書上的命格／用神／喜神必須一模一樣
     const strengths = [...out.xiYongUi.matchAll(/命格：(\\S+?) 用神：([木火土金水]) 喜神：([木火土金水])/g)].map(m => m.slice(1).join('/'));
     out.xiYongSame = strengths.length >= 2 && new Set(strengths).size === 1 ? 'same:' + strengths[0] : 'diff:' + strengths.join(' ');
+    // 易經動爻：陳小明起得離為火、動第三爻 → 顯示爻辭原文與白話（不再是「尚未收錄」）
+    out.yaoUi = (out.xiYongUi.match(/第3爻】 九三：[^ ]+ 白話：[^ ]+/) || [(out.xiYongUi.match(/動爻解析.{0,80}/) || ["（沒有爻辭）"])[0]])[0];
     // 風水方位要跟喜用神走，不能又退回人格五行
     out.fengshui = (out.xiYongUi.match(/依命格用神屬[木火土金水]，居家/) || ['（沒跟喜用神）'])[0];
     document.querySelector('.tab-btn[data-tab="lucky"]').click();
@@ -302,6 +304,7 @@
     xiYongUi: /日主：[木火土金水]（[甲乙丙丁戊己庚辛壬癸]） 命格：(身強|中和偏強|中和偏弱|身弱) 用神：[木火土金水] 喜神：[木火土金水]/,
     xiYongSame: /^same:/,
     fengshui: /^依命格用神屬[木火土金水]，居家$/,
+    yaoUi: /^第3爻】 九三：日昃之離，不鼓缶而歌，則大耋之嗟，凶。 白話：/,
     luckyDays: /近期吉日（喜用[木火土金水]、[木火土金水]、避忌神/,
     career: /^用神屬[木火土金水]，較能發揮的領域：/,
     rename: /陳小明 → 陳大維：.+（吉數 \d→\d、凶數 \d→\d）.*天格.*總格.*命格喜用[木火土金水]、[木火土金水]：原名(已補|未補).*新名(已補|未補)/,

@@ -16,7 +16,8 @@ vm.createContext(ctx);
   'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name',
   'zodiac-bazi', 'baby-name', 'professional',
   'data/name-trends', 'naming-extensions', 'iching',
-  'data/english-number-meanings', 'english-numerology', 'name-generator'
+  'data/english-number-meanings', 'english-numerology', 'name-generator',
+  'data/iching-yao', 'deep-readings'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
@@ -315,6 +316,34 @@ section('易經起卦', function() {
   // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離
   var cn = ctx.ChineseNumerology.analyze('陳小明');
   ok(I.nameToHexagram(cn).hexName === '離為火', '陳小明應起得離為火');
+
+  // 爻辭：64 卦 × 6 爻，爻題的九／六必須與卦象的陽／陰爻一致（由卦名推上下卦，獨立於 iching.js）
+  var BITS = { '乾': '111', '兌': '110', '離': '101', '震': '100', '巽': '011', '坎': '010', '艮': '001', '坤': '000' };
+  var POS = ['初', '二', '三', '四', '五', '上'];
+  var Y = ctx.IChingYao;
+  ok(Y && Object.keys(Y).length === 64, '爻辭收錄 64 卦');
+  I.getAllHexagrams().forEach(function(h, k) {
+    var pure = h.n.match(/^(.+)為(.)$/);
+    var up = pure ? pure[1] : IMG[h.n[0]], low = pure ? pure[1] : IMG[h.n[1]];
+    var lines = (BITS[low] + BITS[up]).split('');
+    var yao = Y[k + 1];
+    ok(yao && yao.length === 6, h.n + ' 六爻齊全');
+    (yao || []).forEach(function(y, i) {
+      var label = y[0];
+      ok(label.indexOf(POS[i]) >= 0, h.n + ' 第' + (i + 1) + '爻爻題 ' + label);
+      ok(label.indexOf(lines[i] === '1' ? '九' : '六') >= 0, h.n + ' 第' + (i + 1) + '爻陰陽：' + label + ' 應為' + (lines[i] === '1' ? '陽' : '陰'));
+      ok(y[1].length >= 2 && y[2].length >= 10 && !/[{}<>|\[\]「」]/.test(y[1]), h.n + ' ' + label + ' 原文與白話');
+      var r = ctx.DeepReadings.getHexagramDeepReading({ hexIndex: k + 1, hexName: h.n, hexUnicode: h.u, element: h.el, glory: h.g, description: h.d,
+        upperTrigram: up, lowerTrigram: low, movingYao: i + 1 }, cn);
+      ok(r.indexOf(label + '：' + y[1]) >= 0 && r.indexOf('白話：') >= 0 && r.indexOf('未載入') < 0, h.n + ' ' + label + ' 深度解讀含爻辭');
+    });
+  });
+  // 已知原文（易錯字）：兩個來源曾不一致的地方
+  var known = { '9-3': '輿說輻', '10-6': '考祥', '26-4': '童牛之牿', '30-3': '大耋之嗟', '52-5': '言有序', '59-1': '用拯馬壯，吉。', '61-4': '月幾望', '12-5': '繫于苞桑', '24-1': '无祇悔' };
+  Object.keys(known).forEach(function(key) {
+    var p = key.split('-');
+    ok(Y[p[0]][p[1] - 1][1].indexOf(known[key]) >= 0, '第' + p[0] + '卦第' + p[1] + '爻應含「' + known[key] + '」：' + Y[p[0]][p[1] - 1][1]);
+  });
 });
 
 section('喜用神（扶抑法）', function() {
@@ -452,6 +481,12 @@ section('吉數姓名推薦', function() {
       for (var i = 1; i < list.length; i++) ok(list[i - 1].goodCount >= list[i].goodCount, sn + ' 依吉數多寡排序');
     });
   });
+  // 單姓「歐」配上「陽」字會變成複姓「歐陽」：不能產生這種名字（五格會跟著變）
+  for (var t = 0; t < 200; t++) {
+    ['歐', '司', '諸'].forEach(function(sn) {
+      G.suggestNames(sn, '').forEach(function(r) { ok(CN.analyze(r.name).parsed.surname === sn, sn + ' → ' + r.name + ' 姓氏仍為' + sn); });
+    });
+  }
   // 男生不會出現女性字、女生不會出現男性字（舊版選「男」與「全部」同一份字表）
   var maleF = 0, femaleM = 0;
   for (var k = 0; k < 50; k++) {
