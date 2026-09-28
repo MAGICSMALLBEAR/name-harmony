@@ -2107,6 +2107,9 @@
 
   // ============ 姓名生成器 UI ============
   function genCardsHtml(names) {
+    if (names && names.length && names[0].note) {
+      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">⚠️ ' + escHtml(names[0].note) + '</p>';
+    }
     if (!names || !names.length) {
       return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">這個姓氏暫時找不到合適的吉數組合，換個性別或稍後再試。</p>';
     }
@@ -2136,9 +2139,8 @@
     });
     if (!surname || !window.NameGenerator) return '';
 
-    var names = window.NameGenerator.suggestNames(surname, genGender || 'unisex');
-    // 姓氏有字不在筆劃庫時 suggestNames 會回傳帶 note 的結果，此時整個區塊不顯示
-    if (names && names.length && names[0].note) return '';
+    // 姓氏的罕用字要沿用分析時補的手動筆劃，否則整個區塊算不出來
+    var names = window.NameGenerator.suggestNames(surname, genGender, manualStrokes);
 
     var html = '<div class="fortune-detail" id="genBlock" data-surname="' + surname + '" style="margin-bottom:var(--space-lg);">';
     html += '<h3>🎯 吉數姓名推薦（姓氏：' + surname + '）</h3>';
@@ -2160,7 +2162,7 @@
     var block = document.getElementById('genBlock');
     var box = document.getElementById('genResults');
     if (!block || !box || !window.NameGenerator) return;
-    box.innerHTML = genCardsHtml(window.NameGenerator.suggestNames(block.dataset.surname, genGender || 'unisex'));
+    box.innerHTML = genCardsHtml(window.NameGenerator.suggestNames(block.dataset.surname, genGender, manualStrokes));
   }
 
   function wireNameGenerator() {

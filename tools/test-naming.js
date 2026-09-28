@@ -1,6 +1,6 @@
 /**
  * 取名工具的大量檢查（不需要瀏覽器）：node tools/test-naming.js
- * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦、喜用神、生日靈數、改名對比
+ * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦、喜用神、生日靈數、改名對比、吉數姓名推薦
  */
 var vm = require('vm');
 var fs = require('fs');
@@ -16,7 +16,7 @@ vm.createContext(ctx);
   'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name',
   'zodiac-bazi', 'baby-name', 'professional',
   'data/name-trends', 'naming-extensions', 'iching',
-  'data/english-number-meanings', 'english-numerology'
+  'data/english-number-meanings', 'english-numerology', 'name-generator'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
@@ -425,6 +425,45 @@ section('改名對比', function() {
     var r = P.compareNames(n1, n2);
     ok(r && !r.error && r.improvement === (r.newGood - r.oldGood) + (r.oldBad - r.newBad), n1 + '→' + n2 + ' 改善分數一致');
   }
+});
+
+section('吉數姓名推薦', function() {
+  var G = ctx.NameGenerator, CN = ctx.ChineseNumerology;
+  ok(G.AUSPICIOUS_NUMBERS.join() === '1,3,5,6,7,8,11,13,15,16,17,18,21,23,24,25,31,32,33,35,37,39,41,45,47,48,52,57,58,61,63,65,67,68,81', '吉數表由 81 數推導，與原本一致');
+  var tag = {};
+  ctx.NameChars.forEach(function(l) { var p = l.split('|'); tag[p[0]] = p[3] + (p[4] || ''); });
+  var ALLOWED = { male: 'mn', female: 'fn', '': 'mfn' };
+  SURNAMES.concat(['歐陽', '司馬', '諸葛']).forEach(function(sn) {
+    ['male', 'female', ''].forEach(function(g) {
+      var list = G.suggestNames(sn, g);
+      ok(list.length >= 6 && !list[0].note, sn + '（' + (g || '全部') + '）至少 6 個推薦：' + list.length);
+      var seen = {};
+      list.forEach(function(r) {
+        var cn = CN.analyze(r.name);
+        ok(!cn.hasUnknown && ['tian', 'ren', 'di', 'wai', 'zong'].every(function(k) { return cn.grids[k].number === r.grids[k]; }), r.name + ' 五格與全站分析一致');
+        ok(G.isAuspicious(r.grids.ren) && r.goodCount >= 3, r.name + ' 人格吉且至少三吉');
+        ok(r.element === cn.grids.ren.element, r.name + ' 人格五行一致');
+        r.chars.forEach(function(c) {
+          ok(tag[c] && tag[c].indexOf('t') < 0 && ALLOWED[g].indexOf(tag[c][0]) >= 0, r.name + ' 的「' + c + '」符合性別（' + (g || '全部') + '）：' + tag[c]);
+          ok(!seen[c], sn + ' 同一批不重複用字：' + c);
+          seen[c] = true;
+        });
+      });
+      for (var i = 1; i < list.length; i++) ok(list[i - 1].goodCount >= list[i].goodCount, sn + ' 依吉數多寡排序');
+    });
+  });
+  // 男生不會出現女性字、女生不會出現男性字（舊版選「男」與「全部」同一份字表）
+  var maleF = 0, femaleM = 0;
+  for (var k = 0; k < 50; k++) {
+    G.suggestNames('陳', 'male').forEach(function(r) { r.chars.forEach(function(c) { if (tag[c][0] === 'f') maleF++; }); });
+    G.suggestNames('陳', 'female').forEach(function(r) { r.chars.forEach(function(c) { if (tag[c][0] === 'm') femaleM++; }); });
+  }
+  ok(maleF === 0 && femaleM === 0, '性別不混用（男出現女性字 ' + maleF + '、女出現男性字 ' + femaleM + '）');
+  // 姓氏是罕用字：沒有手動筆劃時說明原因，有手動筆劃時照常推薦
+  var none = G.suggestNames('龘', 'male');
+  ok(none.length === 1 && none[0].note && none[0].unknownChars[0] === '龘', '罕用姓氏 → 說明原因');
+  var manual = G.suggestNames('龘', 'male', { '龘': 48 });
+  ok(manual.length >= 6 && manual.every(function(r) { return CN.analyze(r.name, { '龘': 48 }).grids.ren.number === r.grids.ren; }), '罕用姓氏＋手動筆劃 → 照常推薦且五格正確');
 });
 
 var pending = 1;

@@ -240,6 +240,8 @@
     await wait(() => !$('resultsSection').classList.contains('hidden'));
     out.manual = $('resultsSection').classList.contains('hidden') ? 'stuck'
       : /龘/.test($('membersContent').innerText) ? 'analyzed' : 'no-name';
+    // 姓氏是罕用字：推薦區塊要沿用手動筆劃，不能整塊消失
+    out.genManual = $('genResults') ? ($('genResults').querySelectorAll('.gen-name-card').length + ':' + (/^龘/.test($('genResults').innerText.trim()) ? '龘' : $('genResults').innerText.trim().slice(0, 20))) : 'no-block';
     const manualCn = window.ChineseNumerology.analyze('龘小明', { '龘': 48 });
     out.manualGrid = manualCn.grids.ren.number + '/' + manualCn.grids.zong.number;
 
@@ -280,6 +282,7 @@
     hexagram: /^離為火 上離下離 3爻→火雷噬嗑$/,
     manualShown: /^yes$/,
     manual: /^analyzed$/,
+    genManual: /^6:龘$/,
     // 龘 手動 48 劃：人格 48+3=51、總格 48+3+8=59
     manualGrid: /^51\/59$/
   };
