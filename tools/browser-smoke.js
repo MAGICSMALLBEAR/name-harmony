@@ -140,6 +140,19 @@
     $('analyzeBtn').click();
     await wait(() => $('reportContent') && $('reportContent').textContent.trim().length > 100);
     out.aiContext = window.AiReading.collectContext().match(/^# .*/gm).join(',');
+
+    // 吉數姓名推薦：性別選單與「換一批」先前沒有事件處理，是死的
+    const genSamples = [$('genResults').innerText];
+    for (let i = 0; i < 3; i++) { $('genRefresh').click(); genSamples.push($('genResults').innerText); }
+    out.genRefresh = new Set(genSamples).size > 1 ? 'changed' : 'same';
+    $('genGender').value = 'female';
+    $('genGender').dispatchEvent(new Event('change'));
+    out.genGender = $('genResults').innerText.length > 0 ? 'rendered' : 'empty';
+
+    // 易經起卦：人格→上卦、地格→下卦（先天八卦取數），動爻翻轉要得到真正的變卦
+    const cnHex = window.ChineseNumerology.analyze('陳小明');
+    const hex = window.IChing.nameToHexagram(cnHex);
+    out.hexagram = hex.hexName + ' 上' + hex.upperTrigram + '下' + hex.lowerTrigram + ' ' + hex.movingYao + '爻→' + window.IChing.changedHexagram(hex).n;
     const calls = [], sleep = ms => new Promise(r => setTimeout(r, ms));
     class APIError extends Error {}
     class APIUserAbortError extends APIError {}
@@ -170,6 +183,21 @@
     out.ai = [calls[0].model, calls[0].fallbacks, calls[1].messages.map(m => m.role).join('/'), window.AiReading._messages().length,
       document.querySelector('.ai-bot h4') ? 'h4' : 'no-h4', $('aiLog').innerText.includes('已停止') ? 'stopped' : 'not-stopped'].join(' ');
     $('aiRemoveKey').click();
+
+    // 手動筆劃：筆劃庫沒有的字，補上筆劃後要真的完成分析（先前輸入值不會被套用，會卡在手動輸入卡）
+    $('backBtn').click();
+    $('cnA').value = '龘小明'; $('cnB').value = '王大明';
+    $('analyzeBtn').click();
+    await wait(() => !$('manualStrokeCard').classList.contains('hidden'));
+    out.manualShown = $('manualStrokeCard').classList.contains('hidden') ? 'no' : 'yes';
+    document.querySelectorAll('#manualStrokeFields input').forEach(i => { i.value = '48'; });
+    $('manualStrokeBtn').click();
+    await wait(() => !$('resultsSection').classList.contains('hidden'));
+    out.manual = $('resultsSection').classList.contains('hidden') ? 'stuck'
+      : /龘/.test($('membersContent').innerText) ? 'analyzed' : 'no-name';
+    const manualCn = window.ChineseNumerology.analyze('龘小明', { '龘': 48 });
+    out.manualGrid = manualCn.grids.ren.number + '/' + manualCn.grids.zong.number;
+
     return out;
   })()`);
 
@@ -188,7 +216,16 @@
     personality: /開放性 50\/100/,          // 正向題 5 分、反向題也 5 分 → 平均 3 → 50
     family: /用了家長「王大明」名字中的「明」/,
     aiContext: /^# 成員分析,# 配對矩陣,# 團隊報告,# 鑑定書$/,
-    ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/
+    ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/,
+    genRefresh: /^changed$/,
+    genGender: /^rendered$/,
+    // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離（離為火）；
+    // 總格 27 % 6 = 3 → 三爻動，下卦離 101 翻第三爻成 100（震）→ 火雷噬嗑
+    hexagram: /^離為火 上離下離 3爻→火雷噬嗑$/,
+    manualShown: /^yes$/,
+    manual: /^analyzed$/,
+    // 龘 手動 48 劃：人格 48+3=51、總格 48+3+8=59
+    manualGrid: /^51\/59$/
   };
   // 標題實際用哪個字型畫的（比 document.fonts 更直接：字型有沒有真的套用）
   // 書法體是簡體字型，標題「姓名和盤」的「盤」會退回 Noto Serif TC，所以只要求前段是書法體

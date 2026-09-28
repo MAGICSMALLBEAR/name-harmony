@@ -53,9 +53,9 @@ window.NamingExtensions = (function() {
     return true;
   }
 
-  /** 1950 → 祖父母輩 等世代說法（以 2025 年為基準） */
+  /** 1950 → 祖父母輩 等世代說法（以今年為基準） */
   function generationOf(year) {
-    var age = 2025 - year;
+    var age = new Date().getFullYear() - year;
     if (age >= 60) return '祖父母輩';
     if (age >= 35) return '父母輩';
     if (age >= 15) return '年輕一代';

@@ -21,7 +21,7 @@ window.DeepReadings = (function() {
     }
 
     // 變卦（動爻陰陽翻轉）
-    var changedHex = getChangedHexagram(hex.hexIndex, hex.movingYao);
+    var changedHex = getChangedHexagram(hex);
     if (changedHex) {
       parts.push('【變卦】' + changedHex.u + ' ' + changedHex.n + '（' + changedHex.g + '）');
       parts.push('此卦代表事情發展的趨勢與結果：' + changedHex.d);
@@ -42,16 +42,24 @@ window.DeepReadings = (function() {
       12: ['拔茅茹以其彙：暫且忍耐，保存實力。','包承小人吉：明哲保身，暫且退讓。','包羞位不當：忍受屈辱，等待時機。','有命無咎：聽天由命，順其自然。','休否大人吉：危機將過，貴人相助。','傾否先否後喜：困境終於結束。']
     };
     if (readings[hexIdx] && readings[hexIdx][yao-1]) return readings[hexIdx][yao-1];
-    return '此爻提示你在此階段需要特別注意的轉折點。觀察當前的變化，審慎做出決定。';
+    // 尚未收錄該卦爻辭時，依爻位解讀（不作假引文）
+    return '（此卦爻辭尚未收錄，以下依爻位解讀）' + YAO_POSITION[yao];
   }
 
-  function getChangedHexagram(hexIdx, yao) {
-    // 簡化：取相鄰卦作為變卦
-    var changedIdx = hexIdx + (yao <= 3 ? 1 : -1);
-    if (changedIdx < 1) changedIdx = 64;
-    if (changedIdx > 64) changedIdx = 1;
-    var allHex = window.IChing ? window.IChing.HEXAGRAMS : [];
-    return allHex[changedIdx] || null;
+  // 六爻爻位的基本意義：由下而上代表事情的發展階段
+  var YAO_POSITION = {
+    1: '初爻居全卦最下，代表事情的開端。此時位卑力薄，宜潛伏準備、打好基礎，不宜急於表現。',
+    2: '二爻居下卦之中，居中得正，通常是全卦較安穩的位置。宜守中道、與人合作，踏實經營。',
+    3: '三爻居下卦之極，正處內外卦交界，進退兩難，傳統上多凶險。宜謹慎自守，不可躁進。',
+    4: '四爻居上卦之初，已接近核心但地位尚未穩固。宜謹言慎行、觀察形勢，伺機而動。',
+    5: '五爻居上卦之中，是全卦最尊貴的君位，多半為吉。宜承擔責任、發揮影響力，是全局的關鍵。',
+    6: '上爻居全卦之極，物極必反。此時宜知所進退、見好就收，不宜戀棧。'
+  };
+
+  function getChangedHexagram(hexResult) {
+    if (!hexResult) return null;
+    if (window.IChing && window.IChing.changedHexagram) return window.IChing.changedHexagram(hexResult);
+    return null;
   }
 
   function getPersonalGuidance(glory, cnResult) {
@@ -109,10 +117,18 @@ window.DeepReadings = (function() {
       6:{n:'Tiphareth 美麗',desc:'和諧與平衡，心靈的中心。你追求內在與外在的平衡與美。',color:'金'},
       7:{n:'Netzach 勝利',desc:'情感與藝術，永不放棄的精神。你被藝術、愛與美所驅動。',color:'綠'},
       8:{n:'Hod 榮耀',desc:'智慧與溝通，邏輯與語言的力量。你擁有條理分明的思維。',color:'橙'},
-      9:{n:'Yesod 基礎',desc:'潛意識與夢境，連接物質與靈性的橋樑。你的直覺極強。',color:'紫'}
+      9:{n:'Yesod 基礎',desc:'潛意識與夢境，連接物質與靈性的橋樑。你的直覺極強。',color:'紫'},
+      10:{n:'Malkuth 王國',desc:'物質世界的實現，將一切靈性落實為具體成果。你擅長把理想變成看得見的成果。',color:'褐'}
     };
-    var s = sephiroth[chaldeanNum] || sephiroth[9];
-    return '【卡巴拉生命樹】數字' + chaldeanNum + '對應生命之樹的「' + s.n + '」質點。' + s.desc + ' 代表色：' + s.color + '。';
+    // 大師數（11/22/33）化簡後才對應質點：11→2、22→4、33→6
+    var base = chaldeanNum;
+    var isMaster = chaldeanNum === 11 || chaldeanNum === 22 || chaldeanNum === 33;
+    if (isMaster) base = chaldeanNum === 11 ? 2 : chaldeanNum === 22 ? 4 : 6;
+    var s = sephiroth[base] || sephiroth[9];
+    var head = isMaster
+      ? '【卡巴拉生命樹】' + chaldeanNum + ' 屬大師數，化簡為 ' + base + '，對應生命之樹的「' + s.n + '」質點。'
+      : '【卡巴拉生命樹】數字' + chaldeanNum + '對應生命之樹的「' + s.n + '」質點。';
+    return head + s.desc + ' 代表色：' + s.color + '。';
   }
 
   // ========== 公開 API ==========

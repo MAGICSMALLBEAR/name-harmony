@@ -24,6 +24,18 @@ window.Professional = (function() {
            '古云：「地格佳者，幼年得蔭，基礎穩固。」'],
       凶: ['《姓名學》云：「地格凶數，少年坎坷，家運不濟。」']
     },
+    外格: {
+      吉: ['《姓名學》云：「外格吉數，人緣廣闊，得貴人相助，出外順遂。」',
+           '古云：「外格佳者，善與人交，處世圓融。」'],
+      凶: ['《姓名學》云：「外格凶數，人際多阻，易招是非。」',
+           '古云：「外格不吉，孤立無援，宜廣結善緣。」']
+    },
+    總格: {
+      吉: ['《姓名學》云：「總格吉數，晚運昌隆，一生努力終得善果。」',
+           '古云：「總格佳者，福澤綿長，老而彌堅。」'],
+      凶: ['《姓名學》云：「總格凶數，晚景多磨，宜及早積福養德。」',
+           '古云：「總格不吉，如舟行遇風，持之以恆方能靠岸。」']
+    },
     三才: {
       吉: ['《姓名學》云：「三才配置得宜，天人地相生，運勢亨通。」',
            '《五行精紀》曰：「三才和合者，天地人三才貫通，福澤綿長。」'],
@@ -155,10 +167,11 @@ window.Professional = (function() {
 
     // 取得各格吉凶統計
     var gridDetails = [];
+    var QUOTE_KEY = { tian: '天格', ren: '人格', di: '地格', wai: '外格', zong: '總格' };
     ['tian','ren','di','wai','zong'].forEach(function(k) {
       var g = grids[k];
       var fortune = g.fortune;
-      var q = getClassicalQuote(k === 'tian' ? '天格' : k === 'ren' ? '人格' : k === 'di' ? '地格' : k === 'wai' ? '天格' : '天格',
+      var q = getClassicalQuote(QUOTE_KEY[k],
         fortune && (fortune.glory === '大吉' || fortune.glory === '吉' || fortune.glory === '中吉'));
       gridDetails.push({
         name: g.name, number: g.number, element: g.element,

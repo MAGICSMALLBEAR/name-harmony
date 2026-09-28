@@ -72,10 +72,42 @@ window.IChing = (function() {
     {n:'火水未濟',u:'䷿',el:'火',g:'凶',d:'尚未成功，革命未成。繼續努力，不可半途而廢。'}
   ];
 
+  // 先天八卦取數：乾一、兌二、離三、震四、巽五、坎六、艮七、坤八（餘 0 取坤）
+  var TRIGRAM_BY_NUMBER = ['坤','乾','兌','離','震','巽','坎','艮'];
+
+  // 上下卦 → 卦序（King Wen）。HEXAGRAMS 依卦序排列，這張表由卦名推導
+  // （卦名首二字即上卦、下卦），與 HEXAGRAMS 的排列互相驗證。
+  // 每列依下卦 乾,兌,離,震,巽,坎,艮,坤 排列。
+  var KING_WEN = {
+    '乾': [ 1, 10, 13, 25, 44,  6, 33, 12],
+    '兌': [43, 58, 49, 17, 28, 47, 31, 45],
+    '離': [14, 38, 30, 21, 50, 64, 56, 35],
+    '震': [34, 54, 55, 51, 32, 40, 62, 16],
+    '巽': [ 9, 61, 37, 42, 57, 59, 53, 20],
+    '坎': [ 5, 60, 63,  3, 48, 29, 39,  8],
+    '艮': [26, 41, 22, 27, 18,  4, 52, 23],
+    '坤': [11, 19, 36, 24, 46,  7, 15,  2]
+  };
+  var LOWER_ORDER = ['乾','兌','離','震','巽','坎','艮','坤'];
+
+  // 各卦由下而上的陰陽（1 陽、0 陰），供變卦翻爻用
+  var TRIGRAM_BITS = {
+    '乾':[1,1,1], '兌':[1,1,0], '離':[1,0,1], '震':[1,0,0],
+    '巽':[0,1,1], '坎':[0,1,0], '艮':[0,0,1], '坤':[0,0,0]
+  };
+  var TRIGRAM_BY_BITS = { '111':'乾', '110':'兌', '101':'離', '100':'震', '011':'巽', '010':'坎', '001':'艮', '000':'坤' };
+
   function getTrigram(num) {
     var n = num % 8;
-    var trigrams = ['坤','震','坎','兌','艮','離','巽','乾'];
-    return { name: trigrams[n], index: n };
+    return { name: TRIGRAM_BY_NUMBER[n], index: n };
+  }
+
+  /** 由上卦、下卦取卦（回傳 HEXAGRAMS 的項目，含 1–64 的卦序） */
+  function hexagramOf(upper, lower) {
+    var row = KING_WEN[upper];
+    var col = LOWER_ORDER.indexOf(lower);
+    if (!row || col < 0) return null;
+    return HEXAGRAMS[row[col]] || null;
   }
 
   /** 姓名起卦：上卦=人格, 下卦=地格, 動爻=總格 */
@@ -89,13 +121,11 @@ window.IChing = (function() {
     var lower = getTrigram(di);
     var movingYao = (zong % 6) || 6;
 
-    // 上卦*8 + 下卦 = 序號
-    var hexIdx = upper.index * 8 + lower.index + 1;
-    var hex = HEXAGRAMS[hexIdx];
-    if (!hex) hex = HEXAGRAMS[1];
+    var hex = hexagramOf(upper.name, lower.name);
+    if (!hex) return null;
 
     return {
-      hexIndex: hexIdx,
+      hexIndex: HEXAGRAMS.indexOf(hex),
       hexName: hex.n,
       hexUnicode: hex.u,
       element: hex.el,
@@ -108,11 +138,32 @@ window.IChing = (function() {
     };
   }
 
+  /** 變卦：把動爻的陰陽翻轉，重組上下卦後重取卦 */
+  function changedHexagram(hexResult) {
+    if (!hexResult) return null;
+    var yao = hexResult.movingYao;
+    var lowerBits = TRIGRAM_BITS[hexResult.lowerTrigram];
+    var upperBits = TRIGRAM_BITS[hexResult.upperTrigram];
+    if (!lowerBits || !upperBits || yao < 1 || yao > 6) return null;
+
+    // 初爻（1）在下卦最下方，上爻（6）在上卦最上方
+    if (yao <= 3) lowerBits = lowerBits.slice();
+    else upperBits = upperBits.slice();
+    var arr = yao <= 3 ? lowerBits : upperBits;
+    var pos = yao <= 3 ? yao - 1 : yao - 4;
+    arr[pos] = arr[pos] ? 0 : 1;
+
+    var newLower = TRIGRAM_BY_BITS[lowerBits.join('')];
+    var newUpper = TRIGRAM_BY_BITS[upperBits.join('')];
+    return hexagramOf(newUpper, newLower);
+  }
+
   /** 64卦列表 */
   function getAllHexagrams() { return HEXAGRAMS.slice(1); }
 
   return {
     nameToHexagram: nameToHexagram,
+    changedHexagram: changedHexagram,
     getAllHexagrams: getAllHexagrams,
     HEXAGRAMS: HEXAGRAMS
   };

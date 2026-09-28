@@ -51,6 +51,10 @@
   var currentData = null;
   var extraCount = 0;
   var MAX_PERSONS = 5;
+  // 使用者手動輸入的筆劃（字 → 筆劃）；筆劃庫沒收錄的字靠這個才分析得下去
+  var manualStrokes = {};
+  // 吉數姓名推薦目前選擇的性別（'' 表示全部）
+  var genGender = '';
 
   // ============ 初始化 ============
   function init() {
@@ -540,7 +544,7 @@
   function analyzeOne(person) {
     var r = { cn: null, en: null, enReport: null };
     if (person.cn) {
-      r.cn = window.ChineseNumerology.analyze(person.cn);
+      r.cn = window.ChineseNumerology.analyze(person.cn, manualStrokes);
       if (r.cn.error) return { error: r.cn.error };
       if (r.cn.hasUnknown && r.cn.unknownChars.length > 0) {
         return { needsManual: true, unknownChars: r.cn.unknownChars };
@@ -847,14 +851,17 @@
   function handleManualReanalyze() {
     var inputs = manualStrokeFields.querySelectorAll('.manual-stroke-input');
     var hasErr = false;
+    var entered = {};
     inputs.forEach(function(inp) {
       var v = parseInt(inp.value);
       if (isNaN(v) || v < 1 || v > 64) { hasErr = true; inp.style.borderColor = '#F44336'; }
-      else inp.style.borderColor = 'var(--color-gold-primary)';
+      else { inp.style.borderColor = 'var(--color-gold-primary)'; entered[inp.dataset.char] = v; }
     });
     if (hasErr) { manualStrokeError.textContent = '請輸入有效筆劃(1-64)'; manualStrokeError.classList.remove('hidden'); return; }
-    // 簡單重置重試（目前只支援一組手動筆劃，複雜情境需改進）
-    toast('手動筆劃已設定，請重新點擊分析按鈕');
+    // 記住這次輸入的筆劃，再跑一次分析；analyzeOne 會把它們一起送進五格計算
+    Object.keys(entered).forEach(function(c) { manualStrokes[c] = entered[c]; });
+    manualStrokeCard.classList.add('hidden');
+    handleAnalyze();
   }
 
   // ============ 分頁 ============
@@ -915,6 +922,7 @@
       html += '</div></div>';
     });
     membersContent.innerHTML = html;
+    wireNameGenerator();
   }
 
   function renderPersonDetail(r, bday) {
@@ -1989,6 +1997,23 @@
   }
 
   // ============ 姓名生成器 UI ============
+  function genCardsHtml(names) {
+    if (!names || !names.length) {
+      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">這個姓氏暫時找不到合適的吉數組合，換個性別或稍後再試。</p>';
+    }
+    var html = '';
+    names.slice(0, 6).forEach(function(n) {
+      if (!n.name) return;
+      var fc = n.goodCount >= 4 ? 'var(--color-fortune-great)' : 'var(--color-fortune-good)';
+      html += '<div class="gen-name-card" onclick="document.getElementById(\'cnA\').value=\'' + n.name + '\';document.getElementById(\'cnB\').focus();window.scrollTo({top:0,behavior:\'smooth\'});var t=document.createElement(\'div\');t.className=\'share-toast\';t.textContent=\'已填入：' + n.name + '\';document.body.appendChild(t);setTimeout(function(){t.remove();},2000);">';
+      html += '<div class="gen-name-text">' + n.name + '</div>';
+      html += '<div class="gen-name-info">人格' + n.grids.ren + ' ' + n.element + ' <span style="color:' + fc + ';">' + n.goodCount + '吉</span></div>';
+      html += '<div class="gen-name-strokes">天' + n.grids.tian + ' 地' + n.grids.di + ' 外' + n.grids.wai + ' 總' + n.grids.zong + '</div>';
+      html += '</div>';
+    });
+    return html;
+  }
+
   function renderNameGeneratorUI() {
     if (!currentData || !currentData.results) return '';
     // 找到第一個有中文姓名的成員的姓氏
@@ -2002,30 +2027,41 @@
     });
     if (!surname || !window.NameGenerator) return '';
 
-    var names = window.NameGenerator.suggestNames(surname);
-    if (!names || !names.length || names[0].note) return '';
+    var names = window.NameGenerator.suggestNames(surname, genGender || 'unisex');
+    // 姓氏有字不在筆劃庫時 suggestNames 會回傳帶 note 的結果，此時整個區塊不顯示
+    if (names && names.length && names[0].note) return '';
 
-    var html = '<div class="fortune-detail" style="margin-bottom:var(--space-lg);">';
+    var html = '<div class="fortune-detail" id="genBlock" data-surname="' + surname + '" style="margin-bottom:var(--space-lg);">';
     html += '<h3>🎯 吉數姓名推薦（姓氏：' + surname + '）</h3>';
     html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
-    html += '<select id="genGender" class="form-input" style="width:auto;padding:4px 8px;font-size:0.75rem;"><option value="">全部</option><option value="male">男</option><option value="female">女</option></select>';
+    html += '<select id="genGender" class="form-input" style="width:auto;padding:4px 8px;font-size:0.75rem;">'
+      + '<option value=""' + (genGender === '' ? ' selected' : '') + '>全部</option>'
+      + '<option value="male"' + (genGender === 'male' ? ' selected' : '') + '>男</option>'
+      + '<option value="female"' + (genGender === 'female' ? ' selected' : '') + '>女</option></select>';
     html += '<button id="genRefresh" class="btn-download-img" style="font-size:0.75rem;">🔄 換一批</button>';
     html += '</div>';
     html += '<p style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:8px;">確保<strong>人格（主運）為吉數</strong>，點擊名字可填入甲方：</p>';
-    html += '<div class="generator-results" id="genResults">';
-
-    names.slice(0, 6).forEach(function(n) {
-      if (!n.name) return;
-      var fc = n.goodCount >= 4 ? 'var(--color-fortune-great)' : 'var(--color-fortune-good)';
-      html += '<div class="gen-name-card" onclick="document.getElementById(\'cnA\').value=\'' + n.name + '\';document.getElementById(\'cnB\').focus();window.scrollTo({top:0,behavior:\'smooth\'});var t=document.createElement(\'div\');t.className=\'share-toast\';t.textContent=\'已填入：' + n.name + '\';document.body.appendChild(t);setTimeout(function(){t.remove();},2000);">';
-      html += '<div class="gen-name-text">' + n.name + '</div>';
-      html += '<div class="gen-name-info">人格' + n.grids.ren + ' ' + n.element + ' <span style="color:' + fc + ';">' + n.goodCount + '吉</span></div>';
-      html += '<div class="gen-name-strokes">天' + n.grids.tian + ' 地' + n.grids.di + ' 外' + n.grids.wai + ' 總' + n.grids.zong + '</div>';
-      html += '</div>';
-    });
-
-    html += '</div></div>';
+    html += '<div class="generator-results" id="genResults">' + genCardsHtml(names) + '</div>';
+    html += '</div>';
     return html;
+  }
+
+  /** 性別選單與「換一批」：重抽吉數名字，只換結果區塊，不用重繪整頁 */
+  function refreshGenResults() {
+    var block = document.getElementById('genBlock');
+    var box = document.getElementById('genResults');
+    if (!block || !box || !window.NameGenerator) return;
+    box.innerHTML = genCardsHtml(window.NameGenerator.suggestNames(block.dataset.surname, genGender || 'unisex'));
+  }
+
+  function wireNameGenerator() {
+    var genderSel = document.getElementById('genGender');
+    var refreshBtn = document.getElementById('genRefresh');
+    if (genderSel) genderSel.addEventListener('change', function() {
+      genGender = genderSel.value;
+      refreshGenResults();
+    });
+    if (refreshBtn) refreshBtn.addEventListener('click', refreshGenResults);
   }
 
   // ============ 五行說明卡 ============
@@ -2399,6 +2435,8 @@
   function handleBack() {
     showForm();
     currentData = null;
+    manualStrokes = {};
+    genGender = '';
     extraPersons.innerHTML = '';
     extraCount = 0;
     updateAddBtn();

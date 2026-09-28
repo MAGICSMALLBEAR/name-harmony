@@ -1,6 +1,6 @@
 /**
  * 取名工具的大量檢查（不需要瀏覽器）：node tools/test-naming.js
- * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名
+ * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦
  */
 var vm = require('vm');
 var fs = require('fs');
@@ -14,7 +14,7 @@ vm.createContext(ctx);
   'data/stroke-db', 'data/s2t-map', 'data/fortune-81', 'chinese-numerology',
   'data/pinyin-db', 'data/english-phonetics', 'phonetics', 'pair-harmony',
   'data/name-chars', 'data/char-element', 'data/english-translit', 'foreign-name', 'baby-name',
-  'data/name-trends', 'naming-extensions'
+  'data/name-trends', 'naming-extensions', 'iching'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
@@ -278,6 +278,41 @@ section('外國人取中文名', function() {
     });
   });
   ok(F.suggest({ english: '' }).error, '空白輸入');
+});
+
+section('易經起卦', function() {
+  var I = ctx.IChing;
+  var ORDER = ['乾','兌','離','震','巽','坎','艮','坤'];
+  var IMG = { '天':'乾', '地':'坤', '雷':'震', '風':'巽', '水':'坎', '火':'離', '山':'艮', '澤':'兌' };
+  // 卦名首二字就是上卦、下卦；用名字反查卦序，等於同時驗證對照表與 HEXAGRAMS 的排列一致
+  I.getAllHexagrams().forEach(function(h) {
+    var pure = h.n.match(/^(.+)為(.)$/);
+    var up = pure ? pure[1] : IMG[h.n[0]];
+    var low = pure ? pure[1] : IMG[h.n[1]];
+    var idx = I.HEXAGRAMS.indexOf(h);
+    ok(I.nameToHexagram({ grids: { ren: { number: ORDER.indexOf(up) + 1 }, di: { number: ORDER.indexOf(low) + 1 }, zong: { number: 1 } } }).hexIndex === idx,
+      h.n + ' 由上卦' + up + '、下卦' + low + '應得第 ' + idx + ' 卦');
+  });
+  // 變卦：動爻陰陽翻轉，六爻都要取得到，且不會等於本卦
+  I.getAllHexagrams().forEach(function(h) {
+    var pure = h.n.match(/^(.+)為(.)$/);
+    var up = pure ? pure[1] : IMG[h.n[0]];
+    var low = pure ? pure[1] : IMG[h.n[1]];
+    for (var y = 1; y <= 6; y++) {
+      var ch = I.changedHexagram({ upperTrigram: up, lowerTrigram: low, movingYao: y });
+      ok(ch && ch.n !== h.n, h.n + ' 第' + y + '爻動應有變卦且不等於本卦');
+    }
+  });
+  // 已知事實：乾為天初爻動 → 天風姤；坤為地初爻動 → 地雷復；離為火三爻動 → 火雷噬嗑
+  var known = [['乾','乾',1,'天風姤'], ['乾','乾',5,'火天大有'], ['坤','坤',1,'地雷復'],
+               ['離','離',3,'火雷噬嗑'], ['坎','震',1,'水地比'], ['坎','震',3,'水火既濟']];
+  known.forEach(function(k) {
+    ok(I.changedHexagram({ upperTrigram: k[0], lowerTrigram: k[1], movingYao: k[2] }).n === k[3],
+      '上' + k[0] + '下' + k[1] + ' 第' + k[2] + '爻動應為' + k[3]);
+  });
+  // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離
+  var cn = ctx.ChineseNumerology.analyze('陳小明');
+  ok(I.nameToHexagram(cn).hexName === '離為火', '陳小明應起得離為火');
 });
 
 var pending = 1;
