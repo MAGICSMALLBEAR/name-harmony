@@ -280,6 +280,17 @@
     const manualCn = window.ChineseNumerology.analyze('龘小明', { '龘': 48 });
     out.manualGrid = manualCn.grids.ren.number + '/' + manualCn.grids.zong.number;
 
+    // 五格超過 81：減 80 查表並註明（舊版回傳 null，畫面顯示「?」）；英文名旁顯示 MBTI 合拍類型
+    $('backBtn').click();
+    $('cnA').value = '歐陽灝灞'; $('enA').value = 'John Smith'; $('cnB').value = '王大明';
+    $('analyzeBtn').click();
+    await wait(() => !$('resultsSection').classList.contains('hidden'));
+    document.querySelector('.tab-btn[data-tab="members"]').click();
+    const zongRow = [...document.querySelectorAll('#membersContent .wuge-row')].find(r => /總格/.test(r.innerText) && /（取/.test(r.innerText));
+    out.over81 = zongRow ? zongRow.innerText.replace(/\\s+/g, ' ') : 'none:' + [...document.querySelectorAll('#membersContent .wuge-row')].map(r => r.innerText.replace(/\\s+/g, ' ')).join(' | ');
+    const mm = document.querySelector('#membersContent .mbti-match');
+    out.mbtiMatch = mm ? mm.innerText : 'none';
+
     return out;
   })()`);
 
@@ -324,7 +335,9 @@
     manual: /^analyzed$/,
     genManual: /^6:龘$/,
     // 龘 手動 48 劃：人格 48+3=51、總格 48+3+8=59
-    manualGrid: /^51\/59$/
+    manualGrid: /^51\/59$/,
+    over81: /^總格 (8[2-9]|9\d|1\d\d)（取 \d+） [木火土金水] (大吉|吉|半吉|凶)$/,
+    mbtiMatch: /^🤝 合拍類型：[A-Z]{4}、[A-Z]{4}、[A-Z]{4}（.+）$/
   };
   // 標題實際用哪個字型畫的（比 document.fonts 更直接：字型有沒有真的套用）
   // 書法體是簡體字型，標題「姓名和盤」的「盤」會退回 Noto Serif TC，所以只要求前段是書法體

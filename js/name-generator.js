@@ -12,7 +12,8 @@ window.NameGenerator = (function() {
     if (f && (f.glory === '大吉' || f.glory === '吉')) AUSPICIOUS_NUMBERS.push(n);
   }
 
-  function isAuspicious(num) { return AUSPICIOUS_NUMBERS.indexOf(num) >= 0; }
+  /** 超過 81 依 81 數循環減 80 再判斷（與 ChineseNumerology.getFortune 相同） */
+  function isAuspicious(num) { return num >= 1 && AUSPICIOUS_NUMBERS.indexOf(num > 81 ? (num - 1) % 80 + 1 : num) >= 0; }
 
   var GRID_KEYS = ['tian', 'ren', 'di', 'wai', 'zong'];
   var GENDER_TAGS = { male: 'mn', female: 'fn' };  // 其他（全部）：m、f、n 都收

@@ -172,8 +172,15 @@ window.ChineseNumerology = (function() {
   // ============ 81數吉凶查詢 ============
 
   function getFortune(num) {
-    if (num < 1 || num > 81) return null;
-    return window.fortune81[num] || null;
+    if (!(num >= 1)) return null;
+    if (num <= 81) return window.fortune81[num] || null;
+    // 81 數循環：超過 81 減 80 再查（82 → 2、161 → 1）；標出原數，說明時不會以為查錯
+    var f = window.fortune81[(num - 1) % 80 + 1];
+    if (!f) return null;
+    var copy = {};
+    for (var k in f) copy[k] = f[k];
+    copy.reducedFrom = num;
+    return copy;
   }
 
   // ============ 三才分析 ============

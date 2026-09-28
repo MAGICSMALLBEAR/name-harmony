@@ -177,6 +177,7 @@ window.Professional = (function() {
         fortune: fortune ? fortune.glory : '?',
         description: fortune ? fortune.description : '',
         implication: fortune ? fortune.implication : '',
+        reducedFrom: fortune && fortune.reducedFrom ? fortune.reducedFrom : null,
         quote: q
       });
     });

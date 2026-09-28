@@ -17,7 +17,7 @@ vm.createContext(ctx);
   'zodiac-bazi', 'baby-name', 'professional',
   'data/name-trends', 'naming-extensions', 'iching',
   'data/english-number-meanings', 'english-numerology', 'name-generator',
-  'data/iching-yao', 'deep-readings'
+  'data/iching-yao', 'deep-readings', 'lunar', 'ziwei', 'ziwei-reading'
 ].forEach(function(f) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
@@ -499,6 +499,49 @@ section('吉數姓名推薦', function() {
   ok(none.length === 1 && none[0].note && none[0].unknownChars[0] === '龘', '罕用姓氏 → 說明原因');
   var manual = G.suggestNames('龘', 'male', { '龘': 48 });
   ok(manual.length >= 6 && manual.every(function(r) { return CN.analyze(r.name, { '龘': 48 }).grids.ren.number === r.grids.ren; }), '罕用姓氏＋手動筆劃 → 照常推薦且五格正確');
+});
+
+section('81 數循環（超過 81 減 80）', function() {
+  var CN = ctx.ChineseNumerology, G = ctx.NameGenerator;
+  for (var n = 1; n <= 81; n++) ok(CN.getFortune(n) === ctx.fortune81[n] && !CN.getFortune(n).reducedFrom, n + ' 直接查表');
+  for (n = 82; n <= 400; n++) {
+    var f = CN.getFortune(n), base = (n - 1) % 80 + 1;
+    ok(f && f.glory === ctx.fortune81[base].glory && f.reducedFrom === n, n + ' → ' + base);
+    ok(CN.digitToElement(n) === CN.digitToElement(base), n + ' 五行與 ' + base + ' 相同');
+    ok(G.isAuspicious(n) === G.isAuspicious(base), n + ' 吉數判斷與 ' + base + ' 相同');
+  }
+  ok(CN.getFortune(82).glory === ctx.fortune81[2].glory && CN.getFortune(161).glory === ctx.fortune81[1].glory, '82 取 2、161 取 1');
+  ok(ctx.fortune81[81].reducedFrom === undefined, '查表不會改到原始資料');
+  ok(CN.getFortune(0) === null && CN.getFortune(-3) === null, '0 與負數無吉凶');
+  // 實際名字：複姓＋兩個 25 劃的字，總格 82
+  var r = CN.analyze('歐陽灝灞');
+  ok(r.grids.zong.number > 81 && r.grids.zong.fortune && r.grids.zong.fortune.reducedFrom === r.grids.zong.number, '歐陽灝灞 總格 ' + r.grids.zong.number + ' 有吉凶');
+  var counted = Object.keys(r.fortuneCounts).reduce(function(s, k) { return s + r.fortuneCounts[k]; }, 0);
+  ok(counted === 5, '五格都計入吉凶統計：' + JSON.stringify(r.fortuneCounts));
+  // 手動筆劃的罕用字
+  r = CN.analyze('龘龘明', { '龘': 48 });
+  ok(['tian', 'ren', 'di', 'wai', 'zong'].every(function(k) { return r.grids[k].fortune; }), '龘龘明 五格都有吉凶');
+});
+
+section('紫微十二宮解讀', function() {
+  // 十四主星的排法只由紫微星位置決定（12 種）；每一組對宮至少有一顆主星，所以每宮都要有解讀
+  var Z = ctx.Ziwei, R = ctx.ZiweiReading, layouts = {};
+  for (var y = 1950; y < 2010 && Object.keys(layouts).length < 12; y++) for (var m = 1; m <= 12; m++) for (var h = 0; h < 24; h += 2) {
+    var zw = Z.getZiweiChart(y, m, (y * 7 + m) % 28 + 1, h, '男');
+    if (!zw || zw.needHour) continue;
+    var key = zw.palaces.slice().sort(function(a, b) { return a.pos - b.pos; }).map(function(p) { return p.borrowed ? '' : p.stars.join('+'); }).join('|');
+    if (layouts[key]) continue;
+    layouts[key] = true;
+    R.palaceReadings(zw).forEach(function(x) {
+      ok(x.text && x.text.indexOf('undefined') < 0, y + '/' + m + ' ' + x.palace.name + '（' + x.palace.stars.join('+') + '）有解讀');
+      if (x.palace.borrowed) {
+        var opp = zw.palaces.filter(function(q) { return q.pos === (x.palace.pos + 6) % 12; })[0];
+        ok(opp && !opp.borrowed, x.palace.name + ' 借星時對宮有主星');
+      }
+    });
+    ok(R.mingReading(zw).paragraphs.length >= 2, y + '/' + m + ' 命宮綜合解讀');
+  }
+  ok(Object.keys(layouts).length === 12, '涵蓋 12 種主星排法：' + Object.keys(layouts).length);
 });
 
 var pending = 1;

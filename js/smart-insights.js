@@ -131,7 +131,7 @@ window.SmartInsights = (function() {
   }
 
   // ========== 名字 PK 排名 ==========
-  function rankNames(surname, candidateNames, gender) {
+  function rankNames(surname, candidateNames) {
     if (!surname || !candidateNames || !candidateNames.length || !window.ChineseNumerology) return [];
     var results = [];
     candidateNames.forEach(function(name) {

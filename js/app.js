@@ -206,7 +206,6 @@
     actionBar.insertBefore(ttsBtn, backBtn);
 
     // 動態插入歷史和匯出按鈕
-    var actionBar = document.getElementById('actionBar');
     historyBtn = document.createElement('button');
     historyBtn.className = 'btn-action';
     historyBtn.innerHTML = '<span>📋</span> <span data-i18n="tabHistory">歷史</span>';
@@ -216,7 +215,7 @@
     var exportBtn = document.createElement('button');
     exportBtn.className = 'btn-action';
     exportBtn.innerHTML = '<span>📄</span> <span data-i18n="exportBtn">匯出</span>';
-    exportBtn.addEventListener('click', exportImage);
+    exportBtn.addEventListener('click', copyTextReport);
     actionBar.insertBefore(exportBtn, backBtn);
 
     // 套用目前語言到所有動態按鈕（含上方剛建立的）
@@ -993,8 +992,13 @@
         var mbti = window.FunExtras.getMBTI(r.en.destiny);
         html += '<div class="mbti-card" style="margin-bottom:8px;">';
         html += '<span class="mbti-type">' + mbti.mbti + '</span>';
-        html += '<span class="mbti-label">' + mbti.label + ' — ' + mbti.desc.substring(0,30) + '...</span>';
+        html += '<span class="mbti-label">' + mbti.label + ' — ' + mbti.desc + '</span>';
         html += '</div>';
+        // 相配類型：滑過或長按可看該類型的說明
+        var MD = window.FunExtras.MBTI_DESC;
+        html += '<p class="mbti-match" style="font-size:0.75rem;color:var(--color-text-muted);margin:-4px 0 8px;">🤝 合拍類型：' + mbti.match.map(function(t) {
+          return '<span title="' + (MD[t] || '') + '" style="border-bottom:1px dotted currentColor;cursor:help;">' + t + '</span>';
+        }).join('、') + '（' + mbti.match.map(function(t) { return (MD[t] || '').split('，')[0]; }).join('、') + '）</p>';
       }
 
       // 塔羅深度詳解
@@ -1145,7 +1149,7 @@
       ['tian','ren','di','wai','zong'].forEach(function(k) {
         var g = r.cn.grids[k];
         var fc = g.fortune?'fortune-'+(g.fortune.glory==='大吉'?'great':g.fortune.glory==='吉'?'good':g.fortune.glory==='中吉'||g.fortune.glory==='半吉'?'neutral':g.fortune.glory==='凶'?'bad':'terrible'):'';
-        html += '<div class="wuge-row'+(g.isMain?' is-main':'')+'"><span class="wuge-name">'+g.name+'</span><span class="wuge-number">'+g.number+'</span><span class="wuge-element element-'+g.element+'">'+g.element+'</span><span class="wuge-fortune '+fc+'">'+(g.fortune?g.fortune.glory:'?')+'</span></div>';
+        html += '<div class="wuge-row'+(g.isMain?' is-main':'')+'"><span class="wuge-name">'+g.name+'</span><span class="wuge-number">'+g.number+reducedNote(g.fortune)+'</span><span class="wuge-element element-'+g.element+'">'+g.element+'</span><span class="wuge-fortune '+fc+'">'+(g.fortune?g.fortune.glory:'?')+'</span></div>';
       });
       html += '</div>';
       html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">三才：'+r.cn.sancai.level+' | 整體：'+r.cn.overall+'</p>';
@@ -1549,7 +1553,7 @@
       html += '<table class="report-table"><tr><th>格局</th><th>筆劃</th><th>五行</th><th>吉凶</th><th>數理解說</th><th>古籍參照</th></tr>';
       report.gridDetails.forEach(function(g) {
         var fc = g.fortune==='大吉'?'fortune-great':g.fortune==='吉'?'fortune-good':g.fortune==='中吉'||g.fortune==='半吉'?'fortune-neutral':g.fortune==='凶'?'fortune-bad':'fortune-terrible';
-        html += '<tr><td><strong>' + g.name + '</strong></td><td>' + g.number + '</td><td class="element-' + g.element + '">' + g.element + '</td><td><span class="wuge-fortune ' + fc + '">' + g.fortune + '</span></td><td style="text-align:left;font-size:0.8rem;">' + g.implication.substring(0,60) + '...</td><td class="quote-cell">' + (g.quote||'') + '</td></tr>';
+        html += '<tr><td><strong>' + g.name + '</strong></td><td>' + g.number + reducedNote(g.reducedFrom ? { reducedFrom: g.reducedFrom } : null) + '</td><td class="element-' + g.element + '">' + g.element + '</td><td><span class="wuge-fortune ' + fc + '">' + g.fortune + '</span></td><td style="text-align:left;font-size:0.8rem;">' + g.implication.substring(0,60) + '...</td><td class="quote-cell">' + (g.quote||'') + '</td></tr>';
       });
       html += '</table></div>';
 
@@ -1812,6 +1816,13 @@
         speakText(text, '正在朗讀' + item.person.label + '的鑑定書...', this);
       });
     });
+  }
+
+  /** 五格超過 81 時，註明依 81 數循環減 80 查表 */
+  function reducedNote(fortune) {
+    if (!fortune || !fortune.reducedFrom) return '';
+    var n = fortune.reducedFrom, r = (n - 1) % 80 + 1;
+    return '<small class="wuge-reduced" title="81 數循環：超過 81 減 80 查表" style="font-size:0.65em;color:var(--color-text-muted);margin-left:2px;">（取 ' + r + '）</small>';
   }
 
   function escHtml(s) { return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -2666,10 +2677,9 @@
     });
   }
 
-  // ============ 匯出圖片 ============
-  function exportImage() {
+  // ============ 匯出文字報告（複製到剪貼簿；圖片匯出是「圖片」鍵 → ShareCard.downloadImage） ============
+  function copyTextReport() {
     if (!currentData) return;
-    // 簡單文字匯出（較可靠）
     var lines = ['🔮 姓名和盤團隊報告', '═'.repeat(30), ''];
     currentData.results.forEach(function(r) {
       lines.push('【' + r.person.label + '】' + (r.person.cn||'') + (r.person.cn&&r.person.en?' / ':'') + (r.person.en||''));
