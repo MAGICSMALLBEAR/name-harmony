@@ -239,6 +239,10 @@
     document.querySelector('.tab-btn[data-tab="lucky"]').click();
     await wait(() => /近期吉日|填入生日/.test($('luckyContent').innerText));
     out.luckyDays = $('luckyContent').innerText.replace(/\\s+/g, ' ');
+    // 開運指南（水晶、色彩…）要跟鑑定書同一個用神，不能又退回人格五行
+    const reportYong = [...out.xiYongUi.matchAll(/用神：([木火土金水])/g)].map(m => m[1]);
+    const guideYong = [...document.querySelectorAll('#luckyContent .lucky-basis')].map(p => (p.innerText.match(/用神屬([木火土金水])/) || [, '人格'])[1]);
+    out.luckyBasis = guideYong.length >= 2 && guideYong.join() === reportYong.slice(0, guideYong.length).join() ? 'same:' + guideYong.join() : 'guide:' + guideYong.join() + ' report:' + reportYong.join();
 
     // 行業建議跟風水同一個依據（用神）；改名對比要能輸入、比較，並列出喜用神補到了沒
     out.career = (out.xiYongUi.match(/用神屬[木火土金水]，較能發揮的領域：\\S+/) || ['（沒有行業建議）'])[0];
@@ -306,6 +310,7 @@
     fengshui: /^依命格用神屬[木火土金水]，居家$/,
     yaoUi: /^第3爻】 九三：日昃之離，不鼓缶而歌，則大耋之嗟，凶。 白話：/,
     luckyDays: /近期吉日（喜用[木火土金水]、[木火土金水]、避忌神/,
+    luckyBasis: /^same:[木火土金水],[木火土金水]$/,
     career: /^用神屬[木火土金水]，較能發揮的領域：/,
     rename: /陳小明 → 陳大維：.+（吉數 \d→\d、凶數 \d→\d）.*天格.*總格.*命格喜用[木火土金水]、[木火土金水]：原名(已補|未補).*新名(已補|未補)/,
     renameUnknown: /「龘」不在筆劃庫，無法比較/,

@@ -1851,10 +1851,14 @@
     currentData.results.forEach(function(item, idx) {
       var r = item.result;
       if (!r.cn) return;
-      var el = r.cn.grids.ren.element;
+      var basis = luckyElementFor(item), el = basis.el;
       html += '<div class="card" style="margin-bottom:var(--space-lg);">';
       html += '<h2 class="card-title"><span class="title-icon">💎</span>' + item.person.label + ' 開運指南</h2>';
-      html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是專屬的開運建議：</p>';
+      html += '<p class="lucky-basis" style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">'
+        + (basis.byXiYong
+          ? '依八字命格（' + basis.xiYong.strength + '）用神屬<strong class="element-' + el + '">' + el + '</strong>，喜' + basis.xiYong.xi + '、忌' + basis.xiYong.unfavorable.join('、') + '，以下是專屬的開運建議：'
+          : '人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是依姓名的開運建議（填入生日即可改依八字用神推算）：')
+        + '</p>';
       html += window.LuckyItems.generateGuide(el);
       var ld = luckyDaysFor(item);
       if (ld) {
@@ -1897,8 +1901,7 @@
         var idx = parseInt(this.dataset.idx);
         var item = currentData.results[idx];
         if (!item || !item.result.cn) return;
-        var el = item.result.cn.grids.ren.element;
-        speakText(window.LuckyItems.guideToText(el), '正在朗讀' + item.person.label + '的開運指南...', this);
+        speakText(window.LuckyItems.guideToText(luckyElementFor(item).el), '正在朗讀' + item.person.label + '的開運指南...', this);
       });
     });
   }
@@ -2279,6 +2282,18 @@
     var text = buildShareText();
     if (navigator.share) navigator.share({title:'姓名和盤',text:text}).catch(function(){});
     else copyText(text);
+  }
+
+  /**
+   * 開運指南的五行依據：有八字時用用神（與吉日、風水、行業建議一致），沒有時退回人格五行
+   * @return { el, byXiYong, xiYong }
+   */
+  function luckyElementFor(item) {
+    var r = item.result;
+    var report = r.zodiac && r.zodiac.bazi && window.Professional
+      ? window.Professional.generateReport(item.person, r.cn, r.en, r.zodiac) : null;
+    var xy = report && report.xiYong;
+    return xy ? { el: xy.yong, byXiYong: true, xiYong: xy } : { el: r.cn.grids.ren.element, byXiYong: false, xiYong: null };
   }
 
   /** 個人吉日：需要八字（生日）與鑑定書的喜用神 */
