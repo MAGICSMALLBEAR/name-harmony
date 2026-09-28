@@ -135,6 +135,35 @@
     $('familyGo').click();
     out.family = $('familyResult').innerText;
 
+    // 切換成英文：四個工具要重畫成英文，保留輸入與結果；品牌網域沿用已查到的結果，不重新查詢
+    let rdapCalls = 0;
+    const origFetch = window.fetch;
+    window.fetch = function(u) { if (/rdap/.test(String(u))) rdapCalls++; return origFetch.apply(this, arguments); };
+    const toggleLang = async (want) => { $('langToggle').click(); await wait(() => window.I18N.getLang() === want && document.querySelector('#toolBrand').parentElement.querySelector('summary').textContent !== (want === 'en' ? '🏢 品牌命名工作台' : '🏢 Brand Name Workbench')); await new Promise(r => setTimeout(r, 100)); };
+    await toggleLang('en');
+    const summaries = ['toolTrends', 'toolBrand', 'toolPersonality', 'toolFamily'].map(id => $(id).parentElement.querySelector('summary').textContent);
+    const zhChars = s => (s.match(/[一-鿿]/g) || []).length;
+    out.i18nTools = [
+      summaries.every(s => zhChars(s) === 0) ? 'summaries-en' : 'summaries:' + summaries.join('|'),
+      $('trendName').value === '陳家豪' && /most common male name in Taiwan/.test($('trendResult').innerText) ? 'trend-en' : 'trend:' + $('trendName').value + ':' + $('trendResult').innerText.slice(0, 80),
+      $('brandName').value === 'google' && /google\\.com: registered/.test($('brandResult').innerText) && rdapCalls === 0 ? 'brand-en' : 'brand:rdap=' + rdapCalls + ':' + $('brandResult').innerText.slice(0, 120),
+      [...document.querySelectorAll('#toolPersonality .bf')].every(s => s.value === '5') && /Openness 50\\/100/.test($('bfResult').innerText) ? 'bf-en' : 'bf:' + $('bfResult').innerText.slice(0, 80),
+      $('familyCandidate').value === '王明軒' && /Uses 「明」 from parent 「王大明」/.test($('familyResult').innerText) ? 'family-en' : 'family:' + $('familyResult').innerText.slice(0, 120)
+    ].join(' ');
+    // 描述文字不該殘留中文（範例名字、書名號裡的字除外）
+    out.i18nLeftover = ['toolTrends', 'toolBrand', 'toolPersonality', 'toolFamily'].map(id => {
+      const el = $(id).cloneNode(true);
+      el.querySelectorAll('input, .tool-cand-name').forEach(n => n.remove());
+      // 使用者輸入的名字（例如配對行的「王大明 × 王明軒」）本來就是中文
+      const names = [...$(id).querySelectorAll('input')].flatMap(i => i.value.split(/[、,，\\s]+/)).filter(Boolean);
+      let txt = el.innerText.replace(/「[^」]*」/g, '').replace(/e\\.g\\.[^\\n]*/g, '');
+      names.forEach(n => { txt = txt.split(n).join(''); });
+      return id + ':' + zhChars(txt);
+    }).join(' ');
+    await toggleLang('zh');
+    out.i18nBack = /時代感/.test($('trendResult').innerText) && /已被註冊/.test($('brandResult').innerText) && /開放性 50\\/100/.test($('bfResult').innerText) ? 'zh' : 'not-zh';
+    window.fetch = origFetch;
+
     // AI 解讀：用模擬的 SDK 跑對話流程（不需要金鑰、不會呼叫 API）
     [...document.querySelectorAll('button')].find(b => /示範|Demo/.test(b.textContent)).click();
     $('analyzeBtn').click();
@@ -262,6 +291,9 @@
     brandTaken: /google\.com：已被註冊/,
     personality: /開放性 50\/100/,          // 正向題 5 分、反向題也 5 分 → 平均 3 → 50
     family: /用了家長「王大明」名字中的「明」/,
+    i18nTools: /^summaries-en trend-en brand-en bf-en family-en$/,
+    i18nLeftover: /^toolTrends:0 toolBrand:0 toolPersonality:0 toolFamily:0$/,
+    i18nBack: /^zh$/,
     aiContext: /^# 成員分析,# 配對矩陣,# 團隊報告,# 鑑定書$/,
     ai: /^claude-opus-5 default user\/assistant\/user 4 h4 stopped$/,
     genRefresh: /^changed$/,
