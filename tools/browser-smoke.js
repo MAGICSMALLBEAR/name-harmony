@@ -327,6 +327,21 @@
     out.over81 = zongRow ? zongRow.innerText.replace(/\\s+/g, ' ') : 'none:' + [...document.querySelectorAll('#membersContent .wuge-row')].map(r => r.innerText.replace(/\\s+/g, ' ')).join(' | ');
     const mm = document.querySelector('#membersContent .mbti-match');
     out.mbtiMatch = mm ? mm.innerText : 'none';
+
+    // 個人化偏好：從寶寶取名與品牌調性儲存 → 改掉表單 → 一鍵帶入（含家庭的輩分字、避諱）→ 清除
+    const chip = (name, v) => document.querySelector('input[name="' + name + '"][value="' + v + '"]');
+    $('bbSurname').value = '林'; $('bbGen').value = '子'; $('bbAvoid').value = '建國';
+    [chip('bbFav', '木'), chip('bbTrait', '智慧')].forEach(c => { if (!c.checked) c.click(); });
+    $('brandTone').value = 'warm';
+    $('prefSave').click();
+    const savedPref = JSON.parse(localStorage.getItem('name-harmony-naming-prefs') || 'null');
+    $('bbSurname').value = '陳'; $('brandTone').value = 'bold'; $('familyGeneration').value = ''; $('familyAvoid').value = '';
+    $('prefApply').click();
+    out.prefs = [savedPref && savedPref.surname, savedPref && !('date' in savedPref) ? 'no-date' : 'has-date',
+      $('bbSurname').value, chip('bbFav', '木').checked ? 'fav' : 'no-fav', $('brandTone').value, $('familyGeneration').value, $('familyAvoid').value,
+      /姓氏 林/.test($('toolPrefs').innerText) ? 'summary' : 'no-summary'].join(' ');
+    $('prefClear').click();
+    out.prefs += localStorage.getItem('name-harmony-naming-prefs') === null && !$('prefApply') ? ' cleared' : ' not-cleared';
     // 卡巴拉生命樹：質點之外，要有生命樹圖（22 路徑、10 質點）與名字走過的路徑、四個世界
     const kab = [...document.querySelectorAll('#membersContent details')].find(d => /卡巴拉生命樹/.test(d.querySelector('summary').textContent));
     out.kabbalah = kab ? kab.querySelectorAll('svg line').length + '/' + kab.querySelectorAll('svg circle').length + ' ' + (/名字走過的路徑[\\s\\S]*Tav[\\s\\S]*四個世界/.test(kab.textContent) ? 'paths' : 'no-paths') : 'none';
@@ -367,6 +382,7 @@
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
+    prefs: /^林 no-date 林 fav warm 子 建國 summary cleared$/,
     familyReport: /^王子安,王明軒,王建安 \| 家庭命名決策報告 rows:3 top:王子安 avoid$|^王子安,王建安,王明軒 \| 家庭命名決策報告 rows:3 top:王子安 avoid$/,
     // 10 輸入 × $5 ＋ 5 輸出 × $25 = $0.000175
     aiUsage: /^輸入 10 tokens（快取讀取 0）・輸出 5 tokens・耗時 N 秒（首字 N 秒）・約 US\$0\.0002 \| analysis:end_turn,follow-up:end_turn,follow-up:aborted \| export \| 本次對話累計：3 輪・輸入 20・輸出 10 tokens・約 US\$0\.000[34]（另有 1 輪中斷，費用不明）$/,

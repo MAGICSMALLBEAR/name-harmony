@@ -2714,3 +2714,7 @@ body {
 .cmp-table th { white-space: nowrap; }
 .cmp-table td:nth-child(6) { white-space: nowrap; }
 .cmp-table small { display: block; font-size: 0.65rem; }
+.tool-prefs { border: 1px dashed rgba(212,168,67,0.35); border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: var(--space-sm); }
+.tool-prefs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 0.9rem; color: var(--color-gold-primary); }
+.tool-prefs-head .tool-meta { font-size: 0.75rem; }
+.tool-prefs .tool-note { margin-bottom: 0; }

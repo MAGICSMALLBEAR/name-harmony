@@ -1302,6 +1302,26 @@ window.NamingExtensions = (function() {
     return html + '</div>';
   }
 
+  // ============ 個人化偏好（由 NamingTools 的偏好面板呼叫） ============
+
+  /** 目前的品牌調性（表單已畫出就讀表單） */
+  function getPrefs() {
+    return { brandTone: document.getElementById('brandTone') ? val('brandTone') : state.brand.tone };
+  }
+
+  /** 帶入偏好：品牌調性、家庭的輩分字與避諱；只覆寫有值的欄位，已跑過的結果重算 */
+  function applyPrefs(p) {
+    p = p || {};
+    readForms();
+    if (TONES.indexOf(p.brandTone) >= 0) state.brand.tone = p.brandTone;
+    if (p.generation) state.family.generation = p.generation;
+    if (p.avoid) state.family.avoid = p.avoid;
+    renderBrand();
+    renderFamily();
+  }
+
+  function toneLabel(k) { return tr('tone.' + k); }
+
   // ============ 初始化 ============
 
   /** 把畫面上的輸入讀回 state（切換語言重畫前呼叫） */
@@ -1363,6 +1383,7 @@ window.NamingExtensions = (function() {
     scoreBrand: scoreBrand, brandSlug: brandSlug, checkDomains: checkDomains,
     parseBrandCandidates: parseBrandCandidates, compareBrands: compareBrands, brandDecisionSummary: brandDecisionSummary,
     scoreBigFive: scoreBigFive, FACTORS: FACTORS,
+    getPrefs: getPrefs, applyPrefs: applyPrefs, toneLabel: toneLabel,
     checkFamily: checkFamily, parseFamilyCandidates: parseFamilyCandidates, rankFamily: rankFamily, familyReportHtml: familyReportHtml
   };
 })();

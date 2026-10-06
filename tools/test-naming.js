@@ -778,6 +778,28 @@ section('英文姓名資料覆蓋（SSA 各年代前 100 名）', function() {
   Object.keys(P).forEach(function(n) { ok(/^[012]+[tvloc]*$/.test(P[n]) && /1/.test(P[n]), n + ' 音節重音 ' + P[n]); });
 });
 
+section('個人化取名偏好', function() {
+  // naming-tools.js 載入時會找畫面元素；沿用主 context（有 ForeignName、NamingExtensions），補一個沒有元素的 document
+  ctx.document = { readyState: 'complete', getElementById: function() { return null; } };
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'naming-tools.js'), 'utf8'), ctx, { filename: 'naming-tools.js' });
+  var NT = ctx.NamingTools, sp = NT.sanitizePrefs;
+  var p = sp({ surname: ' 王 ', gender: 'female', single: false, gen: '子', genPos: 2, avoid: ' 祖父王建國 ', traits: ['智慧', '溫柔', '不存在', '智慧'], fav: ['木', '水', '鐵'], unfav: ['金', '木'], brandTone: 'calm' });
+  ok(p.surname === '王' && p.gender === 'female' && p.gen === '子' && p.genPos === 2 && p.avoid === '祖父王建國', '基本欄位 ' + JSON.stringify(p));
+  ok(p.traits.join() === '智慧,溫柔' && p.fav.join() === '木,水' && p.unfav.join() === '金', '不在選項內、重複、既喜又忌的值會丟掉');
+  ok(p.brandTone === 'calm', '品牌調性');
+  // 型別錯誤或被竄改的內容
+  var q = sp({ surname: 123, gender: 'x', single: 'yes', gen: 'ab', genPos: '2', avoid: {}, traits: '智慧', fav: null, brandTone: 'evil' });
+  ok(q === null, '全部無效時回傳 null ' + JSON.stringify(q));
+  ok(sp(null) === null && sp('str') === null && sp({}) === null, '非物件或空物件');
+  ok(sp({ surname: '<script>', avoid: 'x'.repeat(100) }).avoid.length === 30 && sp({ surname: '<script>', avoid: 'a' }).surname === '', '長度上限、姓氏只收中文');
+  ok(sp({ single: true }).single === true && sp({ genPos: 3, gen: '子' }).genPos === 1, '單名與輩分字位置');
+  // 摘要
+  var s = NT.prefsSummary(p);
+  ok(/姓氏 王/.test(s) && /喜 木、水/.test(s) && /忌 金/.test(s) && /輩分字 子（名字第 2 字）/.test(s) && /避諱 祖父王建國/.test(s) && /品牌調性 自然療癒/.test(s), '摘要 ' + s);
+  ok(NT.prefsSummary(null) === '', '沒有偏好時摘要為空');
+  delete ctx.document;
+});
+
 section('AI 解讀用量與費用估算', function() {
   // ai-reading.js 載入時會找畫面元素；給一個沒有元素的 document 即可
   var actx = { console: console, document: { readyState: 'complete', getElementById: function() { return null; } } };

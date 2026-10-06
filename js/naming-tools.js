@@ -15,6 +15,11 @@ window.NamingTools = (function() {
       avoid: '避諱字／讀音', avoidPh: '例如：祖父母名字、不要的讀音', babyGo: '✨ 產生寶寶名字', noBirth: '填入出生資料後，會自動計算簡化的喜用神。',
       useGod: '用神', joyGod: '喜神', avoidGod: '忌神', missing: '五行缺', xyNote: '喜用神採簡化扶抑法，僅供取名參考。', noHour: '未填出生時間，時柱未納入計算。',
       excluded: '已排除', tianNote: '天格由姓氏決定；推薦評分著重人格、地格、總格、三才與音韻。', printReport: '🖨️ 列印／另存 PDF 報告',
+      prefTitle: '⭐ 我的取名偏好', prefNone: '尚未儲存。先在「寶寶取名」填好姓氏、喜忌五行、輩分字、避諱與想要的特質（品牌調性取自品牌工作台），再按「儲存」。',
+      prefSave: '💾 儲存目前的偏好', prefApply: '📥 一鍵帶入各工具', prefClear: '清除',
+      prefSaved: '已儲存在這台裝置', prefApplied: '已帶入寶寶取名、家庭命名與品牌工作台', prefCleared: '已清除偏好',
+      prefNote: '偏好只存在這台裝置的瀏覽器，不會上傳；出生日期與時間不會儲存。',
+      prefSurname: '姓氏', prefGender: '性別', prefLen: '字數', prefFav: '喜', prefUnfav: '忌', prefGen: '輩分字', prefAvoid: '避諱', prefTraits: '特質', prefTone: '品牌調性',
       foreignDesc: '輸入英文名字，挑幾個想要的特質，會給出音義兼顧的中文名，並檢查五格與諧音。',
       enName: '英文名字（名 姓）',
       enNamePh: '例：Michael Smith',
@@ -46,6 +51,11 @@ window.NamingTools = (function() {
       avoid: 'Avoid characters / sounds', avoidPh: 'e.g. family names or sounds to avoid', babyGo: '✨ Suggest baby names', noBirth: 'Add birth details to estimate favourable elements.',
       useGod: 'Useful element', joyGod: 'Supporting element', avoidGod: 'Avoid', missing: 'Missing', xyNote: 'Element balance uses a simplified naming heuristic. ', noHour: 'Birth time is not included.',
       excluded: 'Excluded', tianNote: 'Heaven grid is determined by the surname. Suggestions focus on the other grids, San Cai, and phonetics.', printReport: '🖨️ Print / Save as PDF',
+      prefTitle: '⭐ My Naming Preferences', prefNone: 'Nothing saved yet. Fill in the surname, favorable/unfavorable elements, generation character, characters to avoid and traits under Baby Naming (the brand tone comes from the Brand Workbench), then press Save.',
+      prefSave: '💾 Save current preferences', prefApply: '📥 Apply to all tools', prefClear: 'Clear',
+      prefSaved: 'Saved on this device', prefApplied: 'Applied to Baby Naming, Family Planner and Brand Workbench', prefCleared: 'Preferences cleared',
+      prefNote: 'Preferences stay in this browser only and are never uploaded; birth date and time are not saved.',
+      prefSurname: 'Surname', prefGender: 'Gender', prefLen: 'Length', prefFav: 'Favorable', prefUnfav: 'Avoid el.', prefGen: 'Generation', prefAvoid: 'Avoid', prefTraits: 'Traits', prefTone: 'Brand tone',
       foreignDesc: 'Enter your English name and pick a few traits. You get Chinese names that echo your name\'s sound and carry good meanings, checked for stroke numerology and awkward homophones.',
       enName: 'English name (first last)',
       enNamePh: 'e.g. Michael Smith',
@@ -171,6 +181,108 @@ window.NamingTools = (function() {
       var on = selected.indexOf(v) >= 0;
       return '<label class="tool-chip' + (on ? ' on' : '') + '"><input type="checkbox" name="' + name + '" value="' + v + '"' + (on ? ' checked' : '') + '>' + labelFn(v) + '</label>';
     }).join('') + '</div>';
+  }
+
+  // ============ 個人化取名偏好（只存在這台裝置） ============
+
+  var PREF_KEY = 'name-harmony-naming-prefs';
+  var BRAND_TONES = ['trust', 'warm', 'bold', 'calm'];
+  var prefMsg = '';
+
+  /** 清理偏好物件：型別不對、不在選項內的值一律丟掉（localStorage 內容可能被改過或來自舊版） */
+  function sanitizePrefs(p) {
+    if (!p || typeof p !== 'object') return null;
+    var str = function(x, max) { return typeof x === 'string' ? x.trim().slice(0, max) : ''; };
+    var pick = function(arr, allowed) {
+      return Array.isArray(arr) ? arr.filter(function(x, i) { return allowed.indexOf(x) >= 0 && arr.indexOf(x) === i; }) : [];
+    };
+    var traits = window.ForeignName ? window.ForeignName.TRAITS : [];
+    var out = {
+      surname: str(p.surname, 2).replace(/[^一-鿿]/g, ''),
+      gender: p.gender === 'male' || p.gender === 'female' ? p.gender : '',
+      single: p.single === true,
+      gen: str(p.gen, 1).replace(/[^一-鿿]/g, ''),
+      genPos: p.genPos === 2 ? 2 : 1,
+      avoid: str(p.avoid, 30),
+      traits: pick(p.traits, traits),
+      fav: pick(p.fav, ELS),
+      unfav: pick(p.unfav, ELS),
+      brandTone: BRAND_TONES.indexOf(p.brandTone) >= 0 ? p.brandTone : ''
+    };
+    out.unfav = out.unfav.filter(function(x) { return out.fav.indexOf(x) < 0; });   // 同一個五行不會既喜又忌
+    var empty = !out.surname && !out.gender && !out.single && !out.gen && !out.avoid && !out.traits.length && !out.fav.length && !out.unfav.length && !out.brandTone;
+    return empty ? null : out;
+  }
+
+  function loadPrefs() {
+    try { return sanitizePrefs(JSON.parse(localStorage.getItem(PREF_KEY) || 'null')); } catch (e) { return null; }
+  }
+
+  /** 偏好的一行摘要 */
+  function prefsSummary(p) {
+    if (!p) return '';
+    var en = lang() === 'en', parts = [];
+    var el = function(list) { return list.map(function(x) { return en ? EL_EN[x] : x; }).join(en ? ', ' : '、'); };
+    if (p.surname) parts.push(t('prefSurname') + ' ' + p.surname);
+    if (p.gender) parts.push(t('prefGender') + ' ' + t(p.gender));
+    if (p.single) parts.push(t('prefLen') + ' ' + t('singleName'));
+    if (p.fav.length) parts.push(t('prefFav') + ' ' + el(p.fav));
+    if (p.unfav.length) parts.push(t('prefUnfav') + ' ' + el(p.unfav));
+    if (p.gen) parts.push(t('prefGen') + ' ' + p.gen + (en ? ' (' : '（') + (p.genPos === 2 ? t('pos2') : t('pos1')) + (en ? ')' : '）'));
+    if (p.avoid) parts.push(t('prefAvoid') + ' ' + p.avoid);
+    if (p.traits.length) parts.push(t('prefTraits') + ' ' + p.traits.map(function(x) { return en ? TRAIT_EN[x] : x; }).join(en ? ', ' : '、'));
+    if (p.brandTone && window.NamingExtensions) parts.push(t('prefTone') + ' ' + window.NamingExtensions.toneLabel(p.brandTone));
+    return parts.join(en ? ' · ' : '・');
+  }
+
+  /** 從目前的表單收集偏好（寶寶取名＋品牌調性；不含出生日期與時間） */
+  function collectPrefs() {
+    if (document.getElementById('bbSurname')) readBabyForm();
+    var ext = window.NamingExtensions ? window.NamingExtensions.getPrefs() : {};
+    return sanitizePrefs({
+      surname: baby.surname, gender: baby.gender, single: baby.single, gen: baby.gen, genPos: baby.genPos,
+      avoid: baby.avoid, traits: baby.traits, fav: baby.fav, unfav: baby.unfav, brandTone: ext.brandTone
+    });
+  }
+
+  function savePrefs() {
+    var p = collectPrefs();
+    try {
+      if (p) localStorage.setItem(PREF_KEY, JSON.stringify(p));
+      else localStorage.removeItem(PREF_KEY);
+    } catch (e) {}
+    prefMsg = p ? t('prefSaved') : t('prefCleared');
+    renderPrefs();
+  }
+
+  function applyPrefs() {
+    var p = loadPrefs();
+    if (!p) return;
+    if (document.getElementById('bbSurname')) readBabyForm();
+    ['surname', 'gender', 'single', 'gen', 'genPos', 'avoid', 'traits', 'fav', 'unfav'].forEach(function(k) { baby[k] = Array.isArray(p[k]) ? p[k].slice() : p[k]; });
+    if (document.getElementById('toolBaby')) { renderBaby(); updateBazi(); }
+    if (window.NamingExtensions) window.NamingExtensions.applyPrefs({ brandTone: p.brandTone, generation: p.gen, avoid: p.avoid });
+    prefMsg = t('prefApplied');
+    renderPrefs();
+  }
+
+  function clearPrefs() {
+    try { localStorage.removeItem(PREF_KEY); } catch (e) {}
+    prefMsg = t('prefCleared');
+    renderPrefs();
+  }
+
+  function renderPrefs() {
+    var box = document.getElementById('toolPrefs');
+    if (!box) return;
+    var p = loadPrefs();
+    box.innerHTML = '<div class="tool-prefs"><div class="tool-prefs-head"><strong>' + t('prefTitle') + '</strong>' +
+      (prefMsg ? '<span class="tool-meta">' + esc(prefMsg) + '</span>' : '') + '</div>' +
+      '<p class="tool-line">' + esc(p ? prefsSummary(p) : t('prefNone')) + '</p>' +
+      '<div class="tool-actions"><button type="button" class="btn-action btn-action-secondary" id="prefSave">' + t('prefSave') + '</button>' +
+      (p ? '<button type="button" class="btn-action btn-action-secondary" id="prefApply">' + t('prefApply') + '</button>' +
+        '<button type="button" class="btn-action btn-action-secondary" id="prefClear">' + t('prefClear') + '</button>' : '') + '</div>' +
+      '<p class="tool-note">' + t('prefNote') + '</p></div>';
   }
 
   function renderBaby() {
@@ -389,6 +501,9 @@ window.NamingTools = (function() {
     var el = e.target;
     if (el.id === 'fnGo') return runForeign();
     if (el.id === 'bbGo') return runBaby();
+    if (el.id === 'prefSave') return savePrefs();
+    if (el.id === 'prefApply') return applyPrefs();
+    if (el.id === 'prefClear') return clearPrefs();
     if (el.id === 'bbPrint') return printBabyReport();
     var chip = el.closest && el.closest('.tool-chip');
     if (chip && el.tagName === 'INPUT') { chip.classList.toggle('on', el.checked); return; }
@@ -416,6 +531,7 @@ window.NamingTools = (function() {
     if (babySum) babySum.textContent = t('babyTitle');
     if (document.getElementById('toolBaby')) renderBaby();
     if (window.NamingExtensions) window.NamingExtensions.render();
+    renderPrefs();
   }
 
   function init() {
@@ -439,5 +555,5 @@ window.NamingTools = (function() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 
-  return { toneMark: toneMark, analyzeName: analyzeName, printHtml: printHtml };
+  return { toneMark: toneMark, analyzeName: analyzeName, printHtml: printHtml, sanitizePrefs: sanitizePrefs, prefsSummary: prefsSummary };
 })();
