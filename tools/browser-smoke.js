@@ -223,6 +223,11 @@
     await wait(() => !$('aiStop'));
     out.ai = [calls[0].model, calls[0].fallbacks, calls[1].messages.map(m => m.role).join('/'), window.AiReading._messages().length,
       document.querySelector('.ai-bot h4') ? 'h4' : 'no-h4', $('aiLog').innerText.includes('已停止') ? 'stopped' : 'not-stopped'].join(' ');
+    // 驗收用量：每則回覆有耗時與費用；累計列（兩輪完成＋一輪中斷）與匯出按鈕
+    const turns = window.AiReading._turns();
+    out.aiUsage = [document.querySelector('.ai-usage').innerText.replace(/[\\d.]+ 秒/g, 'N 秒'),
+      turns.map(x => x.kind + ':' + x.stop).join(','), $('aiExport') ? 'export' : 'no-export',
+      document.querySelector('.ai-session').innerText.replace(/\\s*📊.*$/, '')].join(' | ');
     $('aiRemoveKey').click();
 
     // 喜用神：日主強弱要看八字（扶抑法），不能因為名字不同而改變；吉日與幸運色沿用它
@@ -342,6 +347,8 @@
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
+    // 10 輸入 × $5 ＋ 5 輸出 × $25 = $0.000175
+    aiUsage: /^輸入 10 tokens（快取讀取 0）・輸出 5 tokens・耗時 N 秒（首字 N 秒）・約 US\$0\.0002 \| analysis:end_turn,follow-up:end_turn,follow-up:aborted \| export \| 本次對話累計：3 輪・輸入 20・輸出 10 tokens・約 US\$0\.000[34]（另有 1 輪中斷，費用不明）$/,
     brandCompare: /^4:Dick saved:森月,Luma,Dick,google calm-top:森月 domains$/,
     pinnacles: /^0–33 歲:11,34–42 歲:7,43–51 歲:9,52 歲以後:6$/,
 

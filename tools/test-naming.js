@@ -713,6 +713,42 @@ section('卡巴拉生命樹（路徑與四個世界）', function() {
   }
 });
 
+section('AI 解讀用量與費用估算', function() {
+  // ai-reading.js 載入時會找畫面元素；給一個沒有元素的 document 即可
+  var actx = { console: console, document: { readyState: 'complete', getElementById: function() { return null; } } };
+  actx.window = actx;
+  vm.createContext(actx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'ai-reading.js'), 'utf8'), actx, { filename: 'ai-reading.js' });
+  var A = actx.AiReading, near = function(a, b) { return Math.abs(a - b) < 1e-9; };
+  ok(A.PRICES[A.MODEL], '目前使用的模型有定價：' + A.MODEL);
+  // 沒有快取：10,000 輸入 × $5 ＋ 2,000 輸出 × $25 = $0.05 ＋ $0.05
+  var s = A.usageStats({ model: 'claude-opus-5', usage: { input_tokens: 10000, output_tokens: 2000 } });
+  ok(near(s.cost, 0.1) && !s.fellBack && s.input === 10000 && s.output === 2000, '基本費用 ' + JSON.stringify(s));
+  // 快取：寫入 5 分鐘 ×1.25、1 小時 ×2、讀取 ×0.1
+  s = A.usageStats({ model: 'claude-opus-5', usage: { input_tokens: 100, cache_creation_input_tokens: 9000, cache_creation: { ephemeral_5m_input_tokens: 8000, ephemeral_1h_input_tokens: 1000 }, cache_read_input_tokens: 20000, output_tokens: 1000 } });
+  ok(near(s.cost, (100 * 5 + 8000 * 6.25 + 1000 * 10 + 20000 * 0.5 + 1000 * 25) / 1e6), '快取寫入與讀取 ' + s.cost);
+  ok(s.cacheWrite === 9000 && s.cacheRead === 20000, '快取 tokens');
+  // 備援：頂層 usage 只有最後一次，要加總 iterations（被拒絕的那次也算）
+  s = A.usageStats({ model: 'claude-opus-4-8', usage: { input_tokens: 500, output_tokens: 300, iterations: [
+    { type: 'message', model: 'claude-opus-5', input_tokens: 500, output_tokens: 40 },
+    { type: 'fallback_message', model: 'claude-opus-4-8', input_tokens: 500, output_tokens: 300 }] } });
+  ok(s.fellBack && s.attempts.length === 2 && s.input === 1000 && s.output === 340, '備援加總 iterations ' + JSON.stringify(s));
+  ok(near(s.cost, (1000 * 5 + 340 * 25) / 1e6), '備援費用');
+  // 回覆模型和設定不同（黏著路由，沒有 iterations）也算備援
+  ok(A.usageStats({ model: 'claude-opus-4-8', usage: { input_tokens: 1, output_tokens: 1 } }).fellBack, '黏著路由算備援');
+  ok(A.usageStats({ model: 'claude-unknown-9', usage: { input_tokens: 1, output_tokens: 1 } }).cost === null, '不認得的模型費用不明');
+  ok(A.usageStats({ model: 'claude-opus-5' }).cost === 0, '沒有 usage 不出錯');
+  // 驗收紀錄
+  var md = A.usageReport([
+    { kind: 'analysis', model: 'claude-opus-5', stop: 'end_turn', input: 100, cacheWrite: 9000, cacheRead: 0, output: 1500, ttft: 3200, ms: 25000, cost: 0.1 },
+    { kind: 'follow-up', model: 'claude-opus-5', stop: 'end_turn', input: 50, cacheWrite: 600, cacheRead: 9000, output: 400, ttft: 1200, ms: 8000, cost: 0.02 },
+    { kind: 'follow-up', model: null, stop: 'aborted', input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ttft: null, ms: 900, cost: null }
+  ], '2026-10-06');
+  ok(/^# AI 解讀驗收紀錄/.test(md) && /2026-10-06/.test(md) && /合計 3 輪：輸入 18750 tokens、輸出 1900 tokens、耗時 33\.9 秒、約 US\$0\.120（另有 1 輪中斷，費用不明）/.test(md), '紀錄合計 ' + md.split('\n')[4]);
+  ok(md.split('\n').filter(function(l) { return /^\| \d/.test(l); }).length === 3 && /\| aborted \|.*\| — \| 0\.9 \| \? \|$/m.test(md), '紀錄每輪一列');
+  ok(!/undefined|NaN|sk-ant/.test(md), '紀錄沒有 undefined、沒有金鑰');
+});
+
 var pending = 1;
 function asyncDone() {
   if (--pending) return;

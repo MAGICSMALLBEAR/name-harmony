@@ -10,6 +10,15 @@ window.AiReading = (function() {
   var MODEL = 'claude-opus-5';
   var KEY_STORE = 'name-harmony-ai-key';
 
+  // 每百萬 tokens 的美元價格（Anthropic 官方定價，2026-09）：輸入、輸出、快取讀取、快取寫入（5 分鐘／1 小時）
+  // 只用來估算；實際金額以 Console 帳單為準。備援模型（fallbacks: 'default'）可能是 Opus 4.8
+  var PRICES = {
+    'claude-opus-5': { input: 5, output: 25, read: 0.5, write5m: 6.25, write1h: 10 },
+    'claude-opus-4-8': { input: 5, output: 25, read: 0.5, write5m: 6.25, write1h: 10 },
+    'claude-opus-5-5': { input: 4, output: 20, read: 0.2, write5m: 5, write1h: 8 },
+    'claude-sonnet-5-5': { input: 2, output: 10, read: 0.2, write5m: 2.5, write1h: 4 }
+  };
+
   var SYSTEM = [
     '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才）、靈數、八字、易經、塔羅、紫微斗數、西洋占星、生肖星座血型、開運建議，以及多人之間的配對。',
     '你的工作是把這些系統的結果整合成一份讀得懂、用得上的解讀：',
@@ -50,6 +59,13 @@ window.AiReading = (function() {
       refusal: '這個請求被模型拒絕了，請換個問法。',
       usage: function(u) { return '輸入 ' + u.input + ' tokens（快取讀取 ' + u.cacheRead + '）・輸出 ' + u.output + ' tokens'; },
       fallback: function(m) { return '（由備援模型 ' + m + ' 回覆）'; },
+      timing: function(p) { return '・耗時 ' + p.s + ' 秒（首字 ' + p.first + ' 秒）・約 ' + p.cost; },
+      session: function(p) { return '本次對話累計：' + p.n + ' 輪・輸入 ' + p.input + '・輸出 ' + p.output + ' tokens・約 ' + p.cost + (p.unknown ? '（另有 ' + p.unknown + ' 輪中斷，費用不明）' : ''); },
+      exportUsage: '📊 匯出驗收紀錄', usageCopied: '已複製驗收紀錄',
+      repTitle: 'AI 解讀驗收紀錄', repDate: '日期：', repModel: '模型：',
+      repTotal: function(p) { return '合計 ' + p.n + ' 輪：輸入 ' + p.input + ' tokens、輸出 ' + p.output + ' tokens、耗時 ' + p.s + ' 秒、約 ' + p.cost + (p.unknown ? '（另有 ' + p.unknown + ' 輪中斷，費用不明）' : ''); },
+      repHead: '| # | 類型 | 回覆模型 | 結束原因 | 輸入 | 快取寫入 | 快取讀取 | 輸出 | 首字（秒） | 耗時（秒） | 估算費用 |',
+      repNote: '費用依 2026-09 官方定價估算（含備援嘗試），實際金額以 Anthropic Console 帳單為準。本紀錄不含對話內容與金鑰。',
       errAuth: '金鑰無效或已被撤銷，請更換金鑰。',
       errPermission: '這個金鑰沒有使用此模型的權限。',
       errRate: '請求太頻繁或額度已用完，請稍後再試。',
@@ -87,6 +103,13 @@ window.AiReading = (function() {
       refusal: 'The model declined this request. Try rephrasing.',
       usage: function(u) { return 'Input ' + u.input + ' tokens (cache read ' + u.cacheRead + ') · output ' + u.output + ' tokens'; },
       fallback: function(m) { return '(answered by fallback model ' + m + ')'; },
+      timing: function(p) { return ' · ' + p.s + ' s (first token ' + p.first + ' s) · about ' + p.cost; },
+      session: function(p) { return 'This conversation: ' + p.n + ' turn' + (p.n === 1 ? '' : 's') + ' · input ' + p.input + ' · output ' + p.output + ' tokens · about ' + p.cost + (p.unknown ? ' (' + p.unknown + ' interrupted turn' + (p.unknown === 1 ? '' : 's') + ' not priced)' : ''); },
+      exportUsage: '📊 Export usage log', usageCopied: 'Usage log copied',
+      repTitle: 'AI Synthesis Usage Log', repDate: 'Date: ', repModel: 'Model: ',
+      repTotal: function(p) { return p.n + ' turns: ' + p.input + ' input tokens, ' + p.output + ' output tokens, ' + p.s + ' s, about ' + p.cost + (p.unknown ? ' (' + p.unknown + ' interrupted, not priced)' : ''); },
+      repHead: '| # | Kind | Served by | Stop reason | Input | Cache write | Cache read | Output | First token (s) | Total (s) | Est. cost |',
+      repNote: 'Costs are estimated from the September 2026 list prices (including fallback attempts); your Anthropic Console bill is authoritative. This log contains no conversation content and no key.',
       errAuth: 'The API key is invalid or revoked. Please change it.',
       errPermission: 'This key is not allowed to use this model.',
       errRate: 'Rate limited or out of credit. Please try again later.',
@@ -212,6 +235,63 @@ window.AiReading = (function() {
   var stream = null;
   var notice = '';         // 分析結果更新後的提示，下次產生時清除
 
+  var turns = [];          // 每輪的用量紀錄（驗收用，不含對話內容）
+
+  /** 一次嘗試的 tokens（缺的欄位當 0） */
+  function tokensOf(u, model) {
+    u = u || {};
+    var cc = u.cache_creation || {};
+    var w1h = cc.ephemeral_1h_input_tokens || 0;
+    var write = u.cache_creation_input_tokens || 0;
+    return { model: model, input: u.input_tokens || 0, cacheWrite: write, cacheWrite1h: Math.min(w1h, write), cacheRead: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 };
+  }
+
+  /** 依定價估算一次嘗試的費用；不認得的模型回傳 null */
+  function costOf(x) {
+    var p = PRICES[x.model];
+    if (!p) return null;
+    return (x.input * p.input + (x.cacheWrite - x.cacheWrite1h) * p.write5m + x.cacheWrite1h * p.write1h + x.cacheRead * p.read + x.output * p.output) / 1e6;
+  }
+
+  /**
+   * 整理一則回覆的用量。有備援時頂層 usage 只涵蓋最後一次嘗試，逐次的用量在 usage.iterations
+   * @return { model, attempts: [tokens…], input, cacheWrite, cacheRead, output, cost（null＝有不認得的模型）, fellBack }
+   */
+  function usageStats(msg) {
+    var u = (msg && msg.usage) || {};
+    var its = Array.isArray(u.iterations) && u.iterations.length ? u.iterations : null;
+    var attempts = its ? its.map(function(it) { return tokensOf(it, it.model || msg.model); }) : [tokensOf(u, msg && msg.model)];
+    var sum = function(k) { return attempts.reduce(function(s, a) { return s + a[k]; }, 0); };
+    var costs = attempts.map(costOf);
+    return {
+      model: msg && msg.model, attempts: attempts,
+      input: sum('input'), cacheWrite: sum('cacheWrite'), cacheRead: sum('cacheRead'), output: sum('output'),
+      cost: costs.some(function(c) { return c == null; }) ? null : costs.reduce(function(s, c) { return s + c; }, 0),
+      fellBack: !!(its && its.some(function(it) { return it.type === 'fallback_message'; })) || !!(msg && msg.model && msg.model !== MODEL)
+    };
+  }
+
+  function money(c) { return c == null ? '?' : 'US$' + (c < 0.01 ? c.toFixed(4) : c.toFixed(3)); }
+  function secs(ms) { return ms == null ? '—' : (ms / 1000).toFixed(1); }
+
+  /** 驗收紀錄（Markdown，只有數字，不含對話內容與金鑰） */
+  function usageReport(list, date) {
+    var tot = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ms: 0, cost: 0 }, unknown = 0;
+    var rows = list.map(function(x, i) {
+      ['input', 'cacheWrite', 'cacheRead', 'output', 'ms'].forEach(function(k) { tot[k] += x[k] || 0; });
+      if (x.cost == null) unknown++; else tot.cost += x.cost;
+      return '| ' + [i + 1, x.kind, x.model || '—', x.stop || '—', x.input, x.cacheWrite, x.cacheRead, x.output, secs(x.ttft), secs(x.ms), money(x.cost)].join(' | ') + ' |';
+    });
+    return [
+      '# ' + t('repTitle'), '',
+      '- ' + t('repDate') + date,
+      '- ' + t('repModel') + MODEL + '（fallbacks: default）',
+      '- ' + t('repTotal')({ n: list.length, input: tot.input + tot.cacheWrite + tot.cacheRead, output: tot.output, s: secs(tot.ms), cost: money(tot.cost), unknown: unknown }), '',
+      t('repHead'), '|' + new Array(12).join('---|'), rows.join('\n'), '',
+      '> ' + t('repNote'), ''
+    ].join('\n');
+  }
+
   function loadSdk() {
     if (sdk) return Promise.resolve(sdk);
     return import(SDK_URL).then(function(mod) { sdk = mod; return mod; });
@@ -228,10 +308,11 @@ window.AiReading = (function() {
   }
 
   /** 送出一則使用者訊息並串流回覆 */
-  function ask(userText, shown) {
+  function ask(userText, shown, kind) {
     var key = getKey();
     if (!key || busy) return;
     busy = true;
+    var t0 = Date.now(), ttft = null;
     messages.push({ role: 'user', content: userText });
     log.push({ role: 'user', text: shown });
     var reply = { role: 'assistant', text: '', note: '', pending: true };
@@ -253,6 +334,7 @@ window.AiReading = (function() {
       (async function() {
         for await (var ev of stream) {
           if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
+            if (ttft == null) ttft = Date.now() - t0;
             reply.text += ev.delta.text;
             reply.pending = false;
             updateReply(reply);
@@ -269,12 +351,16 @@ window.AiReading = (function() {
         messages.push({ role: 'assistant', content: msg.content });
         if (msg.stop_reason === 'max_tokens') reply.note = t('truncated');
       }
-      var u = msg.usage || {};
-      reply.usage = t('usage')({ input: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0), cacheRead: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 });
-      if (msg.model && msg.model !== MODEL) reply.usage += ' ' + t('fallback')(msg.model);
+      var st = usageStats(msg), ms = Date.now() - t0;
+      turns.push({ kind: kind || 'follow-up', model: st.model, stop: msg.stop_reason, input: st.input, cacheWrite: st.cacheWrite, cacheRead: st.cacheRead, output: st.output, ttft: ttft, ms: ms, cost: st.cost });
+      reply.usage = t('usage')({ input: st.input + st.cacheWrite + st.cacheRead, cacheRead: st.cacheRead, output: st.output }) +
+        t('timing')({ s: secs(ms), first: secs(ttft), cost: money(st.cost) });
+      if (st.fellBack) reply.usage += ' ' + t('fallback')(msg.model);
     }).catch(function(err) {
       reply.pending = false;
       messages.pop();                          // 失敗或停止的這輪不留在歷史，下一次可以重問
+      // 停止或失敗時拿不到 usage（已串流的部分仍可能計費），費用記為不明
+      turns.push({ kind: kind || 'follow-up', model: null, stop: sdk && err instanceof sdk.APIUserAbortError ? 'aborted' : 'error', input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ttft: ttft, ms: Date.now() - t0, cost: null });
       if (sdk && err instanceof sdk.APIUserAbortError) {
         reply.note = t('stopped');
       } else {
@@ -295,7 +381,8 @@ window.AiReading = (function() {
     messages = []; log = [];
     notice = '';
     var first = '<analysis>\n' + ctx + '\n</analysis>\n\n' + t('langLine') + '\n' + t('firstAsk');
-    ask(first, t('generate').replace(/^\S+\s/, ''));
+    turns = [];
+    ask(first, t('generate').replace(/^\S+\s/, ''), 'analysis');
   }
 
   function followUp() {
@@ -355,6 +442,15 @@ window.AiReading = (function() {
       }
     }
     html += '<div class="ai-log" id="aiLog">' + (log.length ? log.map(messageHtml).join('') : notice ? '<p class="tool-note">' + notice + '</p>' : '') + '</div>';
+    if (turns.length && !busy) {
+      var tot = turns.reduce(function(a, x) {
+        a.input += x.input + x.cacheWrite + x.cacheRead; a.output += x.output;
+        if (x.cost == null) a.unknown++; else a.cost += x.cost;
+        return a;
+      }, { input: 0, output: 0, cost: 0, unknown: 0 });
+      html += '<p class="tool-note ai-session">' + esc(t('session')({ n: turns.length, input: tot.input, output: tot.output, cost: money(tot.cost), unknown: tot.unknown })) +
+        ' <button type="button" class="btn-action btn-action-secondary ai-small" id="aiExport">' + t('exportUsage') + '</button></p>';
+    }
     if (messages.length && getKey()) {
       html += '<div class="ai-ask"><textarea class="form-input" id="aiAsk" rows="2" placeholder="' + t('askPh') + '"' + (busy ? ' disabled' : '') + '></textarea>' +
         '<button type="button" class="btn-download-img" id="aiSend"' + (busy ? ' disabled' : '') + '>' + t('send') + '</button></div>';
@@ -388,8 +484,17 @@ window.AiReading = (function() {
     } else if (id === 'aiStop') {
       if (stream) stream.abort();
     } else if (id === 'aiClear') {
-      messages = []; log = []; notice = '';
+      messages = []; log = []; notice = ''; turns = [];
       render();
+    } else if (id === 'aiExport') {
+      var d = new Date(), z = function(n) { return (n < 10 ? '0' : '') + n; };
+      var date = d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([usageReport(turns, date)], { type: 'text/markdown;charset=utf-8' }));
+      a.download = 'ai-usage-' + date + '.md';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     } else if (id === 'aiSend') {
       followUp();
     }
@@ -410,7 +515,7 @@ window.AiReading = (function() {
   function reset() {
     if (busy && stream) stream.abort();
     if (log.length) notice = t('reset');
-    messages = []; log = [];
+    messages = []; log = []; turns = [];
     render();
   }
 
@@ -421,6 +526,8 @@ window.AiReading = (function() {
     render: render, reset: reset,
     // 測試用：tools/browser-smoke.js 以模擬的 SDK 檢查對話流程，不需要金鑰
     collectContext: collectContext, renderMarkdown: renderMarkdown, SYSTEM: SYSTEM, MODEL: MODEL,
+    usageStats: usageStats, usageReport: usageReport, PRICES: PRICES,
+    _turns: function() { return turns; },
     _useSdk: function(mod) { sdk = mod; },
     _messages: function() { return messages; }
   };
