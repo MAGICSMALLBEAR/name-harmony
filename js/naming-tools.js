@@ -333,6 +333,14 @@ window.NamingTools = (function() {
       '<table><thead><tr><th>#</th><th>名字</th><th>用字（字五行）</th><th>五格</th><th>三才</th><th>音韻</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<p class="foot">天格由姓氏決定，不列入評分。字五行：部首明確者依部首（氵→水、木/艹→木、火/日→火、土/山/石→土、金→金），其餘依字音五音。喜用神以扶抑法簡化計算。以上僅供參考。</p>' +
       '</body></html>';
+    printHtml(doc);
+  }
+
+  /**
+   * 在隱藏的 iframe 列印一份完整的 HTML 文件（瀏覽器的列印對話框可另存 PDF）
+   * 會帶入主頁的 @font-face，等報告用到的字型載入完才列印（最多 3 秒）
+   */
+  function printHtml(doc) {
     var frame = document.createElement('iframe');
     frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(frame);
@@ -431,5 +439,5 @@ window.NamingTools = (function() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 
-  return { toneMark: toneMark, analyzeName: analyzeName };
+  return { toneMark: toneMark, analyzeName: analyzeName, printHtml: printHtml };
 })();

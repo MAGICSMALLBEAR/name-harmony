@@ -352,6 +352,48 @@ section('家庭命名規劃', function() {
     var uses = cGiven.some(function(c) { return pGiven.indexOf(c) >= 0; });
     ok(cand === pa || uses === x.warns.some(function(w) { return w.indexOf('用了家長「' + pa + '」') >= 0; }), cand + ' 家長 ' + pa + ' 重字判斷');
   }
+
+  // 輩分字
+  r = N.checkFamily({ candidate: '王子安', generation: '子' });
+  ok(r.generationOk === true && r.infos.some(function(w) { return /輩分字「子」（名字第 1 字）/.test(w); }) && !r.warns.length, '有輩分字');
+  r = N.checkFamily({ candidate: '王安子', generation: ' 子 ' });
+  ok(r.generationOk === true && r.infos.some(function(w) { return /第 2 字/.test(w); }), '輩分字在第二字');
+  r = N.checkFamily({ candidate: '王怡蘊', generation: '子' });
+  ok(r.generationOk === false && r.warns.some(function(w) { return /沒有用到輩分字「子」/.test(w); }), '缺輩分字');
+  ok(N.checkFamily({ candidate: '王怡蘊', generation: 'abc' }).generationOk === null, '輩分字不是中文就忽略');
+  // 避諱：字與同音字；長輩姓名的姓不影響（只比對候選名的名字部分）
+  r = N.checkFamily({ candidate: '王建安', avoid: '祖父王建國' });
+  ok(r.warns.some(function(w) { return /避諱字「建」/.test(w); }), '用了避諱字');
+  r = N.checkFamily({ candidate: '王劍安', avoid: '王建國' });
+  ok(r.warns.some(function(w) { return /「劍」和避諱字同音/.test(w); }), '避諱同音（劍／建）');
+  r = N.checkFamily({ candidate: '王怡蘊', avoid: '王建國' });
+  ok(!r.warns.length, '姓氏相同不算犯諱');
+  // 平均和諧度
+  r = N.checkFamily({ candidate: '王怡蘊', parents: ['王大明', '林小美'], siblings: ['王子晴'] });
+  ok(r.avgHarmony === Math.round(r.pairs.reduce(function(s, p) { return s + p.score; }, 0) / r.pairs.length), '平均和諧度');
+  ok(N.checkFamily({ candidate: '王怡蘊' }).avgHarmony === null, '沒有家人就沒有平均');
+
+  // 多個候選名
+  var pc = N.parseFamilyCandidates('王怡蘊、王子安,王子安 王明軒\n王銘軒；王宇;王大明 王小華');
+  ok(pc.list.join('|') === '王怡蘊|王子安|王明軒|王銘軒|王宇' && pc.skipped.join('|') === '王大明|王小華', '拆分與去重 ' + JSON.stringify(pc));
+  var opts = { candidates: ['王明軒', '王大明', '王子安', '王怡蘊', 'Tom'], parents: ['王大明', '林小美'], siblings: ['王子晴'], generation: '子', avoid: '陳建國' };
+  var rk = N.rankFamily(opts);
+  ok(rk.errors.length === 1 && rk.errors[0].name === 'Tom', '無法分析的候選名列為錯誤');
+  ok(rk.results[rk.results.length - 1].candidate.full === '王大明' && rk.results[rk.results.length - 1].blocked, '同名排最後');
+  ok(rk.results[0].candidate.full === '王子安' && rk.results[0].warns.length === 0, '有輩分字、沒有警告的排第一');
+  rk.results.forEach(function(x, i) {
+    if (!i) return;
+    var q = rk.results[i - 1];
+    ok((q.blocked ? 1 : 0) <= (x.blocked ? 1 : 0) && (q.blocked !== x.blocked || q.warns.length <= x.warns.length), '排序 ' + q.candidate.full + ' → ' + x.candidate.full);
+  });
+  // 報告
+  var html = N.familyReportHtml(rk, opts, '2026-10-06');
+  ok(/^<!doctype html>/.test(html) && /家庭命名決策報告/.test(html) && /2026-10-06/.test(html), '報告標頭');
+  ok((html.match(/<tr><td>\d/g) || []).length === 4, '比較表 4 列');
+  ok(/輩分字<\/td><td>子/.test(html) && /避諱<\/td><td>陳建國/.test(html) && /王大明、林小美/.test(html), '家庭條件');
+  ok(/Tom：/.test(html) && /最後決定/.test(html) && /不取代家人的偏好/.test(html), '錯誤、討論欄與聲明');
+  ok(!/undefined|NaN|null/.test(html), '報告沒有 undefined');
+  ok(!/<script/i.test(N.familyReportHtml(N.rankFamily({ candidates: ['王怡蘊'], avoid: '<script>alert(1)</script>' }), { avoid: '<script>alert(1)</script>' }, '2026-10-06')), '使用者輸入會跳脫');
 });
 
 section('寶寶取名', function() {

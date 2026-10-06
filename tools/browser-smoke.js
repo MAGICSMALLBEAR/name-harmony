@@ -147,6 +147,26 @@
     $('familyGo').click();
     out.family = $('familyResult').innerText;
 
+    // 家庭決策報告：多個候選名＋輩分字＋避諱 → 排序 → 列印（攔下 print()，讀報告內容）
+    $('familyCandidate').value = '王明軒、王子安、王建安'; $('familyGeneration').value = '子'; $('familyAvoid').value = '祖父王建國';
+    $('familyGo').click();
+    const famOrder = [...$('familyResult').querySelectorAll('.tool-cand-name')].map(n => n.textContent.replace(/^\\d+\\.\\s*/, '')).join(',');
+    const famPrinted = new Promise(resolve => {
+      new MutationObserver((list, obs) => list.forEach(m => m.addedNodes.forEach(n => {
+        if (n.tagName !== 'IFRAME') return;
+        obs.disconnect();
+        n.contentWindow.print = () => {
+          const d = n.contentDocument;
+          resolve(d.title + ' rows:' + d.querySelectorAll('thead + tbody tr').length + ' top:' + d.querySelector('tbody .nm').textContent + (/避諱字「建」/.test(d.body.textContent) ? ' avoid' : ''));
+        };
+      }))).observe(document.body, { childList: true });
+    });
+    $('familyReport').click();
+    out.familyReport = famOrder + ' | ' + await Promise.race([famPrinted, new Promise(r => setTimeout(() => r('timeout'), 8000))]);
+    // 還原成單一候選，後面的語言切換檢查沿用
+    $('familyCandidate').value = '王明軒'; $('familyGeneration').value = ''; $('familyAvoid').value = '';
+    $('familyGo').click();
+
     // 切換成英文：四個工具要重畫成英文，保留輸入與結果；品牌網域沿用已查到的結果，不重新查詢
     let rdapCalls = 0;
     const origFetch = window.fetch;
@@ -347,6 +367,7 @@
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
+    familyReport: /^王子安,王明軒,王建安 \| 家庭命名決策報告 rows:3 top:王子安 avoid$|^王子安,王建安,王明軒 \| 家庭命名決策報告 rows:3 top:王子安 avoid$/,
     // 10 輸入 × $5 ＋ 5 輸出 × $25 = $0.000175
     aiUsage: /^輸入 10 tokens（快取讀取 0）・輸出 5 tokens・耗時 N 秒（首字 N 秒）・約 US\$0\.0002 \| analysis:end_turn,follow-up:end_turn,follow-up:aborted \| export \| 本次對話累計：3 輪・輸入 20・輸出 10 tokens・約 US\$0\.000[34]（另有 1 輪中斷，費用不明）$/,
     brandCompare: /^4:Dick saved:森月,Luma,Dick,google calm-top:森月 domains$/,

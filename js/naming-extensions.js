@@ -143,7 +143,7 @@ window.NamingExtensions = (function() {
       familyDesc: '比較候選名字與父母、手足的重字、同音字與五格人格五行。所有資料只在這台裝置的瀏覽器計算。',
       parentA: '家長姓名（選填）', parentAPh: '例如 王大明',
       parentB: '另一位家長（選填）', parentBPh: '例如 林小美',
-      candidate: '候選完整姓名', candidatePh: '例如 王怡蘊',
+      candidate: '候選完整姓名（可多個，以逗號或頓號分隔）', candidatePh: '例如 王怡蘊、王子安',
       siblings: '手足姓名（選填，以逗號或頓號分隔）', siblingsPh: '例如 王子晴、王子安',
       familyGo: '👨‍👩‍👧 檢查家庭一致性',
       needCandidate: '請輸入筆劃庫可分析的完整中文姓名（姓＋名）',
@@ -157,10 +157,25 @@ window.NamingExtensions = (function() {
       familyClear: '和已輸入的家人沒有重字或同音字，辨識度良好',
       skipped: function(p) { return '略過無法辨識的姓名：' + p.names.join('、'); },
       phonCaution: function(p) { return '候選名音韻需注意：' + p.warn; },
-      blocked: '不能使用', warnCount: function(p) { return '需留意 ' + p.n + ' 項'; }, familyOk: '家庭規劃',
+      blocked: '不能使用', warnCount: function(p) { return '需留意 ' + p.n + ' 項'; }, familyOk: '沒有需留意項目',
       familyGrid: function(p) { return '人格五行：' + p.el + '；總格：' + p.zong + ' ' + p.glory + (p.phon ? '；音韻：' + p.phon : ''); },
       notListed: '未收錄', noMatch: '無法比對',
       familyNote: '此工具協助比較命名的一致性與辨識度，不取代家人的偏好、文化傳承或戶籍登記規定。',
+      generation: '輩分字（選填）', generationPh: '例如 子',
+      avoid: '避諱字或長輩姓名（選填）', avoidPh: '例如 祖父王建國、外婆陳月娥',
+      genHas: function(p) { return '用了輩分字「' + p.c + '」（名字第 ' + p.pos + ' 字）'; },
+      genMissing: function(p) { return '沒有用到輩分字「' + p.c + '」'; },
+      avoidChar: function(p) { return '用了避諱字「' + p.chars + '」'; },
+      avoidSound: function(p) { return '「' + p.chars + '」和避諱字同音；講究避諱時也會避開'; },
+      famMulti: function(p) { return '共比較 ' + p.n + ' 個候選名，依「能否使用 → 需留意項目 → 與家人的和諧度」排序'; },
+      famTrim: function(p) { return '最多比較 5 個候選名，略過：' + p.names; },
+      famAvg: function(p) { return '與家人平均和諧度 ' + p.avg + '/100'; },
+      famReport: '🖨️ 列印家庭決策報告（可另存 PDF）',
+      repTitle: '家庭命名決策報告', repFamily: '家庭成員與條件', repParents: '家長', repSiblings: '手足',
+      repGen: '輩分字', repAvoid: '避諱', repNone: '未填', repRank: '候選名比較', repDetail: '各候選名的檢查結果',
+      repHead: ['名次', '候選名', '結論', '人格五行', '總格', '音韻', '需留意', '家人和諧度'],
+      repDecide: '家人討論紀錄', repDecideHint: '最後決定：＿＿＿＿＿＿　　理由：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿',
+      repFoot: '本報告依筆劃、字音與五格計算，協助比較命名的一致性與辨識度，不取代家人的偏好、文化傳承或戶籍登記規定。',
       colon: '：', paren: function(p) { return '（' + p.x + '）'; }
     },
     en: {
@@ -280,7 +295,7 @@ window.NamingExtensions = (function() {
       familyDesc: 'Compare a candidate name with parents\' and siblings\' names for shared characters, same-sounding characters and the five-grid personality element. Everything is computed in this browser.',
       parentA: 'Parent (optional)', parentAPh: 'e.g. 王大明',
       parentB: 'Other parent (optional)', parentBPh: 'e.g. 林小美',
-      candidate: 'Candidate full name', candidatePh: 'e.g. 王怡蘊',
+      candidate: 'Candidate full names (one or more, comma-separated)', candidatePh: 'e.g. 王怡蘊, 王子安',
       siblings: 'Siblings (optional, separated by commas)', siblingsPh: 'e.g. 王子晴, 王子安',
       familyGo: '👨‍👩‍👧 Check Family Fit',
       needCandidate: 'Please enter a full Chinese name (surname + given name) found in the stroke database',
@@ -294,10 +309,25 @@ window.NamingExtensions = (function() {
       familyClear: 'No shared or same-sounding characters with the family members entered — easy to tell apart',
       skipped: function(p) { return 'Skipped names that could not be read: ' + p.names.join(', '); },
       phonCaution: function(p) { return 'Candidate\'s phonetics need attention: ' + p.warn; },
-      blocked: 'Cannot use', warnCount: function(p) { return p.n + ' thing' + (p.n === 1 ? '' : 's') + ' to note'; }, familyOk: 'Family plan',
+      blocked: 'Cannot use', warnCount: function(p) { return p.n + ' thing' + (p.n === 1 ? '' : 's') + ' to note'; }, familyOk: 'Nothing to note',
       familyGrid: function(p) { return 'Personality element: ' + p.el + '; total grid: ' + p.zong + ' ' + p.glory + (p.phon ? '; phonetics: ' + p.phon : ''); },
       notListed: 'not listed', noMatch: 'cannot compare',
       familyNote: 'This tool compares consistency and distinctiveness only; it does not replace family preferences, cultural traditions or household registration rules.',
+      generation: 'Generation character (optional)', generationPh: 'e.g. 子',
+      avoid: 'Characters or elders\' names to avoid (optional)', avoidPh: 'e.g. 王建國, 陳月娥',
+      genHas: function(p) { return 'Uses the generation character "' + p.c + '" (character ' + p.pos + ' of the given name)'; },
+      genMissing: function(p) { return 'Does not use the generation character "' + p.c + '"'; },
+      avoidChar: function(p) { return 'Uses an avoided character: ' + p.chars; },
+      avoidSound: function(p) { return '"' + p.chars + '" sounds the same as an avoided character — strict naming taboos avoid these too'; },
+      famMulti: function(p) { return p.n + ' candidates compared, ranked by usable → things to note → harmony with the family'; },
+      famTrim: function(p) { return 'At most 5 candidates are compared; skipped: ' + p.names; },
+      famAvg: function(p) { return 'Average harmony with family ' + p.avg + '/100'; },
+      famReport: '🖨️ Print family decision report (save as PDF)',
+      repTitle: 'Family Naming Decision Report', repFamily: 'Family members and conditions', repParents: 'Parents', repSiblings: 'Siblings',
+      repGen: 'Generation character', repAvoid: 'Avoid', repNone: 'not given', repRank: 'Candidate comparison', repDetail: 'Checks per candidate',
+      repHead: ['#', 'Candidate', 'Verdict', 'Personality element', 'Total grid', 'Phonetics', 'To note', 'Family harmony'],
+      repDecide: 'Family discussion notes', repDecideHint: 'Final choice: ____________    Reason: ______________________________',
+      repFoot: 'This report is computed from stroke counts, character sounds and the five grids to compare consistency and distinctiveness. It does not replace family preferences, cultural traditions or household registration rules.',
       colon: ': ', paren: function(p) { return ' (' + p.x + ')'; }
     }
   };
@@ -486,7 +516,7 @@ window.NamingExtensions = (function() {
     trend: { name: '', gender: '', ran: false },
     brand: { name: '', tone: 'trust', ran: false, domains: null, listText: null, cmpRan: false, cmp: null, cmpDomains: {}, cmpPending: {} },
     bf: { answers: [], ran: false },
-    family: { parentA: '', parentB: '', candidate: '', siblings: '', ran: false }
+    family: { parentA: '', parentB: '', candidate: '', siblings: '', generation: '', avoid: '', ran: false, ranked: null, opts: null }
   };
 
   function renderTrends() {
@@ -1087,6 +1117,26 @@ window.NamingExtensions = (function() {
         if (sameSound.length) warns.push(tr('siblingSound', { name: m.full, chars: sameSound.join('、') }));
       }
     });
+    // 輩分字：名字裡要有這個字
+    var gen = String(opts.generation || '').replace(/[^一-鿿]/g, '').charAt(0);
+    var genOk = null;
+    if (gen) {
+      var pos = cand.given.indexOf(gen);
+      genOk = pos >= 0;
+      if (genOk) infos.push(tr('genHas', { c: gen, pos: pos + 1 }));
+      else warns.push(tr('genMissing', { c: gen }));
+    }
+    // 避諱：字或長輩姓名裡的每個字，名字不能用到相同或同音的字
+    var avoid = String(opts.avoid || '').replace(/[^一-鿿]/g, '').split('').filter(function(c, i, a) { return a.indexOf(c) === i; });
+    if (avoid.length) {
+      var hit = cand.given.filter(function(c) { return avoid.indexOf(c) >= 0; });
+      var homo = cand.given.filter(function(c) {
+        var b = pyBase(c);
+        return b && hit.indexOf(c) < 0 && avoid.some(function(a) { return a !== c && pyBase(a) === b; });
+      });
+      if (hit.length) warns.push(tr('avoidChar', { chars: hit.join('、') }));
+      if (homo.length) warns.push(tr('avoidSound', { chars: homo.join('、') }));
+    }
     if (!members.length) infos.push(tr('noFamily'));
     else if (!warns.length && !infos.length) infos.push(tr('familyClear'));
     if (skipped.length) infos.push(tr('skipped', { names: skipped }));
@@ -1098,7 +1148,87 @@ window.NamingExtensions = (function() {
     });
     var ph = window.Phonetics ? window.Phonetics.checkChinese(cand.analysis.parsed) : null;
     if (ph && ph.grade === '需注意') warns.push(tr('phonCaution', { warn: ph.warns[0] || '' }));
-    return { candidate: cand, blocked: blocked, warns: warns, infos: infos, pairs: pairs, phonetics: ph };
+    var scored = pairs.filter(function(p) { return p.score != null; });
+    var avg = scored.length ? Math.round(scored.reduce(function(s, p) { return s + p.score; }, 0) / scored.length) : null;
+    return { candidate: cand, blocked: blocked, warns: warns, infos: infos, pairs: pairs, phonetics: ph, avgHarmony: avg, generationOk: genOk };
+  }
+
+  /** 候選名字串拆成清單：逗號、頓號、分號、換行或空白分隔，去重，最多 5 個 */
+  function parseFamilyCandidates(text) {
+    var seen = {}, list = [];
+    String(text || '').split(/[,，、;；\s]+/).forEach(function(s) { if (s && !seen[s]) { seen[s] = 1; list.push(s); } });
+    return { list: list.slice(0, 5), skipped: list.slice(5) };
+  }
+
+  /**
+   * 比較多個候選名
+   * @param opts checkFamily 的參數，但 candidates 是陣列
+   * @return { results: [{ rank, ...checkFamily 結果 }]（依能否使用、需留意項目、平均和諧度排序）, errors: [{ name, error }] }
+   */
+  function rankFamily(opts) {
+    var results = [], errors = [];
+    (opts.candidates || []).forEach(function(name, i) {
+      var r = checkFamily({ candidate: name, parents: opts.parents, siblings: opts.siblings, generation: opts.generation, avoid: opts.avoid });
+      if (r.error) errors.push({ name: name, error: r.error });
+      else { r.order = i; results.push(r); }
+    });
+    var key = function(r) { return [r.blocked ? 1 : 0, r.warns.length, -(r.avgHarmony == null ? -1 : r.avgHarmony), r.order]; };
+    results.sort(function(a, b) {
+      var x = key(a), y = key(b);
+      for (var k = 0; k < x.length; k++) if (x[k] !== y[k]) return x[k] - y[k];
+      return 0;
+    });
+    results.forEach(function(r, i) {
+      var p = results[i - 1];
+      r.rank = p && p.blocked === r.blocked && p.warns.length === r.warns.length && p.avgHarmony === r.avgHarmony ? p.rank : i + 1;
+    });
+    return { results: results, errors: errors };
+  }
+
+  /** 結論文字：不能使用／需留意 n 項／沒有需留意項目 */
+  function familyVerdict(r) {
+    return r.blocked ? tr('blocked') : r.warns.length ? tr('warnCount', { n: r.warns.length }) : tr('familyOk');
+  }
+
+  /**
+   * 家庭決策報告（完整 HTML 文件，給 NamingTools.printHtml 列印或另存 PDF）
+   * @param opts { parents, siblings, generation, avoid }
+   */
+  function familyReportHtml(ranked, opts, date) {
+    var e = esc, results = ranked.results;
+    var none = '<small>' + tr('repNone') + '</small>';
+    var cond = [
+      [tr('repParents'), (opts.parents || []).map(e).join('、') || none],
+      [tr('repSiblings'), (opts.siblings || []).map(e).join('、') || none],
+      [tr('repGen'), opts.generation ? e(opts.generation) : none],
+      [tr('repAvoid'), opts.avoid ? e(opts.avoid) : none]
+    ];
+    var rows = results.map(function(r) {
+      var g = r.candidate.analysis.grids;
+      return '<tr><td>' + r.rank + '</td><td class="nm">' + e(r.candidate.full) + '</td><td>' + e(familyVerdict(r)) + '</td><td>' + e(term(g.ren.element)) + '</td>' +
+        '<td>' + g.zong.number + ' ' + e(g.zong.fortune ? term(g.zong.fortune.glory) : tr('notListed')) + '</td><td>' + e(r.phonetics ? term(r.phonetics.grade) : '—') + '</td>' +
+        '<td>' + r.warns.length + '</td><td>' + (r.avgHarmony == null ? '—' : r.avgHarmony + '/100') + '</td></tr>';
+    }).join('');
+    var details = results.map(function(r) {
+      return '<h3>' + r.rank + '. ' + e(r.candidate.full) + '　<small>' + e(familyVerdict(r)) + '</small></h3><ul>' +
+        r.warns.map(function(w) { return '<li>⚠️ ' + e(w) + '</li>'; }).join('') +
+        r.infos.map(function(w) { return '<li>' + e(w) + '</li>'; }).join('') +
+        r.pairs.map(function(p) { return '<li>' + e(p.who) + ' ' + e(p.name) + tr('colon') + (p.score != null ? p.score + '/100' + tr('paren', { x: e(term(p.tier)) }) : tr('noMatch')) + '</li>'; }).join('') +
+        '</ul>';
+    }).join('');
+    var errs = ranked.errors.length ? '<p><small>' + ranked.errors.map(function(x) { return e(x.name) + tr('colon') + e(x.error); }).join('<br>') + '</small></p>' : '';
+    return '<!doctype html><html lang="' + (lang() === 'en' ? 'en' : 'zh-Hant') + '"><head><meta charset="utf-8"><title>' + tr('repTitle') + '</title><style>' +
+      'body{font-family:"Noto Serif TC","PMingLiU",serif;color:#2c1810;margin:24px;}h1{font-size:22px;margin:0 0 4px;}h2{font-size:16px;margin:18px 0 6px;border-bottom:1px solid #b8860b;padding-bottom:4px;}' +
+      'h3{font-size:15px;margin:12px 0 4px;}p,li{font-size:13px;line-height:1.7;margin:2px 0;}ul{margin:0;padding-left:1.4em;}table{border-collapse:collapse;width:100%;font-size:12px;}' +
+      'th,td{border:1px solid #c4a870;padding:5px 6px;vertical-align:top;text-align:left;}th{background:#f5ecd8;}.nm{font-size:17px;white-space:nowrap;}small{color:#8b7355;}' +
+      '.cond td:first-child{width:7em;background:#faf5eb;}.decide{border:1px dashed #b8860b;padding:10px 12px;min-height:90px;}.foot{margin-top:18px;font-size:11px;color:#8b7355;}' +
+      '@page{margin:14mm;}tr,h3,ul{page-break-inside:avoid;}</style></head><body>' +
+      '<h1>👨‍👩‍👧 ' + tr('repTitle') + '</h1><p><small>' + e(date) + '</small></p>' +
+      '<h2>' + tr('repFamily') + '</h2><table class="cond">' + cond.map(function(c) { return '<tr><td>' + c[0] + '</td><td>' + c[1] + '</td></tr>'; }).join('') + '</table>' +
+      '<h2>' + tr('repRank') + '</h2><table><thead><tr>' + tr('repHead').map(function(h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>' + errs +
+      '<h2>' + tr('repDetail') + '</h2>' + details +
+      '<h2>' + tr('repDecide') + '</h2><div class="decide"><p>' + tr('repDecideHint') + '</p></div>' +
+      '<p class="foot">' + tr('repFoot') + '</p></body></html>';
   }
 
   function renderFamily() {
@@ -1112,23 +1242,53 @@ window.NamingExtensions = (function() {
     html += '<div class="tool-row">' + field('familyParentA', 'parentA', s.parentA, true) + field('familyParentB', 'parentB', s.parentB, true) + '</div>';
     html += field('familyCandidate', 'candidate', s.candidate);
     html += field('familySiblings', 'siblings', s.siblings);
+    html += '<div class="tool-row">' + field('familyGeneration', 'generation', s.generation, true) + field('familyAvoid', 'avoid', s.avoid, true) + '</div>';
     html += '<button type="button" class="btn-download-img" id="familyGo">' + tr('familyGo') + '</button><div id="familyResult"></div>';
     el.innerHTML = html;
     if (s.ran) runFamily();
   }
 
+  function familyOpts() {
+    return {
+      parents: [val('familyParentA').trim(), val('familyParentB').trim()].filter(Boolean),
+      siblings: val('familySiblings').split(/[、,，\s]+/).filter(Boolean),
+      generation: val('familyGeneration').trim(), avoid: val('familyAvoid').trim()
+    };
+  }
+
   function runFamily() {
     state.family.ran = true;
-    var r = checkFamily({
-      candidate: val('familyCandidate'),
-      parents: [val('familyParentA').trim(), val('familyParentB').trim()].filter(Boolean),
-      siblings: val('familySiblings').split(/[、,，\s]+/).filter(Boolean)
-    });
     var out = document.getElementById('familyResult');
-    if (r.error) { out.innerHTML = '<p class="tool-msg">' + esc(r.error) + '</p>'; return; }
+    var p = parseFamilyCandidates(val('familyCandidate'));
+    var opts = familyOpts();
+    opts.candidates = p.list;
+    var ranked = rankFamily(opts);
+    state.family.ranked = ranked;
+    state.family.opts = opts;
+    var html = '';
+    if (p.skipped.length) html += '<p class="tool-msg">' + esc(tr('famTrim', { names: p.skipped.join('、') })) + '</p>';
+    if (!ranked.results.length) {
+      out.innerHTML = html + '<p class="tool-msg">' + esc(ranked.errors.length ? ranked.errors[0].name + tr('colon') + ranked.errors[0].error : tr('needCandidate')) + '</p>';
+      return;
+    }
+    if (ranked.results.length > 1) html += '<p class="tool-line"><strong>' + esc(tr('famMulti', { n: ranked.results.length })) + '</strong></p>';
+    html += ranked.results.map(familyCard).join('');
+    html += ranked.errors.map(function(x) { return '<p class="tool-msg">' + esc(x.name + tr('colon') + x.error) + '</p>'; }).join('');
+    html += '<div class="tool-actions"><button type="button" class="btn-action btn-action-secondary" id="familyReport">' + tr('famReport') + '</button></div>';
+    html += '<p class="tool-note">' + tr('familyNote') + '</p>';
+    out.innerHTML = html;
+  }
+
+  function printFamilyReport() {
+    var f = state.family;
+    if (!f.ranked || !f.ranked.results.length || !window.NamingTools || !window.NamingTools.printHtml) return;
+    window.NamingTools.printHtml(familyReportHtml(f.ranked, f.opts, today()));
+  }
+
+  function familyCard(r) {
     var g = r.candidate.analysis.grids;
-    var html = '<div class="tool-cand"><div class="tool-cand-head"><span class="tool-cand-name">' + esc(r.candidate.full) + '</span>' +
-      '<span class="tool-badge">' + (r.blocked ? tr('blocked') : r.warns.length ? tr('warnCount', { n: r.warns.length }) : tr('familyOk')) + '</span></div>';
+    var html = '<div class="tool-cand"><div class="tool-cand-head"><span class="tool-cand-name">' + (r.rank ? '<small class="tool-meta">' + r.rank + '.</small> ' : '') + esc(r.candidate.full) + '</span>' +
+      '<span class="tool-badge">' + familyVerdict(r) + '</span></div>';
     html += '<p class="tool-line">' + tr('familyGrid', {
       el: term(g.ren.element), zong: g.zong.number, glory: g.zong.fortune ? term(g.zong.fortune.glory) : tr('notListed'),
       phon: r.phonetics ? term(r.phonetics.grade) : ''
@@ -1138,8 +1298,8 @@ window.NamingExtensions = (function() {
     html += r.pairs.map(function(p) {
       return '<p class="tool-line">' + p.who + ' ' + esc(p.name) + ' × ' + esc(r.candidate.full) + tr('colon') + (p.score != null ? p.score + '/100' + tr('paren', { x: term(p.tier) }) : tr('noMatch')) + '</p>';
     }).join('');
-    html += '<p class="tool-note">' + tr('familyNote') + '</p></div>';
-    out.innerHTML = html;
+    if (r.avgHarmony != null && r.pairs.length > 1) html += '<p class="tool-line tool-meta">' + tr('famAvg', { avg: r.avgHarmony }) + '</p>';
+    return html + '</div>';
   }
 
   // ============ 初始化 ============
@@ -1153,6 +1313,7 @@ window.NamingExtensions = (function() {
     if (document.getElementById('familyCandidate')) {
       state.family.parentA = val('familyParentA'); state.family.parentB = val('familyParentB');
       state.family.candidate = val('familyCandidate'); state.family.siblings = val('familySiblings');
+      state.family.generation = val('familyGeneration'); state.family.avoid = val('familyAvoid');
     }
   }
 
@@ -1183,6 +1344,7 @@ window.NamingExtensions = (function() {
       else if (id === 'brandCopy') exportCompare(true);
       else if (id === 'bfGo') runPersonality();
       else if (id === 'familyGo') runFamily();
+      else if (id === 'familyReport') printFamilyReport();
     });
     document.addEventListener('change', function(e) {
       if (e.target && e.target.id === 'brandTone' && state.brand.ran) runBrand(true);
@@ -1201,6 +1363,6 @@ window.NamingExtensions = (function() {
     scoreBrand: scoreBrand, brandSlug: brandSlug, checkDomains: checkDomains,
     parseBrandCandidates: parseBrandCandidates, compareBrands: compareBrands, brandDecisionSummary: brandDecisionSummary,
     scoreBigFive: scoreBigFive, FACTORS: FACTORS,
-    checkFamily: checkFamily
+    checkFamily: checkFamily, parseFamilyCandidates: parseFamilyCandidates, rankFamily: rankFamily, familyReportHtml: familyReportHtml
   };
 })();
