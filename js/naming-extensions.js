@@ -77,7 +77,13 @@ window.NamingExtensions = (function() {
         boldShortEn: function(p) { return p.n + ' 個字母，短而有力'; }, boldLongEn: function(p) { return p.n + ' 個字母，不夠俐落'; },
         boldMixed: '創新調性可以接受中英混搭', boldDigits: '創新調性可以接受數字',
         calmNature: function(p) { return '有自然意象（' + p.chars + '）'; }, calmNoNature: '沒有自然意象的字',
-        calmSoft: '字尾收在柔和的音', calmHard: '有 K、Q、X、Z 等硬音，不夠柔和'
+        calmSoft: '字尾收在柔和的音', calmHard: '有 K、Q、X、Z 等硬音，不夠柔和',
+        trustChars: function(p) { return '有穩重、可靠的字（' + p.chars + '）'; },
+        trustFormal: function(p) { return p.n + ' 個音節，聽起來完整正式'; }, trustCute: '疊字像暱稱，正式感不足',
+        warmDouble: '疊字，可愛好叫', warmChars: function(p) { return '有親切、生活感的字（' + p.chars + '）'; },
+        warmOpen: '收在母音，聽起來親切',
+        boldSoundZh: '有清脆的塞音或收在去聲，語氣果斷', boldSoundEn: '有爆破或摩擦的硬音，聽起來有力',
+        calmFlow: '沒有爆破音，唸起來流暢柔和'
       },
       zhLenGood: function(p) { return p.n + ' 個字，容易記'; },
       zhLenLong: function(p) { return p.n + ' 個字，略長，可準備簡稱'; },
@@ -195,7 +201,13 @@ window.NamingExtensions = (function() {
         boldShortEn: function(p) { return p.n + ' letters — short and punchy'; }, boldLongEn: function(p) { return p.n + ' letters — not punchy enough'; },
         boldMixed: 'A bold tone can carry mixed Chinese and English', boldDigits: 'A bold tone can carry digits',
         calmNature: function(p) { return 'Natural imagery (' + p.chars + ')'; }, calmNoNature: 'No natural imagery',
-        calmSoft: 'Ends on a soft sound', calmHard: 'Hard sounds (K, Q, X, Z) feel less calm'
+        calmSoft: 'Ends on a soft sound', calmHard: 'Hard sounds (K, Q, X, Z) feel less calm',
+        trustChars: function(p) { return 'Steady, reliable characters (' + p.chars + ')'; },
+        trustFormal: function(p) { return p.n + ' syllables — sounds complete and formal'; }, trustCute: 'Reduplication reads like a nickname, less formal',
+        warmDouble: 'Reduplication — cute and easy to call out', warmChars: function(p) { return 'Homely, friendly characters (' + p.chars + ')'; },
+        warmOpen: 'Ends on a vowel — sounds friendly',
+        boldSoundZh: 'Crisp stops or a falling final tone — sounds decisive', boldSoundEn: 'Plosive or fricative sounds — sounds strong',
+        calmFlow: 'No plosives — flows smoothly'
       },
       zhLenGood: function(p) { return p.n + ' characters — easy to remember'; },
       zhLenLong: function(p) { return p.n + ' characters — a bit long, prepare a short form'; },
@@ -592,7 +604,7 @@ window.NamingExtensions = (function() {
     if (TONES.indexOf(tone) >= 0) {
       toneFit(tone, {
         name: name, kind: kind, zh: zh, letters: name.replace(/[^a-z]/ig, '').length, chars: chars || [],
-        tones: tones || [], english: e || null, pts: function(key) { return items.filter(function(x) { return x.key === key; }).reduce(function(s, x) { return s + x.pts; }, 0); }
+        tones: tones || [], sylls: sylls || [], english: e || null, pts: function(key) { return items.filter(function(x) { return x.key === key; }).reduce(function(s, x) { return s + x.pts; }, 0); }
       }).forEach(function(f) { items.push({ key: 'toneFit', label: tr('lbl.toneFit'), pts: f[0], note: f[1] }); });
     }
 
@@ -600,57 +612,81 @@ window.NamingExtensions = (function() {
     return { name: name, kind: kind, tone: tone || '', score: Math.max(0, Math.min(100, score)), items: items, slug: brandSlug(name) };
   }
 
-  // 自然意象用字（自然療癒調性）
-  var NATURE = '山水木林森月雲風花草葉溪湖海雨露晴光青綠禾竹松柏楓櫻梅蘭荷蓮泉川澗谷石岩星日晨曦霞雪霧島嶼田野苗芽種果橘桃杏茶棉麻晴霽澄清蔚藍';
+  // 調性用字（2026-10-06 依真實品牌案例校準，見 tools/test-naming.js「品牌調性校準」）
+  // 自然療癒：自然意象，加上寧靜、素樸的字
+  var NATURE = '山水木林森月雲風花草葉溪湖海雨露晴光青綠禾竹松柏楓櫻梅蘭荷蓮泉川澗谷石岩星日晨曦霞雪霧島嶼田野苗芽種果橘桃杏茶棉麻晴霽澄清蔚藍藤籽靜寧柔淨悠禪素良原純簡恬';
+  // 專業可信：穩固、國家、財富、誠信的字
+  var TRUST_CHARS = '國泰富邦信華中安正誠聯興銀通永鴻宏成達元金台電豐隆盛恆聖德鼎晶積實台榮匯證保';
+  // 溫暖親和：家常、親暱、甜美的字
+  var WARM_CHARS = '家美小好樂愛心甜暖喜乖寶貝親媽童糖蜜歡笑甘福媽阿麻吉趣';
+  // 有力的聲母（塞音、塞擦音）
+  var HARD_INI = { k: 1, g: 1, t: 1, p: 1, q: 1, j: 1, zh: 1, ch: 1, z: 1, c: 1 };
 
   /**
    * 品牌調性的加減分（不改基礎分，另列「調性契合」讓使用者看得到原因）
+   * 每種調性看自己的特徵，名字短不再只對「創新有力」加分（多數品牌名本來就短）
    * @return [[pts, note], ...]
    */
   function toneFit(tone, c) {
     var out = [], add = function(p, key, params) { out.push([p, tr('fit.' + key, params)]); };
     var en = c.english;
+    var w = c.name.toLowerCase().replace(/[^a-z]/g, '');
+    var pick = function(list) { return c.chars.filter(function(ch, i) { return list.indexOf(ch) >= 0 && c.chars.indexOf(ch) === i; }); };
+    var doubled = c.kind === 'zh' ? c.chars.some(function(ch, i) { return i && ch === c.chars[i - 1]; })
+      : c.kind === 'en' && /^([a-z]{2,3})\1$/.test(w);
     if (tone === 'trust') {
-      // 專業可信：諧音、俚語、數字、中英混搭都更傷信任感
+      // 專業可信：諧音、俚語、數字、中英混搭都更傷信任感；穩重的字、完整的音節加分
       var bad = c.pts('homophone') < 0 || c.pts('slang') < 0;
       if (c.pts('homophone') < 0) add(Math.round(c.pts('homophone') / 2), 'trustHomo');
       if (c.pts('slang') < 0) add(-15, 'trustSlang');
       if (c.pts('digits') < 0) add(-5, 'trustDigits');
       if (c.kind === 'mixed') add(-5, 'trustMixed');
       if (!bad && c.pts('digits') === 0 && c.kind !== 'mixed' && c.pts('easy') > 0) add(5, 'trustClear');
+      if (doubled) add(-5, 'trustCute');
+      else if (c.kind === 'zh') { var tc = pick(TRUST_CHARS); if (tc.length) add(10, 'trustChars', { chars: tc.join('、') }); }
+      else if (en && en.syllables >= 3 && en.syllables <= 4) add(5, 'trustFormal', { n: en.syllables });
     } else if (tone === 'warm') {
-      // 溫暖親和：好唸、口語
-      if (c.kind === 'zh' && c.tones.length >= 2) {
-        if (c.pts('tone') > 0) add(5, 'warmTones');
-        else add(-5, 'warmFlat');
+      // 溫暖親和：疊字、家常的字、聲調起伏、收在母音
+      if (doubled) add(10, 'warmDouble');
+      if (c.kind === 'zh') {
+        var wc = pick(WARM_CHARS);
+        if (wc.length) add(10, 'warmChars', { chars: wc.join('、') });
+        if (c.tones.length >= 2) {
+          if (c.pts('tone') > 0) add(5, 'warmTones');
+          else if (!doubled) add(-5, 'warmFlat');
+        }
+        if (c.pts('easy') === 0) add(-5, 'warmRare');
       }
-      if (c.kind === 'zh' && c.pts('easy') === 0) add(-5, 'warmRare');
       if (en) {
         if (en.syllables <= 2) add(5, 'warmShort', { n: en.syllables });
+        if (/[aeiouy]$/.test(w)) add(5, 'warmOpen');
         if (en.hard.length) add(-5, 'warmHard');
       }
     } else if (tone === 'bold') {
-      // 創新有力：短、辨識度高，可接受中英混搭與數字
+      // 創新有力：短而有力的音（塞音、去聲收尾、爆破音），可接受中英混搭與數字
       if (c.kind === 'zh') {
-        if (c.zh === 2) add(10, 'boldShortZh');
+        if (c.zh === 2) add(5, 'boldShortZh');
         else if (c.zh >= 4) add(-5, 'boldLongZh', { n: c.zh });
+        var sy = c.sylls.filter(Boolean);
+        if (sy.some(function(s) { return HARD_INI[s.ini]; }) || (sy.length && sy[sy.length - 1].tone === 4)) add(5, 'boldSoundZh');
       } else if (c.kind === 'en') {
-        if (c.letters >= 3 && c.letters <= 5) add(10, 'boldShortEn', { n: c.letters });
+        if (c.letters >= 3 && c.letters <= 5) add(5, 'boldShortEn', { n: c.letters });
         else if (c.letters > 8) add(-5, 'boldLongEn', { n: c.letters });
+        if (/[kxzq]|ck|^[bgkpt]/.test(w)) add(5, 'boldSoundEn');
       } else {
         add(5, 'boldMixed');
       }
       if (c.pts('digits') < 0) add(5, 'boldDigits');
     } else if (tone === 'calm') {
-      // 自然療癒：自然意象、柔和的音
+      // 自然療癒：自然或寧靜的意象、柔和的音
       if (c.kind === 'zh') {
-        var hits = c.chars.filter(function(ch) { return NATURE.indexOf(ch) >= 0; });
+        var hits = pick(NATURE);
         if (hits.length) add(10, 'calmNature', { chars: hits.join('、') });
         else add(-5, 'calmNoNature');
       } else if (c.kind === 'en') {
-        var w = c.name.toLowerCase().replace(/[^a-z]/g, '');
         if (/[aeiouylmn]$/.test(w) && !/[kqxz]/.test(w)) add(5, 'calmSoft');
         else if (/[kqxz]/.test(w)) add(-5, 'calmHard');
+        if (!/[bdgkpqtxzc]/.test(w)) add(5, 'calmFlow');
       }
     }
     // 有嚴重諧音或負面俚語時，任何調性都不加分（只保留扣分）

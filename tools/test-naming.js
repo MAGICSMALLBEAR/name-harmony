@@ -178,7 +178,48 @@ section('品牌命名評分', function() {
   var fitOf = function(n, t) { return N.scoreBrand(n, t).items.filter(function(x) { return x.key === 'toneFit'; }).map(function(x) { return x.pts; }); };
   ok(fitOf('森月', 'calm').indexOf(10) >= 0 && fitOf('新創科技', 'calm').indexOf(-5) >= 0, '自然療癒：森月有自然意象、新創科技沒有');
   ok(fitOf('Kodex', 'calm').indexOf(-5) >= 0 && fitOf('Luma', 'calm').indexOf(5) >= 0, '自然療癒：Kodex 硬音、Luma 柔和');
-  ok(fitOf('Luma', 'bold').indexOf(10) >= 0 && fitOf('A1', 'bold').indexOf(10) < 0, '創新有力：3–5 個字母才算短而有力');
+  ok(fitOf('Luma', 'bold').indexOf(5) >= 0 && fitOf('A1', 'bold').length === 1, '創新有力：3–5 個字母才算短（A1 只有數字加分）');
+  ok(fitOf('Kodex', 'bold').join() === '5,5' && fitOf('Luma', 'bold').join() === '5', '創新有力：硬音另外加分');
+  ok(fitOf('乖乖', 'warm').indexOf(10) >= 0 && fitOf('乖乖', 'warm').indexOf(-5) < 0, '溫暖親和：疊字加分、不算聲調平板');
+  ok(fitOf('國泰', 'trust').indexOf(10) >= 0 && fitOf('Bobo', 'trust').indexOf(-5) >= 0, '專業可信：穩重的字加分、疊字扣分');
+  ok(fitOf('Luna', 'calm').join() === '5,5' && fitOf('Aveda', 'calm').join() === '5', '自然療癒：沒有爆破音另外加分');
+
+  // 調性校準：用定位公認的真實品牌，檢查「本身的調性」拿到四種裡最高（平手算命中）
+  // 校準組用來調整用字表與權重；留出組沒有參與調整，用來確認不是只背了案例
+  // 2026-10-06 校準前：校準組 25/62、留出組 22/49（「創新有力」幾乎全拿第一）
+  var BRAND_TONE = {
+    tune: {
+      trust: ['國泰', '富邦', '玉山', '中信', '華碩', '宏碁', '長榮', '中華電信', '台積電', '鴻海', 'Oracle', 'Cisco', 'Allianz', 'Siemens', 'Deloitte', 'Fidelity', 'Visa', 'Intel'],
+      warm: ['全家', '義美', '乖乖', '小美', '好來', '麥當勞', 'Dove', 'Etsy', 'Airbnb', 'Hallmark', 'Huggies', 'Pampers', 'Lego', 'Bobo'],
+      bold: ['小米', '蔚來', '極氪', '特斯拉', 'Gogoro', 'Tesla', 'Nike', 'Uber', 'Xbox', 'Zoom', 'Razer', 'Jeep', 'Red Bull', 'Vox'],
+      calm: ['無印良品', '綠藤', '春水堂', '茶籽堂', '阿原', '雪花秀', '森林', '山水', 'Aesop', 'Lush', 'Calm', 'Muji', 'Aveda', 'Origins', 'Aura', 'Luna']
+    },
+    holdout: {
+      trust: ['第一銀行', '統一', '遠東', '中鋼', '台塑', '大同', '新光', 'Boeing', 'Pfizer', 'Honeywell', 'Prudential', 'Mastercard', 'Philips'],
+      warm: ['好市多', '樂事', '喜年來', '小熊', '甜心', '媽媽樂', 'Teddy', 'Lulu', 'Mochi', 'Yummy', 'Coco', 'Kleenex'],
+      bold: ['酷澎', '極速', '戰鬥', 'Puma', 'Kodak', 'Raptor', 'Jolt', 'Monster', 'Hulk', 'Strike', 'Rocket'],
+      calm: ['清心', '清淨', '花草', '靜心', '竹里', 'Breeze', 'Willow', 'Sage', 'Lumi', 'Serene', 'Mellow', 'Haven', 'Bloom']
+    }
+  };
+  var TONE_KEYS = ['trust', 'warm', 'bold', 'calm'];
+  var fitSum = function(n, t) { return N.scoreBrand(n, t).items.filter(function(x) { return x.key === 'toneFit'; }).reduce(function(s, x) { return s + x.pts; }, 0); };
+  Object.keys(BRAND_TONE).forEach(function(set) {
+    var hit = 0, total = 0, wins = { trust: 0, warm: 0, bold: 0, calm: 0 };
+    TONE_KEYS.forEach(function(label) {
+      BRAND_TONE[set][label].forEach(function(n) {
+        var f = TONE_KEYS.map(function(t) { return fitSum(n, t); }), max = Math.max.apply(null, f);
+        total++;
+        if (f[TONE_KEYS.indexOf(label)] === max) hit++;
+        var tied = f.filter(function(v) { return v === max; }).length;
+        TONE_KEYS.forEach(function(t, i) { if (f[i] === max) wins[t] += 1 / tied; });
+      });
+    });
+    TONE_KEYS.forEach(function(t) { wins[t] = Math.round(wins[t] * 10) / 10; });
+    console.log('   調性校準 ' + set + '：' + hit + '/' + total + '，各調性拿最高（平手平分）' + JSON.stringify(wins));
+    ok(hit / total >= 0.75, set + ' 命中率 ' + hit + '/' + total + ' 應 ≥ 75%');
+    // 沒有單一調性「通吃」：拿最高的次數不超過 40%（校準前「創新有力」佔 63%）
+    ok(TONE_KEYS.every(function(t) { return wins[t] <= total * 0.4; }), set + ' 沒有調性通吃 ' + JSON.stringify(wins));
+  });
   ok(fitOf('Luma森', 'trust').indexOf(-5) >= 0 && fitOf('Luma森', 'bold').indexOf(5) >= 0, '中英混搭：專業扣分、創新可接受');
   ok(N.scoreBrand('Dick', 'trust').score < N.scoreBrand('Dick').score, '專業可信：負面俚語扣更多');
   ok(fitOf('Dick', 'bold').length === 0 && fitOf('Dick', 'warm').length === 0, 'Dick 在創新／溫暖都不加分');
