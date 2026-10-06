@@ -713,6 +713,29 @@ section('卡巴拉生命樹（路徑與四個世界）', function() {
   }
 });
 
+section('英文姓名資料覆蓋（SSA 各年代前 100 名）', function() {
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'data', 'english-names.js'), 'utf8'), ctx, { filename: 'english-names.js' });
+  var M = ctx.englishNameMeanings, X = ctx.EnglishTranslit, P = ctx.EnglishPhonetics, best = {};
+  ['F', 'M'].forEach(function(s) {
+    T.us[s].split('|').forEach(function(row) {
+      var i = row.indexOf(':'), ranks = row.slice(i + 1).split(',').map(Number).filter(Boolean);
+      if (ranks.length && Math.min.apply(null, ranks) <= 100) best[row.slice(0, i).toUpperCase()] = true;
+    });
+  });
+  var names = Object.keys(best);
+  ok(names.length > 600, '前 100 名共 ' + names.length + ' 個名字');
+  var miss = function(o) { return names.filter(function(n) { return !o[n]; }); };
+  ok(miss(M).length === 0, '都有字義，缺：' + miss(M).join(' '));
+  ok(miss(X).length === 0, '都有中文譯名，缺：' + miss(X).join(' '));
+  ok(miss(P).length === 0, '都有音節重音，缺：' + miss(P).join(' '));
+  // 格式：字義非空；譯名每個音節都是拼音庫裡有的無聲調拼音；音節重音只含 0/1/2 與旗標 tvloc
+  var sylls = {};
+  Object.keys(ctx.PinyinDB.CHAR).forEach(function(c) { sylls[ctx.PinyinDB.CHAR[c].replace(/\d$/, '').replace(/v/g, 'u')] = true; });
+  Object.keys(M).forEach(function(n) { ok(/^[A-Z]+$/.test(n) && M[n].length >= 4, n + ' 字義格式'); });
+  Object.keys(X).forEach(function(n) { ok(X[n].split(' ').every(function(s) { return sylls[s]; }), n + ' 譯名拼音 ' + X[n]); });
+  Object.keys(P).forEach(function(n) { ok(/^[012]+[tvloc]*$/.test(P[n]) && /1/.test(P[n]), n + ' 音節重音 ' + P[n]); });
+});
+
 section('AI 解讀用量與費用估算', function() {
   // ai-reading.js 載入時會找畫面元素；給一個沒有元素的 document 即可
   var actx = { console: console, document: { readyState: 'complete', getElementById: function() { return null; } } };
