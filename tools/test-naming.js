@@ -226,6 +226,57 @@ section('品牌命名評分', function() {
   ok(N.scoreBrand('森月', 'nope').items.every(function(x) { return x.key !== 'toneFit'; }), '未知調性當作沒給');
 });
 
+section('品牌候選比較', function() {
+  // 拆字串：各種分隔符、去重（英文不分大小寫）、最多 8 個
+  var p = N.parseBrandCandidates(' 森月、Luma,luma，青禾;Kodex\n\n 森月 \r\nA；B、C、D、E、F ');
+  ok(p.list.join('|') === '森月|Luma|青禾|Kodex|A|B|C|D' && p.skipped.join('|') === 'E|F', '拆分與去重 ' + JSON.stringify(p));
+  ok(N.parseBrandCandidates('').list.length === 0 && N.parseBrandCandidates(null).list.length === 0, '空字串');
+
+  var names = ['森月', 'Luma', 'Dick', '青禾', 'Kodex', '新創科技股份', 'A1'];
+  ['trust', 'warm', 'bold', 'calm'].forEach(function(t) {
+    var c = N.compareBrands(names, t);
+    ok(c.tone === t && c.rows.length === names.length, t + ' 列數');
+    c.rows.forEach(function(r, i) {
+      var s = N.scoreBrand(r.name, t);
+      ok(r.score === s.score, t + ' ' + r.name + ' 總分與單一評分一致');
+      ok(r.base === N.scoreBrand(r.name).score, t + ' ' + r.name + ' 基礎分＝不帶調性的分數');
+      var fits = ['trust', 'warm', 'bold', 'calm'].map(function(u) { return N.scoreBrand(r.name, u).items.filter(function(x) { return x.key === 'toneFit'; }).reduce(function(a, x) { return a + x.pts; }, 0); });
+      ok(Math.max.apply(null, fits) > 0 ? r.bestTones.length >= 1 : r.bestTones.length === 0, t + ' ' + r.name + ' 最適合調性（沒有正分就不選）');
+      ok(r.risks.every(function(x) { return x.pts < 0; }), t + ' ' + r.name + ' 風險都是扣分');
+      if (i) {
+        var q = c.rows[i - 1];
+        ok(q.raw > r.raw || (q.raw === r.raw && q.base >= r.base), t + ' 依原始分、基礎分排序');
+        ok(q.score >= r.score, t + ' 顯示的總分也不會倒序');
+        ok(r.rank === (q.raw === r.raw && q.base === r.base ? q.rank : i + 1), t + ' 同分同名次');
+      }
+    });
+    ok(c.rows[0].rank === 1, t + ' 第一名');
+    ok(c.rows[c.rows.length - 1].name === 'Dick' || c.rows[c.rows.length - 1].score === c.rows.filter(function(r) { return r.name === 'Dick'; })[0].score, t + ' 負面俚語墊底');
+  });
+  ok(N.compareBrands(['森月', ''], 'calm').rows.length === 1, '空名字略過');
+  ok(N.compareBrands(['森月', 'Luma'], 'nope').tone === 'trust', '未知調性用專業可信');
+  var tie = N.compareBrands(['森月', '森月'.split('').reverse().join('')], 'calm');
+  ok(tie.rows.length === 2, '兩列');
+  // 封頂：森月、青禾都是 100，但原始分不同時要分出名次
+  var cap = N.compareBrands(['青禾', '森月', '新創科技'], 'calm');
+  ok(cap.rows.every(function(r) { return r.score === Math.max(0, Math.min(100, r.raw)); }), '總分＝原始分夾在 0–100');
+  ok(cap.rows.filter(function(r) { return r.rank === 1; }).length === 1 || cap.rows[0].raw === cap.rows[1].raw, '封頂時用原始分分出第一');
+
+  // 決策摘要
+  var c = N.compareBrands(['森月', 'Luma', 'Dick'], 'calm');
+  var md = N.brandDecisionSummary(c, { senyue: [{ tld: 'com', status: 'taken' }, { tld: 'net', status: 'free' }, { tld: 'io', status: 'error' }] }, '2026-10-06');
+  ok(/^# 品牌命名決策摘要/.test(md) && /2026-10-06/.test(md) && /選定調性：自然療癒/.test(md), '摘要標頭');
+  ok(/\| 1 \| 森月 \|/.test(md) || /\| 1 \| Luma \|/.test(md), '摘要排名表');
+  var senRow = md.split('\n').filter(function(l) { return /\| 森月 \|/.test(l); })[0];
+  ok(/已註冊 \| 查無 \| 失敗 \| 查詢中 \|$/.test(senRow), '網域欄：有結果的顯示狀態、沒查到的顯示查詢中 ' + senRow);
+  ok(md.split('\n').filter(function(l) { return /^\| \d/.test(l); }).length === 3, '三列');
+  ok(/### \d\. Dick[\s\S]*聯想/.test(md) && /不能取代商標檢索/.test(md), '扣分理由與免責聲明');
+  ok(!/undefined|NaN|null/.test(md), '沒有 undefined');
+  ok(N.compareBrands(['Dick', 'Luma'], 'calm').rows.filter(function(r) { return r.name === 'Dick'; })[0].bestTones.length === 0, 'Dick 沒有適合的調性');
+  var pipe = N.brandDecisionSummary(N.compareBrands(['A|B', 'Luma'], 'bold'), {}, '2026-10-06');
+  ok(/A\\\|B/.test(pipe), '名字裡的 | 會跳脫');
+});
+
 section('網域查詢結果判讀（模擬 RDAP）', function() {
   var calls = [];
   var fake = function(url) {

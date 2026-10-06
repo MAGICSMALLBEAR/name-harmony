@@ -66,6 +66,21 @@ window.NamingExtensions = (function() {
         calm: '自然療癒：適合柔和的音與自然意象'
       },
       brandGo: '🏢 初篩品牌名', needBrand: '請輸入候選品牌名',
+      // 品牌候選比較
+      cmpTitle: '📊 候選比較', cmpDesc: '一次比較 2–8 個候選名（以逗號、頓號或換行分隔），依目前選的調性排序。清單只存在這台裝置。',
+      cmpPh: '例如：森月、Luma、青禾、Kodex', cmpGo: '📊 比較候選', cmpAdd: '⭐ 加入比較', cmpClear: '清空清單',
+      cmpExport: '⬇️ 下載決策摘要', cmpCopy: '📋 複製摘要', cmpCopied: '已複製決策摘要',
+      cmpAdded: function(p) { return '已加入比較清單（共 ' + p.n + ' 個）'; }, cmpFull: '比較清單最多 8 個',
+      cmpNeed: '請至少輸入 2 個候選名', cmpTrim: function(p) { return '只比較前 8 個，略過：' + p.list; },
+      cmpCol: { rank: '名次', name: '候選名', score: '總分', base: '基礎', fit: '調性', bestTone: '最適合', risk: '風險', domains: '網域' },
+      cmpNoRisk: '—', cmpRaw: '未封頂的原始分，用來排序', cmpTop: function(p) { return '🏆 依「' + p.tone + '」調性，「' + p.name + '」分數最高（' + p.score + ' 分）'; },
+      cmpTie: function(p) { return '🤝 「' + p.names + '」同分（' + p.score + ' 分），請用網域或品牌故事決定'; },
+      sumTitle: '品牌命名決策摘要', sumDate: '產生日期', sumTone: '選定調性', sumRank: '排名',
+      sumTable: '| 名次 | 候選名 | 總分 | 基礎分 | 調性契合 | 最適合的調性 | .com | .net | .io | .app |',
+      sumWhy: '各候選名的扣分與提醒', sumNone: '沒有扣分項目',
+      sumDomainNote: '網域狀態為產生摘要當下的 RDAP 查詢結果；「查無登記」仍可能是保留字或溢價網域。',
+      sumDisclaimer: '本摘要只是語音、諧音與網域的初篩，不能取代商標檢索與法律意見。正式使用前，請到智慧財產局商標檢索系統查詢相同或近似商標，並諮詢專業人士。',
+      dShort: { taken: '已註冊', free: '查無', error: '失敗', pending: '查詢中' },
       lbl: { length: '長度', consistency: '一致性', easy: '好唸', homophone: '諧音', tone: '聲調', awkward: '拗口', slang: '聯想', mandarin: '華語使用者', digits: '數字', toneFit: '調性契合' },
       fit: {
         trustHomo: '專業調性下，諧音更傷信任感', trustSlang: '專業調性下，負面聯想更傷信任感',
@@ -190,6 +205,21 @@ window.NamingExtensions = (function() {
         calm: 'Calm: soft sounds and natural imagery'
       },
       brandGo: '🏢 Screen Brand Name', needBrand: 'Please enter a candidate brand name',
+      // Brand candidate comparison
+      cmpTitle: '📊 Compare Candidates', cmpDesc: 'Compare 2–8 candidates at once (separate with commas or new lines), ranked for the selected tone. The list is stored only on this device.',
+      cmpPh: 'e.g. 森月, Luma, 青禾, Kodex', cmpGo: '📊 Compare', cmpAdd: '⭐ Add to comparison', cmpClear: 'Clear list',
+      cmpExport: '⬇️ Download decision summary', cmpCopy: '📋 Copy summary', cmpCopied: 'Decision summary copied',
+      cmpAdded: function(p) { return 'Added to comparison (' + p.n + ' in list)'; }, cmpFull: 'The comparison list holds at most 8 names',
+      cmpNeed: 'Please enter at least 2 candidates', cmpTrim: function(p) { return 'Only the first 8 are compared; skipped: ' + p.list; },
+      cmpCol: { rank: '#', name: 'Candidate', score: 'Total', base: 'Base', fit: 'Tone', bestTone: 'Best tone', risk: 'Risks', domains: 'Domains' },
+      cmpNoRisk: '—', cmpRaw: 'Uncapped raw score, used for ranking', cmpTop: function(p) { return '🏆 For a "' + p.tone + '" tone, "' + p.name + '" scores highest (' + p.score + ')'; },
+      cmpTie: function(p) { return '🤝 "' + p.names + '" are tied (' + p.score + ') — let domains or the brand story decide'; },
+      sumTitle: 'Brand Naming Decision Summary', sumDate: 'Generated', sumTone: 'Selected tone', sumRank: 'Ranking',
+      sumTable: '| # | Candidate | Total | Base | Tone fit | Best tone | .com | .net | .io | .app |',
+      sumWhy: 'Deductions and warnings per candidate', sumNone: 'No deductions',
+      sumDomainNote: 'Domain status reflects RDAP lookups at the time this summary was generated; "no record" can still be a reserved or premium domain.',
+      sumDisclaimer: 'This summary only screens sound, homophones and domains. It is not a trademark search or legal advice. Before using a name, search Taiwan IPO\'s trademark database for identical or similar marks and consult a professional.',
+      dShort: { taken: 'taken', free: 'free', error: 'failed', pending: 'checking' },
       lbl: { length: 'Length', consistency: 'Consistency', easy: 'Easy to say', homophone: 'Homophones', tone: 'Tones', awkward: 'Tongue-twister', slang: 'Associations', mandarin: 'For Mandarin speakers', digits: 'Digits', toneFit: 'Tone fit' },
       fit: {
         trustHomo: 'Homophones hurt credibility more for a professional tone', trustSlang: 'Negative associations hurt credibility more for a professional tone',
@@ -454,7 +484,7 @@ window.NamingExtensions = (function() {
   // 各工具的輸入值與「已執行過」旗標：切換語言重畫時還原
   var state = {
     trend: { name: '', gender: '', ran: false },
-    brand: { name: '', tone: 'trust', ran: false, domains: null },
+    brand: { name: '', tone: 'trust', ran: false, domains: null, listText: null, cmpRan: false, cmp: null, cmpDomains: {}, cmpPending: {} },
     bf: { answers: [], ran: false },
     family: { parentA: '', parentB: '', candidate: '', siblings: '', ran: false }
   };
@@ -723,8 +753,15 @@ window.NamingExtensions = (function() {
       TONES.map(function(k) { return '<option value="' + k + '"' + (s.tone === k ? ' selected' : '') + '>' + tr('tone.' + k) + '</option>'; }).join('') + '</select></label>';
     html += '</div>';
     html += '<button type="button" class="btn-download-img" id="brandGo">' + tr('brandGo') + '</button><div id="brandResult"></div>';
+    if (s.listText == null) s.listText = loadCmpList().join('\n');
+    html += '<div class="tool-compare"><h4 class="tool-subtitle">' + tr('cmpTitle') + '</h4><p class="tool-desc">' + tr('cmpDesc') + '</p>' +
+      '<textarea id="brandCompareInput" class="form-input" rows="3" placeholder="' + esc(tr('cmpPh')) + '">' + esc(s.listText) + '</textarea>' +
+      '<div class="tool-actions"><button type="button" class="btn-download-img" id="brandCompareGo">' + tr('cmpGo') + '</button>' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandCompareClear">' + tr('cmpClear') + '</button></div>' +
+      '<div id="brandCompareResult"></div></div>';
     el.innerHTML = html;
     if (s.ran) runBrand(true);
+    if (s.cmpRan) runCompare(true);
   }
 
   function domainRows(list) {
@@ -751,7 +788,8 @@ window.NamingExtensions = (function() {
     }
     html += '<div class="tool-actions">' +
       '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://twtmsearch.tipo.gov.tw/">' + tr('tmLink') + '</a>' +
-      (r.slug ? '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://www.twnic.tw/whois_n.php?query=' + encodeURIComponent(r.slug + '.com.tw') + '">' + tr('twLink') + '</a>' : '') + '</div>';
+      (r.slug ? '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://www.twnic.tw/whois_n.php?query=' + encodeURIComponent(r.slug + '.com.tw') + '">' + tr('twLink') + '</a>' : '') +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandAdd">' + tr('cmpAdd') + '</button></div><p class="tool-msg" id="brandAddMsg"></p>';
     html += '<p class="tool-note">' + tr('brandNote') + '</p>';
     out.innerHTML = html + '</div>';
     if (!r.slug || cached) return;
@@ -763,6 +801,182 @@ window.NamingExtensions = (function() {
       var box = document.getElementById('brandDomains');
       if (box) box.innerHTML = domainRows(list);
     });
+  }
+
+  // ============ 品牌候選比較 ============
+
+  var CMP_MAX = 8, CMP_STORE = 'name-harmony-brand-list';
+
+  /** 文字拆成候選名：逗號、頓號、分號、換行分隔；去掉重複（英文不分大小寫）；最多 8 個 */
+  function parseBrandCandidates(text) {
+    var seen = {}, list = [];
+    String(text || '').split(/[,，、;；\n\r]+/).forEach(function(s) {
+      s = s.trim();
+      var key = s.toLowerCase();
+      if (!s || seen[key]) return;
+      seen[key] = true;
+      list.push(s);
+    });
+    return { list: list.slice(0, CMP_MAX), skipped: list.slice(CMP_MAX) };
+  }
+
+  function sumPts(items, fit) {
+    return items.filter(function(x) { return (x.key === 'toneFit') === fit; }).reduce(function(s, x) { return s + x.pts; }, 0);
+  }
+
+  /**
+   * 比較多個候選名
+   * @return { tone, rows: [{ rank, name, kind, slug, score, base, fit, bestTones: [tone], risks: [{ label, note, pts }], items }] }
+   *   依總分、基礎分排序；同分同名次
+   */
+  function compareBrands(names, tone) {
+    if (TONES.indexOf(tone) < 0) tone = 'trust';
+    var rows = [];
+    (names || []).forEach(function(n, i) {
+      var r = scoreBrand(n, tone);
+      if (r.error) return;
+      var fits = TONES.map(function(t) { return sumPts(scoreBrand(n, t).items, true); });
+      var max = Math.max.apply(null, fits);
+      rows.push({
+        order: i, name: r.name, kind: r.kind, slug: r.slug, score: r.score, raw: 50 + sumPts(r.items, false) + sumPts(r.items, true), items: r.items,
+        base: Math.max(0, Math.min(100, 50 + sumPts(r.items, false))), fit: sumPts(r.items, true),
+        // 四種調性都沒有正分（例如有負面俚語）時不硬選
+        bestTones: max > 0 ? TONES.filter(function(t, k) { return fits[k] === max; }) : [],
+        risks: r.items.filter(function(x) { return x.pts < 0; }).map(function(x) { return { label: x.label, note: x.note, pts: x.pts }; })
+      });
+    });
+    // 分數夾在 0–100，好名字常一起封頂；排序用未夾的原始分，才分得出高下
+    rows.sort(function(a, b) { return b.raw - a.raw || b.base - a.base || a.order - b.order; });
+    rows.forEach(function(r, i) { r.rank = i && r.raw === rows[i - 1].raw && r.base === rows[i - 1].base ? rows[i - 1].rank : i + 1; });
+    return { tone: tone, rows: rows };
+  }
+
+  /**
+   * 決策摘要（Markdown）
+   * @param domains { slug: [{ tld, status }] }（可省略：網域欄顯示「查詢中」）
+   * @param date YYYY-MM-DD
+   */
+  function brandDecisionSummary(cmp, domains, date) {
+    domains = domains || {};
+    var md = function(s) { return String(s).replace(/\|/g, '\\|'); };
+    var lines = ['# ' + tr('sumTitle'), '', '- ' + tr('sumDate') + tr('colon') + date, '- ' + tr('sumTone') + tr('colon') + tr('tone.' + cmp.tone), ''];
+    var top = cmp.rows.filter(function(r) { return r.rank === 1; });
+    if (top.length === 1) lines.push(tr('cmpTop', { tone: tr('tone.' + cmp.tone), name: top[0].name, score: top[0].score }), '');
+    else if (top.length > 1) lines.push(tr('cmpTie', { names: top.map(function(r) { return r.name; }).join('、'), score: top[0].score }), '');
+    lines.push('## ' + tr('sumRank'), '', tr('sumTable'), '|' + new Array(11).join('---|'));
+    cmp.rows.forEach(function(r) {
+      var d = domains[r.slug] || [];
+      var cell = function(tld) {
+        var x = d.filter(function(y) { return y.tld === tld; })[0];
+        return r.slug ? tr('dShort.' + (x ? x.status : 'pending')) : '—';
+      };
+      lines.push('| ' + [r.rank, md(r.name), r.score + (r.raw !== r.score ? ' (' + r.raw + ')' : ''), r.base, (r.fit > 0 ? '+' : '') + r.fit,
+        r.bestTones.map(function(t) { return tr('tone.' + t); }).join('、') || '—', cell('com'), cell('net'), cell('io'), cell('app')].join(' | ') + ' |');
+    });
+    lines.push('', '## ' + tr('sumWhy'), '');
+    cmp.rows.forEach(function(r) {
+      lines.push('### ' + r.rank + '. ' + r.name, '');
+      if (!r.risks.length) lines.push('- ' + tr('sumNone'));
+      r.risks.forEach(function(x) { lines.push('- ' + x.label + tr('colon') + x.note + tr('paren', { x: x.pts })); });
+      lines.push('');
+    });
+    lines.push('---', '', '> ' + tr('sumDomainNote'), '>', '> ' + tr('sumDisclaimer'), '');
+    return lines.join('\n');
+  }
+
+  function loadCmpList() {
+    try { var a = JSON.parse(localStorage.getItem(CMP_STORE) || '[]'); return Array.isArray(a) ? a.filter(function(s) { return typeof s === 'string'; }).slice(0, CMP_MAX) : []; } catch (e) { return []; }
+  }
+  function saveCmpList(list) {
+    try { localStorage.setItem(CMP_STORE, JSON.stringify(list)); } catch (e) {}
+  }
+
+  /** 單一結果的「加入比較」 */
+  function addToCompare() {
+    var name = val('brandName').trim(), box = document.getElementById('brandCompareInput'), msg = document.getElementById('brandAddMsg');
+    if (!name || !box) return;
+    var p = parseBrandCandidates(box.value);
+    if (p.list.some(function(s) { return s.toLowerCase() === name.toLowerCase(); })) {
+      if (msg) msg.textContent = tr('cmpAdded', { n: p.list.length });
+      return;
+    }
+    if (p.list.length >= CMP_MAX) { if (msg) msg.textContent = tr('cmpFull'); return; }
+    p.list.push(name);
+    box.value = p.list.join('\n');
+    state.brand.listText = box.value;
+    saveCmpList(p.list);
+    if (msg) msg.textContent = tr('cmpAdded', { n: p.list.length });
+  }
+
+  function cmpDomainCells(slug) {
+    var list = state.brand.cmpDomains[slug] || TLDS.map(function(t) { return { tld: t.tld, status: 'pending' }; });
+    return list.map(function(d) {
+      return '<span class="tool-grid domain-' + d.status + '" title="' + esc(slug + '.' + d.tld) + tr('colon') + esc(tr('domain.' + d.status)) + '">.' + d.tld + ' ' + esc(tr('dShort.' + d.status)) + '</span>';
+    }).join('');
+  }
+
+  /** @param reuse 切換調性或語言時重畫，網域沿用已查到的結果 */
+  function runCompare(reuse) {
+    var out = document.getElementById('brandCompareResult'), box = document.getElementById('brandCompareInput');
+    if (!out || !box) return;
+    var p = parseBrandCandidates(box.value);
+    state.brand.listText = box.value;
+    if (reuse !== true) saveCmpList(p.list);
+    if (p.list.length < 2) { out.innerHTML = '<p class="tool-msg">' + tr('cmpNeed') + '</p>'; state.brand.cmpRan = false; return; }
+    state.brand.cmpRan = true;
+    var cmp = compareBrands(p.list, val('brandTone'));
+    state.brand.cmp = cmp;
+    var C = function(k) { return '<th>' + tr('cmpCol.' + k) + '</th>'; };
+    var html = p.skipped.length ? '<p class="tool-msg">' + esc(tr('cmpTrim', { list: p.skipped.join('、') })) + '</p>' : '';
+    var top = cmp.rows.filter(function(r) { return r.rank === 1; });
+    html += '<p class="tool-line"><strong>' + esc(top.length > 1
+      ? tr('cmpTie', { names: top.map(function(r) { return r.name; }).join('、'), score: top[0].score })
+      : tr('cmpTop', { tone: tr('tone.' + cmp.tone), name: top[0].name, score: top[0].score })) + '</strong></p>';
+    html += '<div class="cmp-wrap"><table class="report-table cmp-table"><thead><tr>' + C('rank') + C('name') + C('score') + C('base') + C('fit') + C('bestTone') + C('risk') + C('domains') + '</tr></thead><tbody>';
+    cmp.rows.forEach(function(r) {
+      html += '<tr' + (r.rank === 1 ? ' class="cmp-best"' : '') + '><td>' + r.rank + '</td><td class="cmp-name">' + esc(r.name) + '</td><td><strong>' + r.score + '</strong>' + (r.raw !== r.score ? '<small class="tool-meta" title="' + esc(tr('cmpRaw')) + '">（' + r.raw + '）</small>' : '') + '</td><td>' + r.base + '</td>' +
+        '<td>' + (r.fit > 0 ? '+' : '') + r.fit + '</td><td>' + (r.bestTones.map(function(t) { return esc(tr('tone.' + t)); }).join('<br>') || '—') + '</td>' +
+        '<td class="cmp-risk">' + (r.risks.length ? r.risks.map(function(x) { return '<span title="' + esc(x.note) + '">⚠️ ' + esc(x.label) + ' ' + x.pts + '</span>'; }).join('<br>') : tr('cmpNoRisk')) + '</td>' +
+        '<td class="cmp-dom" data-slug="' + esc(r.slug) + '">' + (r.slug ? cmpDomainCells(r.slug) : '—') + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="tool-actions"><button type="button" class="btn-action btn-action-secondary" id="brandExport">' + tr('cmpExport') + '</button>' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandCopy">' + tr('cmpCopy') + '</button></div>';
+    html += '<p class="tool-note" id="brandCmpMsg">' + tr('sumDisclaimer') + '</p>';
+    out.innerHTML = html;
+    // 查還沒查過的網域（同一個 slug 只查一次）
+    cmp.rows.forEach(function(r) {
+      if (!r.slug || state.brand.cmpDomains[r.slug] || state.brand.cmpPending[r.slug]) return;
+      state.brand.cmpPending[r.slug] = true;
+      checkDomains(r.slug).then(function(list) {
+        delete state.brand.cmpPending[r.slug];
+        state.brand.cmpDomains[r.slug] = list;
+        document.querySelectorAll('#brandCompareResult .cmp-dom').forEach(function(td) {
+          if (td.getAttribute('data-slug') === r.slug) td.innerHTML = cmpDomainCells(r.slug);
+        });
+      });
+    });
+  }
+
+  function today() {
+    var d = new Date(), z = function(n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+  }
+
+  function exportCompare(copy) {
+    if (!state.brand.cmp) return;
+    var text = brandDecisionSummary(state.brand.cmp, state.brand.cmpDomains, today());
+    var msg = document.getElementById('brandCmpMsg');
+    if (copy) {
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function() { if (msg) msg.textContent = tr('cmpCopied'); });
+      return;
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+    a.download = 'brand-decision-' + today() + '.md';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
   // ============ 名字與自我人格對照（Big Five） ============
@@ -934,6 +1148,7 @@ window.NamingExtensions = (function() {
   function readForms() {
     if (document.getElementById('trendName')) { state.trend.name = val('trendName'); state.trend.gender = val('trendGender'); }
     if (document.getElementById('brandName')) { state.brand.name = val('brandName'); state.brand.tone = val('brandTone') || 'trust'; }
+    if (document.getElementById('brandCompareInput')) state.brand.listText = val('brandCompareInput');
     if (document.querySelector('#toolPersonality .bf')) state.bf.answers = readBfAnswers();
     if (document.getElementById('familyCandidate')) {
       state.family.parentA = val('familyParentA'); state.family.parentB = val('familyParentB');
@@ -961,11 +1176,17 @@ window.NamingExtensions = (function() {
       var id = e.target && e.target.id;
       if (id === 'trendGo') runTrend();
       else if (id === 'brandGo') runBrand();
+      else if (id === 'brandAdd') addToCompare();
+      else if (id === 'brandCompareGo') runCompare();
+      else if (id === 'brandCompareClear') { document.getElementById('brandCompareInput').value = ''; state.brand.listText = ''; state.brand.cmpRan = false; state.brand.cmp = null; saveCmpList([]); document.getElementById('brandCompareResult').innerHTML = ''; }
+      else if (id === 'brandExport') exportCompare(false);
+      else if (id === 'brandCopy') exportCompare(true);
       else if (id === 'bfGo') runPersonality();
       else if (id === 'familyGo') runFamily();
     });
     document.addEventListener('change', function(e) {
       if (e.target && e.target.id === 'brandTone' && state.brand.ran) runBrand(true);
+      if (e.target && e.target.id === 'brandTone' && state.brand.cmpRan) runCompare(true);
     });
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'Enter' || !e.target) return;
@@ -978,6 +1199,7 @@ window.NamingExtensions = (function() {
     render: render,
     trendEnglish: trendEnglish, trendChinese: trendChinese,
     scoreBrand: scoreBrand, brandSlug: brandSlug, checkDomains: checkDomains,
+    parseBrandCandidates: parseBrandCandidates, compareBrands: compareBrands, brandDecisionSummary: brandDecisionSummary,
     scoreBigFive: scoreBigFive, FACTORS: FACTORS,
     checkFamily: checkFamily
   };

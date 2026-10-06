@@ -2700,3 +2700,17 @@ body {
 .ai-ask { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
 .ai-ask textarea { flex: 1; min-width: 0; resize: vertical; font-size: 0.9rem; }
 .ai-ask .btn-download-img { flex: 0 0 auto; }
+.tool-compare { margin-top: 16px; padding-top: 10px; border-top: 1px dashed rgba(212,168,67,0.25); }
+.tool-subtitle { font-family: var(--font-heading); color: var(--color-gold-primary); font-size: 0.95rem; margin: 0; }
+.tool-compare textarea { width: 100%; resize: vertical; font-size: 0.9rem; padding: 8px 10px; margin-bottom: 4px; }
+.cmp-wrap { overflow-x: auto; margin: 8px 0; }
+.cmp-table { font-size: 0.78rem; min-width: 640px; }
+.cmp-table th, .cmp-table td { padding: 6px 6px; vertical-align: middle; }
+.cmp-table .cmp-name { font-family: var(--font-heading); font-size: 1rem; color: var(--color-gold-light); white-space: nowrap; }
+.cmp-table .cmp-risk { text-align: left; font-size: 0.72rem; color: var(--color-text-secondary); }
+.cmp-table .cmp-dom { text-align: left; }
+.cmp-table .cmp-dom .tool-grid { display: inline-block; margin: 1px; font-size: 0.68rem; padding: 1px 6px; white-space: nowrap; }
+.cmp-table tr.cmp-best td { background: rgba(212,168,67,0.08); }
+.cmp-table th { white-space: nowrap; }
+.cmp-table td:nth-child(6) { white-space: nowrap; }
+.cmp-table small { display: block; font-size: 0.65rem; }

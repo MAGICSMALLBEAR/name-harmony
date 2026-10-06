@@ -126,6 +126,18 @@
     await wait(() => !/查詢中/.test($('brandResult').innerText));
     out.brandTaken = $('brandResult').innerText;
 
+    // 品牌候選比較：加入比較 → 比較 → 網域查完 → 換調性重排（不重查網域）→ 清單存在本機
+    $('brandCompareInput').value = '森月、Luma\\nDick';
+    $('brandAdd').click();
+    $('brandCompareGo').click();
+    await wait(() => $('brandCompareResult').querySelectorAll('tbody tr').length && !/查詢中/.test($('brandCompareResult').innerText));
+    const cmpRows = () => [...$('brandCompareResult').querySelectorAll('tbody tr')].map(tr => tr.querySelector('.cmp-name').textContent);
+    const cmpTrust = cmpRows();
+    $('brandTone').value = 'calm'; $('brandTone').dispatchEvent(new Event('change', { bubbles: true }));
+    out.brandCompare = cmpTrust.length + ':' + cmpTrust[cmpTrust.length - 1] + ' saved:' + JSON.parse(localStorage.getItem('name-harmony-brand-list')).join(',') +
+      ' calm-top:' + cmpRows()[0] + ' ' + (/已註冊|查無/.test($('brandCompareResult').innerText) ? 'domains' : 'no-domains');
+    $('brandTone').value = 'trust'; $('brandTone').dispatchEvent(new Event('change', { bubbles: true }));
+
     document.querySelectorAll('#toolPersonality .bf').forEach(s => s.value = '5');
     $('bfGo').click();
     out.personality = $('bfResult').innerText;
@@ -153,9 +165,9 @@
     // 描述文字不該殘留中文（範例名字、書名號裡的字除外）
     out.i18nLeftover = ['toolTrends', 'toolBrand', 'toolPersonality', 'toolFamily'].map(id => {
       const el = $(id).cloneNode(true);
-      el.querySelectorAll('input, .tool-cand-name').forEach(n => n.remove());
-      // 使用者輸入的名字（例如配對行的「王大明 × 王明軒」）本來就是中文
-      const names = [...$(id).querySelectorAll('input')].flatMap(i => i.value.split(/[、,，\\s]+/)).filter(Boolean);
+      el.querySelectorAll('input, textarea, .tool-cand-name, .cmp-name').forEach(n => n.remove());
+      // 使用者輸入的名字（例如配對行的「王大明 × 王明軒」、比較清單）本來就是中文
+      const names = [...$(id).querySelectorAll('input, textarea')].flatMap(i => i.value.split(/[、,，\\s]+/)).filter(Boolean);
       let txt = el.innerText.replace(/「[^」]*」/g, '').replace(/e\\.g\\.[^\\n]*/g, '');
       names.forEach(n => { txt = txt.split(n).join(''); });
       return id + ':' + zhChars(txt);
@@ -330,6 +342,7 @@
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
+    brandCompare: /^4:Dick saved:森月,Luma,Dick,google calm-top:森月 domains$/,
     pinnacles: /^0–33 歲:11,34–42 歲:7,43–51 歲:9,52 歲以後:6$/,
 
     // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離（離為火）；
