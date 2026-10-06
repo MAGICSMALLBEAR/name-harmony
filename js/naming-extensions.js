@@ -66,7 +66,19 @@ window.NamingExtensions = (function() {
         calm: '自然療癒：適合柔和的音與自然意象'
       },
       brandGo: '🏢 初篩品牌名', needBrand: '請輸入候選品牌名',
-      lbl: { length: '長度', consistency: '一致性', easy: '好唸', homophone: '諧音', tone: '聲調', awkward: '拗口', slang: '聯想', mandarin: '華語使用者', digits: '數字' },
+      lbl: { length: '長度', consistency: '一致性', easy: '好唸', homophone: '諧音', tone: '聲調', awkward: '拗口', slang: '聯想', mandarin: '華語使用者', digits: '數字', toneFit: '調性契合' },
+      fit: {
+        trustHomo: '專業調性下，諧音更傷信任感', trustSlang: '專業調性下，負面聯想更傷信任感',
+        trustDigits: '專業調性不宜用數字', trustMixed: '專業調性宜用單一語言',
+        trustClear: '用字清楚、沒有不當聯想，符合專業調性',
+        warmTones: '聲調有起伏，唸起來親切', warmFlat: '聲調平板，少了親切感', warmRare: '有不常用的字，不夠口語',
+        warmShort: function(p) { return p.n + ' 個音節，好唸好叫'; }, warmHard: '有較難發的音，親切感打折',
+        boldShortZh: '兩字短名，辨識度高', boldLongZh: function(p) { return p.n + ' 個字，不夠俐落'; },
+        boldShortEn: function(p) { return p.n + ' 個字母，短而有力'; }, boldLongEn: function(p) { return p.n + ' 個字母，不夠俐落'; },
+        boldMixed: '創新調性可以接受中英混搭', boldDigits: '創新調性可以接受數字',
+        calmNature: function(p) { return '有自然意象（' + p.chars + '）'; }, calmNoNature: '沒有自然意象的字',
+        calmSoft: '字尾收在柔和的音', calmHard: '有 K、Q、X、Z 等硬音，不夠柔和'
+      },
       zhLenGood: function(p) { return p.n + ' 個字，容易記'; },
       zhLenLong: function(p) { return p.n + ' 個字，略長，可準備簡稱'; },
       zhLenOne: '只有 1 個字，難註冊也難搜尋',
@@ -172,7 +184,19 @@ window.NamingExtensions = (function() {
         calm: 'Calm: soft sounds and natural imagery'
       },
       brandGo: '🏢 Screen Brand Name', needBrand: 'Please enter a candidate brand name',
-      lbl: { length: 'Length', consistency: 'Consistency', easy: 'Easy to say', homophone: 'Homophones', tone: 'Tones', awkward: 'Tongue-twister', slang: 'Associations', mandarin: 'For Mandarin speakers', digits: 'Digits' },
+      lbl: { length: 'Length', consistency: 'Consistency', easy: 'Easy to say', homophone: 'Homophones', tone: 'Tones', awkward: 'Tongue-twister', slang: 'Associations', mandarin: 'For Mandarin speakers', digits: 'Digits', toneFit: 'Tone fit' },
+      fit: {
+        trustHomo: 'Homophones hurt credibility more for a professional tone', trustSlang: 'Negative associations hurt credibility more for a professional tone',
+        trustDigits: 'Digits do not suit a professional tone', trustMixed: 'A professional tone reads better in one language',
+        trustClear: 'Clear wording with no awkward associations — fits a professional tone',
+        warmTones: 'Varied tones sound friendly', warmFlat: 'Flat tones feel less friendly', warmRare: 'Uncommon characters feel less conversational',
+        warmShort: function(p) { return p.n + ' syllable' + (p.n === 1 ? '' : 's') + ' — easy to say and call out'; }, warmHard: 'Harder sounds make it feel less friendly',
+        boldShortZh: 'Two characters — short and distinctive', boldLongZh: function(p) { return p.n + ' characters — not punchy enough'; },
+        boldShortEn: function(p) { return p.n + ' letters — short and punchy'; }, boldLongEn: function(p) { return p.n + ' letters — not punchy enough'; },
+        boldMixed: 'A bold tone can carry mixed Chinese and English', boldDigits: 'A bold tone can carry digits',
+        calmNature: function(p) { return 'Natural imagery (' + p.chars + ')'; }, calmNoNature: 'No natural imagery',
+        calmSoft: 'Ends on a soft sound', calmHard: 'Hard sounds (K, Q, X, Z) feel less calm'
+      },
       zhLenGood: function(p) { return p.n + ' characters — easy to remember'; },
       zhLenLong: function(p) { return p.n + ' characters — a bit long, prepare a short form'; },
       zhLenOne: 'Only 1 character — hard to register and to search for',
@@ -511,10 +535,12 @@ window.NamingExtensions = (function() {
 
   /**
    * 品牌名初篩（不含網域與商標）
-   * @return { name, kind: 'zh'|'en'|'mixed', score, items: [{ key, label, pts, note }], slug }
+   * @param tone 品牌調性 trust | warm | bold | calm（可省略；給了就多列「調性契合」加減分）
+   * @return { name, kind: 'zh'|'en'|'mixed', tone, score, items: [{ key, label, pts, note }], slug }
    */
-  function scoreBrand(name) {
+  function scoreBrand(name, tone) {
     name = String(name || '').trim();
+    var chars, tones, e;
     if (!name) return { error: tr('needBrand') };
     var zh = (name.match(/[一-鿿]/g) || []).length;
     var en = (name.match(/[a-z]/ig) || []).length;
@@ -563,8 +589,73 @@ window.NamingExtensions = (function() {
     }
     if (/\d/.test(name)) add('digits', -5, tr('hasDigits'));
 
+    if (TONES.indexOf(tone) >= 0) {
+      toneFit(tone, {
+        name: name, kind: kind, zh: zh, letters: name.replace(/[^a-z]/ig, '').length, chars: chars || [],
+        tones: tones || [], english: e || null, pts: function(key) { return items.filter(function(x) { return x.key === key; }).reduce(function(s, x) { return s + x.pts; }, 0); }
+      }).forEach(function(f) { items.push({ key: 'toneFit', label: tr('lbl.toneFit'), pts: f[0], note: f[1] }); });
+    }
+
     var score = 50 + items.reduce(function(s, x) { return s + x.pts; }, 0);
-    return { name: name, kind: kind, score: Math.max(0, Math.min(100, score)), items: items, slug: brandSlug(name) };
+    return { name: name, kind: kind, tone: tone || '', score: Math.max(0, Math.min(100, score)), items: items, slug: brandSlug(name) };
+  }
+
+  // 自然意象用字（自然療癒調性）
+  var NATURE = '山水木林森月雲風花草葉溪湖海雨露晴光青綠禾竹松柏楓櫻梅蘭荷蓮泉川澗谷石岩星日晨曦霞雪霧島嶼田野苗芽種果橘桃杏茶棉麻晴霽澄清蔚藍';
+
+  /**
+   * 品牌調性的加減分（不改基礎分，另列「調性契合」讓使用者看得到原因）
+   * @return [[pts, note], ...]
+   */
+  function toneFit(tone, c) {
+    var out = [], add = function(p, key, params) { out.push([p, tr('fit.' + key, params)]); };
+    var en = c.english;
+    if (tone === 'trust') {
+      // 專業可信：諧音、俚語、數字、中英混搭都更傷信任感
+      var bad = c.pts('homophone') < 0 || c.pts('slang') < 0;
+      if (c.pts('homophone') < 0) add(Math.round(c.pts('homophone') / 2), 'trustHomo');
+      if (c.pts('slang') < 0) add(-15, 'trustSlang');
+      if (c.pts('digits') < 0) add(-5, 'trustDigits');
+      if (c.kind === 'mixed') add(-5, 'trustMixed');
+      if (!bad && c.pts('digits') === 0 && c.kind !== 'mixed' && c.pts('easy') > 0) add(5, 'trustClear');
+    } else if (tone === 'warm') {
+      // 溫暖親和：好唸、口語
+      if (c.kind === 'zh' && c.tones.length >= 2) {
+        if (c.pts('tone') > 0) add(5, 'warmTones');
+        else add(-5, 'warmFlat');
+      }
+      if (c.kind === 'zh' && c.pts('easy') === 0) add(-5, 'warmRare');
+      if (en) {
+        if (en.syllables <= 2) add(5, 'warmShort', { n: en.syllables });
+        if (en.hard.length) add(-5, 'warmHard');
+      }
+    } else if (tone === 'bold') {
+      // 創新有力：短、辨識度高，可接受中英混搭與數字
+      if (c.kind === 'zh') {
+        if (c.zh === 2) add(10, 'boldShortZh');
+        else if (c.zh >= 4) add(-5, 'boldLongZh', { n: c.zh });
+      } else if (c.kind === 'en') {
+        if (c.letters >= 3 && c.letters <= 5) add(10, 'boldShortEn', { n: c.letters });
+        else if (c.letters > 8) add(-5, 'boldLongEn', { n: c.letters });
+      } else {
+        add(5, 'boldMixed');
+      }
+      if (c.pts('digits') < 0) add(5, 'boldDigits');
+    } else if (tone === 'calm') {
+      // 自然療癒：自然意象、柔和的音
+      if (c.kind === 'zh') {
+        var hits = c.chars.filter(function(ch) { return NATURE.indexOf(ch) >= 0; });
+        if (hits.length) add(10, 'calmNature', { chars: hits.join('、') });
+        else add(-5, 'calmNoNature');
+      } else if (c.kind === 'en') {
+        var w = c.name.toLowerCase().replace(/[^a-z]/g, '');
+        if (/[aeiouylmn]$/.test(w) && !/[kqxz]/.test(w)) add(5, 'calmSoft');
+        else if (/[kqxz]/.test(w)) add(-5, 'calmHard');
+      }
+    }
+    // 有嚴重諧音或負面俚語時，任何調性都不加分（只保留扣分）
+    if (c.pts('slang') < 0 || c.pts('homophone') <= -15) out = out.filter(function(f) { return f[0] < 0; });
+    return out;
   }
 
   /**
@@ -609,7 +700,7 @@ window.NamingExtensions = (function() {
   /** @param reuse 重畫（切換語言）時沿用已查到的網域結果，不重新查詢 */
   function runBrand(reuse) {
     var out = document.getElementById('brandResult');
-    var r = scoreBrand(val('brandName'));
+    var r = scoreBrand(val('brandName'), val('brandTone'));
     state.brand.ran = true;
     if (r.error) { out.innerHTML = '<p class="tool-msg">' + esc(r.error) + '</p>'; return; }
     var cached = reuse === true && state.brand.domains && state.brand.domains.slug === r.slug ? state.brand.domains.list : null;
@@ -836,6 +927,9 @@ window.NamingExtensions = (function() {
       else if (id === 'brandGo') runBrand();
       else if (id === 'bfGo') runPersonality();
       else if (id === 'familyGo') runFamily();
+    });
+    document.addEventListener('change', function(e) {
+      if (e.target && e.target.id === 'brandTone' && state.brand.ran) runBrand(true);
     });
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'Enter' || !e.target) return;

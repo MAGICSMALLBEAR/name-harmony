@@ -162,7 +162,27 @@ section('品牌命名評分', function() {
   inputs.forEach(function(s) {
     var r = N.scoreBrand(s);
     ok(!r.error && r.score >= 0 && r.score <= 100 && r.items.length >= 1 && /^[a-z0-9]*$/.test(r.slug), s + ' 評分 ' + JSON.stringify(r));
+    // 品牌調性：只多列「調性契合」，基礎項目不變；分數＝基礎＋調性加減（夾在 0–100）
+    var raw = 50 + r.items.reduce(function(a, x) { return a + x.pts; }, 0);
+    ok(r.items.every(function(x) { return x.key !== 'toneFit'; }), s + ' 沒給調性不應有調性項目');
+    ['trust', 'warm', 'bold', 'calm'].forEach(function(t) {
+      var rt = N.scoreBrand(s, t);
+      var base = rt.items.filter(function(x) { return x.key !== 'toneFit'; });
+      var fit = rt.items.filter(function(x) { return x.key === 'toneFit'; });
+      ok(JSON.stringify(base) === JSON.stringify(r.items), s + ' ' + t + ' 基礎項目不變');
+      ok(rt.score === Math.max(0, Math.min(100, raw + fit.reduce(function(a, x) { return a + x.pts; }, 0))), s + ' ' + t + ' 分數＝基礎＋調性');
+      var severe = r.items.some(function(x) { return (x.key === 'slang' && x.pts < 0) || (x.key === 'homophone' && x.pts <= -15); });
+      ok(!severe || fit.every(function(x) { return x.pts < 0; }), s + ' ' + t + ' 有嚴重諧音／俚語時不加分');
+    });
   });
+  var fitOf = function(n, t) { return N.scoreBrand(n, t).items.filter(function(x) { return x.key === 'toneFit'; }).map(function(x) { return x.pts; }); };
+  ok(fitOf('森月', 'calm').indexOf(10) >= 0 && fitOf('新創科技', 'calm').indexOf(-5) >= 0, '自然療癒：森月有自然意象、新創科技沒有');
+  ok(fitOf('Kodex', 'calm').indexOf(-5) >= 0 && fitOf('Luma', 'calm').indexOf(5) >= 0, '自然療癒：Kodex 硬音、Luma 柔和');
+  ok(fitOf('Luma', 'bold').indexOf(10) >= 0 && fitOf('A1', 'bold').indexOf(10) < 0, '創新有力：3–5 個字母才算短而有力');
+  ok(fitOf('Luma森', 'trust').indexOf(-5) >= 0 && fitOf('Luma森', 'bold').indexOf(5) >= 0, '中英混搭：專業扣分、創新可接受');
+  ok(N.scoreBrand('Dick', 'trust').score < N.scoreBrand('Dick').score, '專業可信：負面俚語扣更多');
+  ok(fitOf('Dick', 'bold').length === 0 && fitOf('Dick', 'warm').length === 0, 'Dick 在創新／溫暖都不加分');
+  ok(N.scoreBrand('森月', 'nope').items.every(function(x) { return x.key !== 'toneFit'; }), '未知調性當作沒給');
 });
 
 section('網域查詢結果判讀（模擬 RDAP）', function() {
