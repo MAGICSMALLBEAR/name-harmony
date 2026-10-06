@@ -250,6 +250,43 @@
       document.querySelector('.ai-session').innerText.replace(/\\s*📊.*$/, '')].join(' | ');
     $('aiRemoveKey').click();
 
+    // DeepSeek：模擬 fetch 回傳 SSE 串流（不需要金鑰、不會呼叫 API）
+    const realFetch = window.fetch, dsCalls = [];
+    window.fetch = (url, opts) => {
+      if (!/api\\.deepseek\\.com/.test(url)) return realFetch(url, opts);
+      dsCalls.push({ auth: opts.headers.Authorization, body: JSON.parse(opts.body) });
+      const enc = new TextEncoder(), sig = opts.signal;
+      const chunks = ['data: {"choices":[{"delta":{"reasoning_content":"想"}}]}\\n\\n', 'data: {"choices":[{"delta":{"content":"## 總覽\\\\n"}}]}\\n\\n',
+        'data: {"choices":[{"delta":{"content":"**互補**"},"finish_reason":"stop"}]}\\n\\n', 'data: {"choices":[],"usage":{"prompt_tokens":1000,"completion_tokens":200,"prompt_tokens_details":{"prompt_cache_hit_tokens":800,"prompt_cache_miss_tokens":200}}}\\n\\ndata: [DONE]\\n\\n'];
+      return Promise.resolve(new Response(new ReadableStream({
+        async start(c) {
+          sig.addEventListener('abort', () => c.error(new DOMException('Aborted', 'AbortError')));
+          for (const ch of chunks) { await sleep(150); if (sig.aborted) return; c.enqueue(enc.encode(ch)); }
+          c.close();
+        }
+      }), { status: 200 }));
+    };
+    $('aiProvider').value = 'deepseek'; $('aiProvider').dispatchEvent(new Event('change', { bubbles: true }));
+    $('aiKey').value = 'sk-ds-fake'; $('aiSaveKey').click();
+    const dsPrivacy = /DeepSeek（深度求索，中國公司）/.test($('aiContent').innerText) ? 'privacy' : 'no-privacy';
+    $('aiGo').click();
+    await wait(() => !$('aiStop'));
+    $('aiAsk').value = '追問'; $('aiSend').click();
+    await wait(() => dsCalls.length === 2 && !$('aiStop'));
+    $('aiAsk').value = '停止測試'; $('aiSend').click();
+    await sleep(200); $('aiStop').click();
+    await wait(() => !$('aiStop'));
+    const b0 = dsCalls[0].body, b1 = dsCalls[1].body;
+    out.deepseek = [dsPrivacy, dsCalls[0].auth, b0.model, b0.stream && b0.stream_options.include_usage ? 'usage' : 'no-usage', b0.messages[0].role,
+      b1.messages.map(m => m.role).join('/'), document.querySelector('.ai-bot .ai-who').textContent, document.querySelector('.ai-bot h4') ? 'h4' : 'no-h4',
+      /輸入 1000 tokens（快取讀取 800）・輸出 200 tokens.*約 US\\$0\\.\\d+ （(尖峰時段計價|離峰半價)）/.test(document.querySelector('.ai-usage').innerText) ? 'cost' : 'no-cost:' + document.querySelector('.ai-usage').innerText,
+      $('aiLog').innerText.includes('已停止') ? 'stopped' : 'not-stopped', window.AiReading._turns().map(x => x.stop).join(',')].join(' ');
+    $('aiRemoveKey').click();
+    // 切回 Claude：金鑰分開保存、對話清空
+    $('aiProvider').value = 'claude'; $('aiProvider').dispatchEvent(new Event('change', { bubbles: true }));
+    out.deepseek += ' | ' + ($('aiKey') ? 'claude-key-empty' : 'claude-key-set') + ' ' + ($('aiLog').innerText.trim() ? 'log' : 'no-log');
+    window.fetch = realFetch;
+
     // 喜用神：日主強弱要看八字（扶抑法），不能因為名字不同而改變；吉日與幸運色沿用它
     $('proModeToggle').checked = true;
     $('proModeToggle').dispatchEvent(new Event('change'));
@@ -382,6 +419,7 @@
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
+    deepseek: /^privacy Bearer sk-ds-fake deepseek-v4-pro usage system system\/user\/assistant\/user DeepSeek h4 cost stopped stop,stop,aborted \| claude-key-empty no-log$/,
     prefs: /^林 no-date 林 fav warm 子 建國 summary cleared$/,
     familyReport: /^王子安,王明軒,王建安 \| 家庭命名決策報告 rows:3 top:王子安 avoid$|^王子安,王建安,王明軒 \| 家庭命名決策報告 rows:3 top:王子安 avoid$/,
     // 10 輸入 × $5 ＋ 5 輸出 × $25 = $0.000175

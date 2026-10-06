@@ -19,6 +19,50 @@ window.AiReading = (function() {
     'claude-sonnet-5-5': { input: 2, output: 10, read: 0.2, write5m: 2.5, write1h: 4 }
   };
 
+  // ---------- DeepSeek（OpenAI 相容的 Chat Completions，瀏覽器可直接呼叫） ----------
+  var PROVIDER_STORE = 'name-harmony-ai-provider';
+  var DS_MODEL_STORE = 'name-harmony-ai-ds-model';
+  var DS_URL = 'https://api.deepseek.com/chat/completions';
+  var DS_MODELS = ['deepseek-v4-pro', 'deepseek-flash'];
+  // 尖峰時段的每百萬 tokens 美元價格（DeepSeek 官方定價，2026-10）；離峰半價
+  var DS_PRICES = {
+    'deepseek-v4-pro': { hit: 0.044, miss: 1.32, output: 3.96 },
+    'deepseek-flash': { hit: 0.006, miss: 0.30, output: 1.20 }
+  };
+
+  /** DeepSeek 尖峰時段：UTC 週一至週五 01:00–04:00、06:00–10:00（中國國定假日也算離峰，這裡無法判斷） */
+  function dsPeak(d) {
+    var day = d.getUTCDay(), h = d.getUTCHours();
+    return day >= 1 && day <= 5 && ((h >= 1 && h < 4) || (h >= 6 && h < 10));
+  }
+
+  /** DeepSeek 用量與費用：prompt_tokens＝快取命中＋未命中 */
+  function dsUsageStats(usage, model, at) {
+    var u = usage || {}, d = u.prompt_tokens_details || {};
+    var hit = d.prompt_cache_hit_tokens != null ? d.prompt_cache_hit_tokens : (u.prompt_cache_hit_tokens || 0);
+    var miss = d.prompt_cache_miss_tokens != null ? d.prompt_cache_miss_tokens : (u.prompt_cache_miss_tokens != null ? u.prompt_cache_miss_tokens : Math.max(0, (u.prompt_tokens || 0) - hit));
+    var p = DS_PRICES[model], peak = dsPeak(at || new Date());
+    var k = peak ? 1 : 0.5;
+    return {
+      model: model, input: miss, cacheWrite: 0, cacheRead: hit, output: u.completion_tokens || 0,
+      reasoning: (u.completion_tokens_details || {}).reasoning_tokens || 0, peak: peak,
+      cost: p ? (hit * p.hit + miss * p.miss + (u.completion_tokens || 0) * p.output) * k / 1e6 : null
+    };
+  }
+
+  /** 拆 SSE：回傳完整的 data 事件（已 JSON.parse）、是否收到 [DONE]、剩下未完整的一行 */
+  function parseSSE(buf) {
+    var lines = buf.split('\n'), rest = lines.pop(), events = [], done = false;
+    lines.forEach(function(line) {
+      line = line.replace(/\r$/, '');
+      if (line.indexOf('data:') !== 0) return;
+      var data = line.slice(5).trim();
+      if (data === '[DONE]') { done = true; return; }
+      try { events.push(JSON.parse(data)); } catch (e) { /* keep-alive 或不完整的行 */ }
+    });
+    return { events: events, done: done, rest: rest };
+  }
+
   var SYSTEM = [
     '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才）、靈數、八字、易經、塔羅、紫微斗數、西洋占星、生肖星座血型、開運建議，以及多人之間的配對。',
     '你的工作是把這些系統的結果整合成一份讀得懂、用得上的解讀：',
@@ -34,7 +78,7 @@ window.AiReading = (function() {
   var TEXT = {
     zh: {
       title: '🤖 AI 綜合解讀',
-      desc: '把這次分析的所有結果交給 Claude 整合：找出各系統共同指向的特質、互相矛盾的地方，並可以繼續追問。',
+      desc: '把這次分析的所有結果交給 AI（Claude 或 DeepSeek）整合：找出各系統共同指向的特質、互相矛盾的地方，並可以繼續追問。',
       keyLabel: 'Claude API 金鑰',
       keyPh: 'sk-ant-...',
       remember: '記住金鑰（存在這台裝置的瀏覽器）',
@@ -59,13 +103,22 @@ window.AiReading = (function() {
       refusal: '這個請求被模型拒絕了，請換個問法。',
       usage: function(u) { return '輸入 ' + u.input + ' tokens（快取讀取 ' + u.cacheRead + '）・輸出 ' + u.output + ' tokens'; },
       fallback: function(m) { return '（由備援模型 ' + m + ' 回覆）'; },
+      provider: 'AI 服務', dsModel: 'DeepSeek 模型',
+      dsModelName: { 'deepseek-v4-pro': 'V4 Pro（品質較好）', 'deepseek-flash': 'Flash（便宜、快）' },
+      ds_keyLabel: 'DeepSeek API 金鑰', ds_keyPh: 'sk-...',
+      ds_keyHelp: '還沒有金鑰？到 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">DeepSeek 開放平台</a> 建立並儲值，費用由金鑰所屬帳戶支付。',
+      ds_privacy: '按下「產生」後，這次分析的結果（包含姓名、生日、出生地等）會直接從你的瀏覽器傳送到 DeepSeek（深度求索，中國公司），依其隱私政策處理，不經過本站伺服器。金鑰只用於呼叫 DeepSeek API。',
+      dsPeak: '（尖峰時段計價）', dsOffPeak: '（離峰半價）',
+      dsBalance: 'DeepSeek 帳戶餘額不足，請到開放平台儲值。',
+      dsFiltered: '這個請求被 DeepSeek 的內容審查擋下，請換個問法。',
+      dsBusy: 'DeepSeek 伺服器資源不足，請稍後再試。',
       timing: function(p) { return '・耗時 ' + p.s + ' 秒（首字 ' + p.first + ' 秒）・約 ' + p.cost; },
       session: function(p) { return '本次對話累計：' + p.n + ' 輪・輸入 ' + p.input + '・輸出 ' + p.output + ' tokens・約 ' + p.cost + (p.unknown ? '（另有 ' + p.unknown + ' 輪中斷，費用不明）' : ''); },
       exportUsage: '📊 匯出驗收紀錄', usageCopied: '已複製驗收紀錄',
       repTitle: 'AI 解讀驗收紀錄', repDate: '日期：', repModel: '模型：',
       repTotal: function(p) { return '合計 ' + p.n + ' 輪：輸入 ' + p.input + ' tokens、輸出 ' + p.output + ' tokens、耗時 ' + p.s + ' 秒、約 ' + p.cost + (p.unknown ? '（另有 ' + p.unknown + ' 輪中斷，費用不明）' : ''); },
       repHead: '| # | 類型 | 回覆模型 | 結束原因 | 輸入 | 快取寫入 | 快取讀取 | 輸出 | 首字（秒） | 耗時（秒） | 估算費用 |',
-      repNote: '費用依 2026-09 官方定價估算（含備援嘗試），實際金額以 Anthropic Console 帳單為準。本紀錄不含對話內容與金鑰。',
+      repNote: '費用依官方定價估算（Claude 2026-09，含備援嘗試；DeepSeek 2026-10，依 UTC 時間區分尖峰／離峰，中國國定假日的離峰價未計入），實際金額以服務商後台帳單為準。本紀錄不含對話內容與金鑰。',
       errAuth: '金鑰無效或已被撤銷，請更換金鑰。',
       errPermission: '這個金鑰沒有使用此模型的權限。',
       errRate: '請求太頻繁或額度已用完，請稍後再試。',
@@ -78,7 +131,7 @@ window.AiReading = (function() {
     },
     en: {
       title: '🤖 AI Synthesis',
-      desc: 'Send all results from this analysis to Claude: it finds what the systems agree on, where they conflict, and you can ask follow-up questions.',
+      desc: 'Send all results from this analysis to an AI (Claude or DeepSeek): it finds what the systems agree on, where they conflict, and you can ask follow-up questions.',
       keyLabel: 'Claude API key',
       keyPh: 'sk-ant-...',
       remember: 'Remember the key (stored in this browser)',
@@ -103,13 +156,22 @@ window.AiReading = (function() {
       refusal: 'The model declined this request. Try rephrasing.',
       usage: function(u) { return 'Input ' + u.input + ' tokens (cache read ' + u.cacheRead + ') · output ' + u.output + ' tokens'; },
       fallback: function(m) { return '(answered by fallback model ' + m + ')'; },
+      provider: 'AI service', dsModel: 'DeepSeek model',
+      dsModelName: { 'deepseek-v4-pro': 'V4 Pro (higher quality)', 'deepseek-flash': 'Flash (cheap, fast)' },
+      ds_keyLabel: 'DeepSeek API key', ds_keyPh: 'sk-...',
+      ds_keyHelp: 'No key yet? Create one and top up on the <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">DeepSeek Platform</a>. Usage is billed to the key\'s account.',
+      ds_privacy: 'When you press Generate, this analysis (including names, birthdays and birthplaces) is sent from your browser directly to DeepSeek (a company based in China) and handled under its privacy policy, not through this site. The key is only used to call the DeepSeek API.',
+      dsPeak: '(peak-hour pricing)', dsOffPeak: '(off-peak, half price)',
+      dsBalance: 'Your DeepSeek balance is too low. Please top up on the platform.',
+      dsFiltered: 'DeepSeek\'s content filter blocked this request. Try rephrasing.',
+      dsBusy: 'DeepSeek is short on server capacity. Please try again later.',
       timing: function(p) { return ' · ' + p.s + ' s (first token ' + p.first + ' s) · about ' + p.cost; },
       session: function(p) { return 'This conversation: ' + p.n + ' turn' + (p.n === 1 ? '' : 's') + ' · input ' + p.input + ' · output ' + p.output + ' tokens · about ' + p.cost + (p.unknown ? ' (' + p.unknown + ' interrupted turn' + (p.unknown === 1 ? '' : 's') + ' not priced)' : ''); },
       exportUsage: '📊 Export usage log', usageCopied: 'Usage log copied',
       repTitle: 'AI Synthesis Usage Log', repDate: 'Date: ', repModel: 'Model: ',
       repTotal: function(p) { return p.n + ' turns: ' + p.input + ' input tokens, ' + p.output + ' output tokens, ' + p.s + ' s, about ' + p.cost + (p.unknown ? ' (' + p.unknown + ' interrupted, not priced)' : ''); },
       repHead: '| # | Kind | Served by | Stop reason | Input | Cache write | Cache read | Output | First token (s) | Total (s) | Est. cost |',
-      repNote: 'Costs are estimated from the September 2026 list prices (including fallback attempts); your Anthropic Console bill is authoritative. This log contains no conversation content and no key.',
+      repNote: 'Costs are estimated from list prices (Claude: September 2026, including fallback attempts; DeepSeek: October 2026, peak/off-peak by UTC time, Chinese public-holiday off-peak rates not applied); your provider\'s bill is authoritative. This log contains no conversation content and no key.',
       errAuth: 'The API key is invalid or revoked. Please change it.',
       errPermission: 'This key is not allowed to use this model.',
       errRate: 'Rate limited or out of credit. Please try again later.',
@@ -126,6 +188,12 @@ window.AiReading = (function() {
     return (TEXT[lang] || TEXT.zh)[k];
   }
 
+  /** 依目前服務取字串：DeepSeek 有專屬版本（ds_ 開頭）就用它 */
+  function pt(k) {
+    var d = provider === 'deepseek' ? t('ds_' + k) : null;
+    return d != null ? d : t(k);
+  }
+
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -134,21 +202,29 @@ window.AiReading = (function() {
 
   // ============ 金鑰 ============
 
-  var memKey = '';
+  // 服務：claude（預設）或 deepseek；兩家的金鑰分開保存
+  var provider = 'claude', dsModel = DS_MODELS[0];
+  try {
+    if (localStorage.getItem(PROVIDER_STORE) === 'deepseek') provider = 'deepseek';
+    if (DS_MODELS.indexOf(localStorage.getItem(DS_MODEL_STORE)) >= 0) dsModel = localStorage.getItem(DS_MODEL_STORE);
+  } catch (e) {}
+  function keyStore() { return provider === 'deepseek' ? KEY_STORE + '-deepseek' : KEY_STORE; }
+
+  var memKeys = {};
   function getKey() {
-    if (memKey) return memKey;
-    try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; }
+    if (memKeys[provider]) return memKeys[provider];
+    try { return localStorage.getItem(keyStore()) || ''; } catch (e) { return ''; }
   }
   function setKey(key, remember) {
-    memKey = key;
+    memKeys[provider] = key;
     try {
-      if (remember) localStorage.setItem(KEY_STORE, key);
-      else localStorage.removeItem(KEY_STORE);
+      if (remember) localStorage.setItem(keyStore(), key);
+      else localStorage.removeItem(keyStore());
     } catch (e) { /* 無痕模式等情況：只存在記憶體 */ }
   }
   function clearKey() {
-    memKey = '';
-    try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+    memKeys[provider] = '';
+    try { localStorage.removeItem(keyStore()); } catch (e) {}
   }
 
   // ============ 分析結果轉文字 ============
@@ -285,7 +361,7 @@ window.AiReading = (function() {
     return [
       '# ' + t('repTitle'), '',
       '- ' + t('repDate') + date,
-      '- ' + t('repModel') + MODEL + '（fallbacks: default）',
+      '- ' + t('repModel') + (provider === 'deepseek' ? 'DeepSeek ' + dsModel : MODEL + '（fallbacks: default）'),
       '- ' + t('repTotal')({ n: list.length, input: tot.input + tot.cacheWrite + tot.cacheRead, output: tot.output, s: secs(tot.ms), cost: money(tot.cost), unknown: unknown }), '',
       t('repHead'), '|' + new Array(12).join('---|'), rows.join('\n'), '',
       '> ' + t('repNote'), ''
@@ -308,7 +384,96 @@ window.AiReading = (function() {
   }
 
   /** 送出一則使用者訊息並串流回覆 */
+  /** DeepSeek：fetch 串流（SSE），歷史只存純文字（沒有工具時 reasoning_content 不需送回） */
+  function askDeepSeek(userText, shown, kind) {
+    var key = getKey();
+    if (!key || busy) return;
+    busy = true;
+    var t0 = Date.now(), ttft = null, at = new Date(), model = dsModel;
+    messages.push({ role: 'user', content: userText });
+    log.push({ role: 'user', text: shown });
+    var reply = { role: 'assistant', text: '', note: '', pending: true, by: 'DeepSeek' };
+    log.push(reply);
+    render();
+
+    var ctrl = new AbortController();
+    stream = { abort: function() { ctrl.abort(); } };
+    var usage = null, finish = null, httpError = null;
+    fetch(DS_URL, {
+      method: 'POST', signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model: model, stream: true, stream_options: { include_usage: true },
+        max_tokens: 32000, thinking: { type: 'enabled' },
+        messages: [{ role: 'system', content: SYSTEM }].concat(messages)
+      })
+    }).then(function(res) {
+      if (!res.ok) {
+        return res.text().then(function(body) {
+          var msg = '';
+          try { msg = JSON.parse(body).error.message; } catch (e) { msg = body.slice(0, 200); }
+          httpError = { status: res.status, message: msg };
+          throw httpError;
+        });
+      }
+      var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
+      return (function pump() {
+        return reader.read().then(function(r) {
+          if (r.done) return;
+          var p = parseSSE(buf + dec.decode(r.value, { stream: true }));
+          buf = p.rest;
+          p.events.forEach(function(ev) {
+            if (ev.usage) usage = ev.usage;
+            var c = ev.choices && ev.choices[0];
+            if (!c) return;
+            if (c.finish_reason) finish = c.finish_reason;
+            if (c.delta && c.delta.content) {
+              if (ttft == null) ttft = Date.now() - t0;
+              reply.text += c.delta.content;
+              reply.pending = false;
+              updateReply(reply);
+            }
+          });
+          return p.done ? null : pump();
+        });
+      })();
+    }).then(function() {
+      reply.pending = false;
+      if (finish === 'content_filter' || finish === 'insufficient_system_resource') {
+        reply.note = t(finish === 'content_filter' ? 'dsFiltered' : 'dsBusy');
+        reply.error = finish !== 'content_filter';
+        messages.pop();
+      } else {
+        messages.push({ role: 'assistant', content: reply.text });
+        if (finish === 'length') reply.note = t('truncated');
+      }
+      var st = dsUsageStats(usage, model, at), ms = Date.now() - t0;
+      turns.push({ kind: kind || 'follow-up', model: model, stop: finish, input: st.input, cacheWrite: 0, cacheRead: st.cacheRead, output: st.output, ttft: ttft, ms: ms, cost: usage ? st.cost : null });
+      reply.usage = t('usage')({ input: st.input + st.cacheRead, cacheRead: st.cacheRead, output: st.output }) +
+        t('timing')({ s: secs(ms), first: secs(ttft), cost: usage ? money(st.cost) : '?' }) + ' ' + t(st.peak ? 'dsPeak' : 'dsOffPeak');
+    }).catch(function(err) {
+      reply.pending = false;
+      messages.pop();
+      var aborted = err && err.name === 'AbortError';
+      turns.push({ kind: kind || 'follow-up', model: null, stop: aborted ? 'aborted' : 'error', input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ttft: ttft, ms: Date.now() - t0, cost: null });
+      if (aborted) { reply.note = t('stopped'); return; }
+      reply.error = true;
+      if (httpError) {
+        var s = httpError.status;
+        reply.note = s === 401 ? t('errAuth') : s === 402 ? t('dsBalance') : s === 429 ? t('errRate') : t('errOther')(s + ' ' + httpError.message);
+        if (s === 401) clearKey();
+      } else {
+        reply.note = t('errNet');
+      }
+    }).then(function() {
+      busy = false;
+      stream = null;
+      render();
+    });
+  }
+
   function ask(userText, shown, kind) {
+    if (provider === 'deepseek') return askDeepSeek(userText, shown, kind);
     var key = getKey();
     if (!key || busy) return;
     busy = true;
@@ -408,16 +573,16 @@ window.AiReading = (function() {
         ' <button type="button" class="btn-action btn-action-secondary ai-small" id="aiRemoveKey">' + t('removeKey') + '</button></p>';
     }
     var remembered = false;
-    try { remembered = !!localStorage.getItem(KEY_STORE); } catch (e) {}
-    return '<label class="tool-field"><span>' + t('keyLabel') + '</span><input type="password" class="form-input" id="aiKey" placeholder="' + t('keyPh') + '" autocomplete="off" spellcheck="false"></label>' +
+    try { remembered = !!localStorage.getItem(keyStore()); } catch (e) {}
+    return '<label class="tool-field"><span>' + pt('keyLabel') + '</span><input type="password" class="form-input" id="aiKey" placeholder="' + pt('keyPh') + '" autocomplete="off" spellcheck="false"></label>' +
       '<label class="ai-check"><input type="checkbox" id="aiRemember"' + (remembered ? ' checked' : '') + '> ' + t('remember') + '</label>' +
       '<button type="button" class="btn-download-img" id="aiSaveKey">' + t('saveKey') + '</button>' +
-      '<p class="tool-note">' + t('keyHelp') + '</p>';
+      '<p class="tool-note">' + pt('keyHelp') + '</p>';
   }
 
   function messageHtml(m, i) {
     if (m.role === 'user') return '<div class="ai-msg ai-user"><div class="ai-who">' + t('you') + '</div><div class="ai-body">' + esc(m.text) + '</div></div>';
-    return '<div class="ai-msg ai-bot" data-i="' + i + '"><div class="ai-who">Claude</div><div class="ai-body">' +
+    return '<div class="ai-msg ai-bot" data-i="' + i + '"><div class="ai-who">' + (m.by || 'Claude') + '</div><div class="ai-body">' +
       (m.text ? renderMarkdown(m.text) : m.pending ? '<p class="ai-pending">' + t('thinking') + '</p>' : '') + '</div>' +
       (m.note ? '<p class="tool-msg' + (m.error ? ' ai-error' : '') + '">' + esc(m.note) + '</p>' : '') +
       (m.usage ? '<p class="tool-note ai-usage">' + esc(m.usage) + '</p>' : '') + '</div>';
@@ -429,9 +594,13 @@ window.AiReading = (function() {
     var draft = document.getElementById('aiAsk');
     var draftText = draft ? draft.value : '';
     var html = '<p class="tool-desc">' + t('desc') + '</p>';
+    html += '<div class="tool-row"><label class="tool-field" style="flex:1;"><span>' + t('provider') + '</span><select class="form-input" id="aiProvider"' + (busy ? ' disabled' : '') + '>' +
+      '<option value="claude">Claude（Anthropic）</option><option value="deepseek"' + (provider === 'deepseek' ? ' selected' : '') + '>DeepSeek</option></select></label>' +
+      (provider === 'deepseek' ? '<label class="tool-field" style="flex:1;"><span>' + t('dsModel') + '</span><select class="form-input" id="aiDsModel"' + (busy ? ' disabled' : '') + '>' +
+        DS_MODELS.map(function(m) { return '<option value="' + m + '"' + (m === dsModel ? ' selected' : '') + '>' + esc(t('dsModelName')[m]) + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
     html += '<div class="ai-key">' + keyHtml() + '</div>';
     if (getKey()) {
-      html += '<p class="tool-note">' + t('privacy') + '</p>';
+      html += '<p class="tool-note">' + pt('privacy') + '</p>';
       if (!hasAnalysis()) html += '<p class="tool-msg">' + t('needAnalysis') + '</p>';
       else {
         html += '<div class="tool-actions">' +
@@ -504,6 +673,20 @@ window.AiReading = (function() {
     var box = document.getElementById('aiContent');
     if (!box) return;
     box.addEventListener('click', onClick);
+    box.addEventListener('change', function(e) {
+      var id = e.target && e.target.id;
+      if (id === 'aiProvider') {
+        // 兩家的對話格式不同（Claude 要送回 thinking 區塊），換服務就清掉對話
+        if (busy && stream) stream.abort();
+        provider = e.target.value === 'deepseek' ? 'deepseek' : 'claude';
+        try { localStorage.setItem(PROVIDER_STORE, provider); } catch (err) {}
+        messages = []; log = []; turns = []; notice = '';
+        render();
+      } else if (id === 'aiDsModel') {
+        if (DS_MODELS.indexOf(e.target.value) >= 0) dsModel = e.target.value;
+        try { localStorage.setItem(DS_MODEL_STORE, dsModel); } catch (err) {}
+      }
+    });
     box.addEventListener('keydown', function(e) {
       if (e.target.id === 'aiAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); followUp(); }
       if (e.target.id === 'aiKey' && e.key === 'Enter') document.getElementById('aiSaveKey').click();
@@ -527,6 +710,7 @@ window.AiReading = (function() {
     // 測試用：tools/browser-smoke.js 以模擬的 SDK 檢查對話流程，不需要金鑰
     collectContext: collectContext, renderMarkdown: renderMarkdown, SYSTEM: SYSTEM, MODEL: MODEL,
     usageStats: usageStats, usageReport: usageReport, PRICES: PRICES,
+    dsUsageStats: dsUsageStats, dsPeak: dsPeak, parseSSE: parseSSE, DS_PRICES: DS_PRICES, DS_MODELS: DS_MODELS,
     _turns: function() { return turns; },
     _useSdk: function(mod) { sdk = mod; },
     _messages: function() { return messages; }

@@ -834,6 +834,28 @@ section('AI 解讀用量與費用估算', function() {
   ok(/^# AI 解讀驗收紀錄/.test(md) && /2026-10-06/.test(md) && /合計 3 輪：輸入 18750 tokens、輸出 1900 tokens、耗時 33\.9 秒、約 US\$0\.120（另有 1 輪中斷，費用不明）/.test(md), '紀錄合計 ' + md.split('\n')[4]);
   ok(md.split('\n').filter(function(l) { return /^\| \d/.test(l); }).length === 3 && /\| aborted \|.*\| — \| 0\.9 \| \? \|$/m.test(md), '紀錄每輪一列');
   ok(!/undefined|NaN|sk-ant/.test(md), '紀錄沒有 undefined、沒有金鑰');
+
+  // DeepSeek：尖峰 UTC 週一至週五 01–04、06–10 時
+  var at = function(s) { return new Date(s); };
+  ok(A.dsPeak(at('2026-10-06T01:00:00Z')) && A.dsPeak(at('2026-10-06T09:59:00Z')), '週二 01:00、09:59 尖峰');
+  ok(!A.dsPeak(at('2026-10-06T04:00:00Z')) && !A.dsPeak(at('2026-10-06T05:30:00Z')) && !A.dsPeak(at('2026-10-06T10:00:00Z')) && !A.dsPeak(at('2026-10-06T00:59:00Z')), '04:00–06:00、10:00 以後離峰');
+  ok(!A.dsPeak(at('2026-10-10T02:00:00Z')) && !A.dsPeak(at('2026-10-11T07:00:00Z')), '週末離峰');
+  // 費用：命中 × hit ＋ 未命中 × miss ＋ 輸出 × output；離峰半價
+  var u = { prompt_tokens: 12000, completion_tokens: 3000, prompt_tokens_details: { prompt_cache_hit_tokens: 10000, prompt_cache_miss_tokens: 2000 }, completion_tokens_details: { reasoning_tokens: 1200 } };
+  var d = A.dsUsageStats(u, 'deepseek-v4-pro', at('2026-10-06T02:00:00Z'));
+  ok(d.peak && near(d.cost, (10000 * 0.044 + 2000 * 1.32 + 3000 * 3.96) / 1e6) && d.cacheRead === 10000 && d.input === 2000 && d.output === 3000 && d.reasoning === 1200, '尖峰費用 ' + JSON.stringify(d));
+  d = A.dsUsageStats(u, 'deepseek-flash', at('2026-10-10T02:00:00Z'));
+  ok(!d.peak && near(d.cost, (10000 * 0.006 + 2000 * 0.30 + 3000 * 1.20) / 2e6), '離峰半價 ' + d.cost);
+  // 舊格式（快取欄位在 usage 頂層）與只有 prompt_tokens
+  ok(A.dsUsageStats({ prompt_tokens: 100, completion_tokens: 10, prompt_cache_hit_tokens: 60, prompt_cache_miss_tokens: 40 }, 'deepseek-flash').cacheRead === 60, '頂層快取欄位');
+  ok(A.dsUsageStats({ prompt_tokens: 100, completion_tokens: 10 }, 'deepseek-flash').input === 100, '沒有快取欄位時全算未命中');
+  ok(A.dsUsageStats(u, 'deepseek-unknown').cost === null && A.dsUsageStats(null, 'deepseek-flash').cost === 0, '未知模型、沒有 usage');
+  ok(A.DS_MODELS.every(function(m) { return A.DS_PRICES[m]; }), '每個可選模型都有定價');
+  // SSE：完整事件、[DONE]、半行留到下一次、keep-alive 註解行、CRLF
+  var sse = A.parseSSE('data: {"choices":[{"delta":{"content":"你"}}]}\r\n\n: keep-alive\n\ndata: {"choices":[{"delta":{"content":"好"}}]}\n\ndata: {"choi');
+  ok(sse.events.length === 2 && sse.events[1].choices[0].delta.content === '好' && sse.rest === 'data: {"choi' && !sse.done, 'SSE 切半行 ' + JSON.stringify(sse));
+  sse = A.parseSSE(sse.rest + 'ces":[],"usage":{"prompt_tokens":5}}\n\ndata: [DONE]\n\n');
+  ok(sse.events.length === 1 && sse.events[0].usage.prompt_tokens === 5 && sse.done, 'SSE 接續與 [DONE]');
 });
 
 var pending = 1;
