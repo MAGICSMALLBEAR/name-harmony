@@ -290,6 +290,9 @@
     out.over81 = zongRow ? zongRow.innerText.replace(/\\s+/g, ' ') : 'none:' + [...document.querySelectorAll('#membersContent .wuge-row')].map(r => r.innerText.replace(/\\s+/g, ' ')).join(' | ');
     const mm = document.querySelector('#membersContent .mbti-match');
     out.mbtiMatch = mm ? mm.innerText : 'none';
+    // 卡巴拉生命樹：質點之外，要有生命樹圖（22 路徑、10 質點）與名字走過的路徑、四個世界
+    const kab = [...document.querySelectorAll('#membersContent details')].find(d => /卡巴拉生命樹/.test(d.querySelector('summary').textContent));
+    out.kabbalah = kab ? kab.querySelectorAll('svg line').length + '/' + kab.querySelectorAll('svg circle').length + ' ' + (/名字走過的路徑[\\s\\S]*Tav[\\s\\S]*四個世界/.test(kab.textContent) ? 'paths' : 'no-paths') : 'none';
 
     return out;
   })()`);
@@ -326,6 +329,7 @@
     rename: /陳小明 → 陳大維：.+（吉數 \d→\d、凶數 \d→\d）.*天格.*總格.*命格喜用[木火土金水]、[木火土金水]：原名(已補|未補).*新名(已補|未補)/,
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
     lifePath: /^both:3$/,
+    kabbalah: /^22\/10 paths$/,
     pinnacles: /^0–33 歲:11,34–42 歲:7,43–51 歲:9,52 歲以後:6$/,
 
     // 陳小明：人格 19 % 8 = 3 → 離、地格 11 % 8 = 3 → 離（離為火）；

@@ -1,6 +1,6 @@
 /**
  * 取名工具的大量檢查（不需要瀏覽器）：node tools/test-naming.js
- * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦、喜用神、生日靈數、改名對比、吉數姓名推薦
+ * 涵蓋：姓名熱門度、品牌命名、Big Five、家庭命名規劃、寶寶取名、外國人取中文名、易經起卦、喜用神、生日靈數、改名對比、吉數姓名推薦、卡巴拉生命樹
  */
 var vm = require('vm');
 var fs = require('fs');
@@ -562,6 +562,63 @@ section('紫微十二宮解讀', function() {
     ok(R.mingReading(zw).paragraphs.length >= 2, y + '/' + m + ' 命宮綜合解讀');
   }
   ok(Object.keys(layouts).length === 12, '涵蓋 12 種主星排法：' + Object.keys(layouts).length);
+});
+
+section('卡巴拉生命樹（路徑與四個世界）', function() {
+  var D = ctx.DeepReadings, E = ctx.EnglishNumerology, P = D.KABBALAH_PATHS;
+  // 結構：22 條路徑、22 個不同字母、3 母 7 雙 12 單、每個質點都有路徑
+  ok(P.length === 22 && P.every(function(x, i) { return x.p === 11 + i; }), '路徑編號 11–32');
+  ok(new Set(P.map(function(x) { return x.l; })).size === 22 && new Set(P.map(function(x) { return x.h; })).size === 22, '22 個不同的希伯來字母');
+  var cnt = function(k) { return P.filter(function(x) { return x.kind === k; }).length; };
+  ok(cnt('母') === 3 && cnt('雙') === 7 && cnt('單') === 12, '3 母 7 雙 12 單');
+  ok(new Set(P.map(function(x) { return x.a + '-' + x.b; })).size === 22 && P.every(function(x) { return x.a < x.b; }), '路徑不重複');
+  var deg = {}; P.forEach(function(x) { deg[x.a] = (deg[x.a] || 0) + 1; deg[x.b] = (deg[x.b] || 0) + 1; });
+  ok(JSON.stringify(deg) === JSON.stringify({ 1: 3, 2: 4, 3: 4, 4: 4, 5: 4, 6: 8, 7: 5, 8: 5, 9: 4, 10: 3 }), '各質點的路徑數（Tiphareth 8 條）' + JSON.stringify(deg));
+  // 金色黎明的經典對照
+  var at = function(p) { return P[p - 11]; };
+  ok(at(11).l === 'Aleph' && at(11).t === '0 愚者' && at(11).a === 1 && at(11).b === 2, '路徑 11 Aleph 愚者 Kether–Chokmah');
+  ok(at(13).l === 'Gimel' && at(13).b === 6, '路徑 13 Gimel 連 Kether–Tiphareth（跨越深淵）');
+  ok(at(19).l === 'Teth' && at(19).t === 'VIII 力量' && at(22).l === 'Lamed' && at(22).t === 'XI 正義', '力量在 Teth、正義在 Lamed（Rider-Waite 牌序）');
+  ok(at(32).l === 'Tav' && at(32).t === 'XXI 世界' && at(32).a === 9 && at(32).b === 10, '路徑 32 Tav 世界 Yesod–Malkuth');
+  // 轉寫
+  var heb = function(n) { return D.nameToHebrew(n).map(function(x) { return x.letter; }).join(' '); };
+  ok(heb('David') === 'Daleth Aleph Vav Yod Daleth', 'David → ' + heb('David'));
+  ok(heb('Sharon') === 'Shin Aleph Resh Ayin Nun', 'Sharon 先比對 SH → ' + heb('Sharon'));
+  ok(heb('Theo Chen') === 'Tav Heh Ayin Cheth Heh Nun', 'TH、CH → ' + heb('Theo Chen'));
+  ok(heb('Cecil') === 'Samekh Heh Samekh Yod Lamed' && heb('Carl') === 'Kaph Aleph Resh Lamed', '軟音 C → Samekh、硬音 C → Kaph');
+  ok(heb('Max') === 'Mem Aleph Kaph Samekh', 'X → Kaph Samekh');
+  ok(heb('') === '' && heb('123 ü') === '', '沒有英文字母時是空的');
+  // 本命質點與大師數
+  ok(D.getKabbalahTree(11, 'A').base === 2 && D.getKabbalahTree(22, 'A').base === 4 && D.getKabbalahTree(33, 'A').base === 6, '大師數化簡');
+  ok(D.getKabbalahTree(11, 'A').master && !D.getKabbalahTree(2, 'A').master, '標明大師數');
+  var t = D.getKabbalahTree(6, 'Sharon');
+  ok(t.sephirah.n === 'Tiphareth 美麗' && t.sephirah.pillar === '平衡之柱' && t.sephirah.world === 'Yetzirah 形成界' && t.adjacent.length === 8, 'Tiphareth 的位置與相連路徑');
+  // Sharon：Shin 火、Aleph 風、Resh（太陽，無元素）、Ayin 土、Nun 水
+  ok(t.withElement === 4 && t.worlds.map(function(w) { return w.count; }).join() === '1,1,1,1' && t.mainWorld === null, 'Sharon 四個世界各一');
+  ok(t.kinds['母'] === 2 && t.kinds['雙'] === 1 && t.kinds['單'] === 2, 'Sharon 字母分類');
+  var a = D.getKabbalahTree(1, 'Ann');
+  ok(a.paths[0].path.l === 'Nun' && a.paths[0].count === 2 && a.paths[1].path.l === 'Aleph', 'Ann 路徑次數排序');
+  ok(a.mainWorld.n === 'Briah 創造界', 'Ann 水較多 → 創造界');
+  a = D.getKabbalahTree(1, 'Anna');
+  ok(a.mainWorld === null && a.worlds[1].count === 2 && a.worlds[2].count === 2, 'Anna 水風平手沒有主世界');
+  ok(D.getKabbalahTree(9, 'Emma').mainWorld.n === 'Briah 創造界', 'Emma 兩個 Mem → 創造界');
+  ok(D.getKabbalahTree(9, 'Emma').base === 9 && D.getKabbalahTree(0, '').base === 9, '無效數字落在 Yesod');
+  // 隨機名字：資料一致、文字與圖不出錯
+  var AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', firsts = ['David', 'Sharon', 'Theo', 'Chloe', 'Xander', 'Zoe', 'Phoebe', 'Tzipora', 'Quinn', 'Yvette'];
+  for (var i = 0; i < 2000; i++) {
+    var nm = i < firsts.length ? firsts[i] : '';
+    if (!nm) { var len = 1 + Math.floor(rand() * 12); for (var j = 0; j < len; j++) nm += (j && rand() < 0.12 ? ' ' : '') + pick(AZ.split('')); }
+    var chal = E.chaldeanNumber(nm), tr = D.getKabbalahTree(chal, nm);
+    var letters = nm.replace(/[^A-Za-z]/g, '').length;
+    ok(tr.letters.length >= Math.ceil(letters / 2) && tr.letters.length <= letters * 2, nm + ' 字母數合理');
+    ok(tr.paths.reduce(function(s, x) { return s + x.count; }, 0) === tr.letters.length, nm + ' 路徑次數加總＝字母數');
+    ok(tr.kinds['母'] + tr.kinds['雙'] + tr.kinds['單'] === tr.letters.length, nm + ' 分類加總');
+    ok(tr.worlds.reduce(function(s, w) { return s + w.count; }, 0) === tr.withElement, nm + ' 世界加總');
+    ok(tr.adjacent.every(function(x) { return x.a === tr.base || x.b === tr.base; }), nm + ' 相連路徑');
+    var txt = D.getKabbalahPathsReading(tr), svg = D.getKabbalahTreeSVG(tr);
+    ok(txt && !/undefined|NaN|null/.test(txt), nm + ' 解讀文字');
+    ok((svg.match(/<line /g) || []).length === 22 && (svg.match(/<circle /g) || []).length === 10 && !/undefined|NaN/.test(svg), nm + ' 生命樹圖');
+  }
 });
 
 var pending = 1;

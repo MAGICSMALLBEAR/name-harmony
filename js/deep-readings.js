@@ -127,11 +127,204 @@ window.DeepReadings = (function() {
     return head + s.desc + ' 代表色：' + s.color + '。';
   }
 
+  // ---------- 生命之樹的 22 條路徑與四個世界（金色黎明系統） ----------
+  // 質點名稱與所屬世界：依 YHVH 四字母對應 — Yod→Chokmah（Kether 為 Yod 之尖）、Heh→Binah、Vav→Chesed～Yesod、末 Heh→Malkuth
+  var SEPH = {
+    1: { n: 'Kether 王冠', w: 0 }, 2: { n: 'Chokmah 智慧', w: 0 }, 3: { n: 'Binah 理解', w: 1 },
+    4: { n: 'Chesed 慈悲', w: 2 }, 5: { n: 'Geburah 力量', w: 2 }, 6: { n: 'Tiphareth 美麗', w: 2 },
+    7: { n: 'Netzach 勝利', w: 2 }, 8: { n: 'Hod 榮耀', w: 2 }, 9: { n: 'Yesod 基礎', w: 2 }, 10: { n: 'Malkuth 王國', w: 3 }
+  };
+  // 三柱：嚴厲之柱（左）、慈悲之柱（右）、平衡之柱（中）
+  var PILLAR = { 1: '平衡之柱', 6: '平衡之柱', 9: '平衡之柱', 10: '平衡之柱', 2: '慈悲之柱', 4: '慈悲之柱', 7: '慈悲之柱', 3: '嚴厲之柱', 5: '嚴厲之柱', 8: '嚴厲之柱' };
+
+  var WORLDS = [
+    { n: 'Atziluth 原型界', el: '火', yhvh: 'Yod', suit: '權杖', desc: '純粹的意志與起心動念，事情還只是「想要」的火花。' },
+    { n: 'Briah 創造界', el: '水', yhvh: 'Heh', suit: '聖杯', desc: '理解與構想，把火花孕育成可以感受的形狀。' },
+    { n: 'Yetzirah 形成界', el: '風', yhvh: 'Vav', suit: '寶劍', desc: '思想、情感與計畫的世界，事情在心裡反覆成形。' },
+    { n: 'Assiah 行動界', el: '土', yhvh: '末 Heh', suit: '錢幣', desc: '物質與行動，把一切落實成看得見的結果。' }
+  ];
+  var EL_WORLD = { '火': 0, '水': 1, '風': 2, '土': 3 };
+
+  // 22 條路徑（11–32）：希伯來字母、連接的質點、大阿爾克那（Rider-Waite 牌序，與本站塔羅一致）、
+  // 《形成之書》分類（母字母＝元素、雙字母＝行星、單字母＝星座）與元素
+  var PATHS = [
+    { p: 11, h: 'א', l: 'Aleph', a: 1, b: 2, t: '0 愚者', kind: '母', attr: '風', el: '風' },
+    { p: 12, h: 'ב', l: 'Beth', a: 1, b: 3, t: 'I 魔術師', kind: '雙', attr: '水星', el: '' },
+    { p: 13, h: 'ג', l: 'Gimel', a: 1, b: 6, t: 'II 女祭司', kind: '雙', attr: '月亮', el: '' },
+    { p: 14, h: 'ד', l: 'Daleth', a: 2, b: 3, t: 'III 皇后', kind: '雙', attr: '金星', el: '' },
+    { p: 15, h: 'ה', l: 'Heh', a: 2, b: 6, t: 'IV 皇帝', kind: '單', attr: '牡羊座', el: '火' },
+    { p: 16, h: 'ו', l: 'Vav', a: 2, b: 4, t: 'V 教皇', kind: '單', attr: '金牛座', el: '土' },
+    { p: 17, h: 'ז', l: 'Zayin', a: 3, b: 6, t: 'VI 戀人', kind: '單', attr: '雙子座', el: '風' },
+    { p: 18, h: 'ח', l: 'Cheth', a: 3, b: 5, t: 'VII 戰車', kind: '單', attr: '巨蟹座', el: '水' },
+    { p: 19, h: 'ט', l: 'Teth', a: 4, b: 5, t: 'VIII 力量', kind: '單', attr: '獅子座', el: '火' },
+    { p: 20, h: 'י', l: 'Yod', a: 4, b: 6, t: 'IX 隱者', kind: '單', attr: '處女座', el: '土' },
+    { p: 21, h: 'כ', l: 'Kaph', a: 4, b: 7, t: 'X 命運之輪', kind: '雙', attr: '木星', el: '' },
+    { p: 22, h: 'ל', l: 'Lamed', a: 5, b: 6, t: 'XI 正義', kind: '單', attr: '天秤座', el: '風' },
+    { p: 23, h: 'מ', l: 'Mem', a: 5, b: 8, t: 'XII 吊人', kind: '母', attr: '水', el: '水' },
+    { p: 24, h: 'נ', l: 'Nun', a: 6, b: 7, t: 'XIII 死神', kind: '單', attr: '天蠍座', el: '水' },
+    { p: 25, h: 'ס', l: 'Samekh', a: 6, b: 9, t: 'XIV 節制', kind: '單', attr: '射手座', el: '火' },
+    { p: 26, h: 'ע', l: 'Ayin', a: 6, b: 8, t: 'XV 惡魔', kind: '單', attr: '摩羯座', el: '土' },
+    { p: 27, h: 'פ', l: 'Peh', a: 7, b: 8, t: 'XVI 高塔', kind: '雙', attr: '火星', el: '' },
+    { p: 28, h: 'צ', l: 'Tzaddi', a: 7, b: 9, t: 'XVII 星星', kind: '單', attr: '水瓶座', el: '風' },
+    { p: 29, h: 'ק', l: 'Qoph', a: 7, b: 10, t: 'XVIII 月亮', kind: '單', attr: '雙魚座', el: '水' },
+    { p: 30, h: 'ר', l: 'Resh', a: 8, b: 9, t: 'XIX 太陽', kind: '雙', attr: '太陽', el: '' },
+    { p: 31, h: 'ש', l: 'Shin', a: 8, b: 10, t: 'XX 審判', kind: '母', attr: '火', el: '火' },
+    { p: 32, h: 'ת', l: 'Tav', a: 9, b: 10, t: 'XXI 世界', kind: '雙', attr: '土星（兼屬土）', el: '土' }
+  ];
+  var BY_LETTER = {};
+  PATHS.forEach(function(x) { BY_LETTER[x.l] = x; });
+  var KIND_TEXT = { '母': '母字母（元素）', '雙': '雙字母（行星）', '單': '單字母（星座）' };
+
+  // 英文字母轉希伯來字母（金色黎明常用的轉寫對照）；先比對雙字母
+  var DIGRAPH = { SH: ['Shin'], TH: ['Tav'], CH: ['Cheth'], PH: ['Peh'], TZ: ['Tzaddi'], TS: ['Tzaddi'], CK: ['Kaph'] };
+  var SINGLE = {
+    A: ['Aleph'], B: ['Beth'], C: ['Kaph'], D: ['Daleth'], E: ['Heh'], F: ['Peh'], G: ['Gimel'], H: ['Heh'], I: ['Yod'],
+    J: ['Yod'], K: ['Kaph'], L: ['Lamed'], M: ['Mem'], N: ['Nun'], O: ['Ayin'], P: ['Peh'], Q: ['Qoph'], R: ['Resh'],
+    S: ['Samekh'], T: ['Teth'], U: ['Vav'], V: ['Vav'], W: ['Vav'], X: ['Kaph', 'Samekh'], Y: ['Yod'], Z: ['Zayin']
+  };
+
+  /** 名字轉成希伯來字母序列：[{ src: 'SH', letter: 'Shin' }, ...]；軟音 C（接 E/I/Y）讀作 S → Samekh */
+  function nameToHebrew(name) {
+    var s = String(name || '').toUpperCase().replace(/[^A-Z]/g, ''), out = [];
+    for (var i = 0; i < s.length; i++) {
+      var two = s.substr(i, 2);
+      if (two.length === 2 && DIGRAPH[two]) {
+        DIGRAPH[two].forEach(function(l) { out.push({ src: two, letter: l }); });
+        i++;
+        continue;
+      }
+      var c = s[i];
+      var ls = c === 'C' && /[EIY]/.test(s[i + 1] || '') ? ['Samekh'] : SINGLE[c];
+      ls.forEach(function(l) { out.push({ src: c, letter: l }); });
+    }
+    return out;
+  }
+
+  /**
+   * 生命之樹完整資料
+   * @return { num, base, master, sephirah: { no, n, world, pillar }, adjacent: [path...],
+   *           letters: [{ src, letter, path }], paths: [{ path, count, src }], kinds: { 母, 雙, 單 },
+   *           worlds: [{ n, el, ..., count, share }], mainWorld }
+   */
+  function getKabbalahTree(chaldeanNum, name) {
+    var base = chaldeanNum === 11 ? 2 : chaldeanNum === 22 ? 4 : chaldeanNum === 33 ? 6 : chaldeanNum;
+    if (!SEPH[base]) base = 9;
+    var seph = { no: base, n: SEPH[base].n, world: WORLDS[SEPH[base].w].n, pillar: PILLAR[base] };
+    var adjacent = PATHS.filter(function(x) { return x.a === base || x.b === base; });
+
+    var letters = nameToHebrew(name).map(function(x) { return { src: x.src, letter: x.letter, path: BY_LETTER[x.letter] }; });
+    var tally = {};
+    letters.forEach(function(x) {
+      var t = tally[x.path.p] || (tally[x.path.p] = { path: x.path, count: 0, src: [] });
+      t.count++;
+      if (t.src.indexOf(x.src) < 0) t.src.push(x.src);
+    });
+    var paths = Object.keys(tally).map(function(k) { return tally[k]; })
+      .sort(function(x, y) { return y.count - x.count || x.path.p - y.path.p; });
+
+    var kinds = { '母': 0, '雙': 0, '單': 0 };
+    var wc = [0, 0, 0, 0], withEl = 0;
+    letters.forEach(function(x) {
+      kinds[x.path.kind]++;
+      if (x.path.el) { wc[EL_WORLD[x.path.el]]++; withEl++; }
+    });
+    var worlds = WORLDS.map(function(w, i) {
+      return { n: w.n, el: w.el, yhvh: w.yhvh, suit: w.suit, desc: w.desc, count: wc[i], share: withEl ? wc[i] / withEl : 0 };
+    });
+    var mainWorld = null;
+    if (withEl) {
+      var max = Math.max.apply(null, wc);
+      var tops = worlds.filter(function(w) { return w.count === max; });
+      mainWorld = tops.length === 1 ? tops[0] : null;
+    }
+    return {
+      num: chaldeanNum, base: base, master: base !== chaldeanNum && chaldeanNum >= 11,
+      sephirah: seph, adjacent: adjacent, letters: letters, paths: paths, kinds: kinds,
+      worlds: worlds, mainWorld: mainWorld, withElement: withEl
+    };
+  }
+
+  // 生命之樹圖：質點座標（上為 Kether）
+  var POS = { 1: [150, 30], 2: [250, 85], 3: [50, 85], 4: [250, 195], 5: [50, 195], 6: [150, 250], 7: [250, 305], 8: [50, 305], 9: [150, 360], 10: [150, 440] };
+
+  /** 生命之樹 SVG：本命質點實心、名字走過的路徑加粗（次數越多越粗） */
+  function getKabbalahTreeSVG(tree) {
+    var used = {};
+    (tree ? tree.paths : []).forEach(function(x) { used[x.path.p] = x.count; });
+    var gold = 'var(--color-gold-primary, #D4A843)', dim = 'var(--color-text-muted, #8B7355)';
+    var svg = '<svg viewBox="0 0 300 470" role="img" aria-label="生命之樹" style="width:100%;max-width:260px;display:block;margin:6px auto;">';
+    PATHS.forEach(function(x) {
+      var A = POS[x.a], B = POS[x.b], n = used[x.p] || 0;
+      svg += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="' + (n ? gold : dim) + '"'
+        + ' stroke-width="' + (n ? Math.min(2 + n, 7) : 1) + '" stroke-opacity="' + (n ? 0.9 : 0.35) + '"><title>' + x.p + ' ' + x.l + ' ' + x.h + ' — ' + x.t + (n ? '（名字 ×' + n + '）' : '') + '</title></line>';
+      if (n) {
+        var mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+        svg += '<text x="' + mx + '" y="' + (my + 4) + '" text-anchor="middle" font-size="13" fill="' + gold + '" stroke="var(--color-bg-card, #3D2218)" stroke-width="3" paint-order="stroke">' + x.h + '</text>';
+      }
+    });
+    for (var k = 1; k <= 10; k++) {
+      var P = POS[k], me = tree && tree.base === k;
+      svg += '<circle cx="' + P[0] + '" cy="' + P[1] + '" r="17" fill="' + (me ? gold : 'var(--color-bg-card, #3D2218)') + '" stroke="' + gold + '" stroke-width="' + (me ? 3 : 1.5) + '"><title>' + k + ' ' + SEPH[k].n + '</title></circle>';
+      svg += '<text x="' + P[0] + '" y="' + (P[1] + 4) + '" text-anchor="middle" font-size="11" fill="' + (me ? 'var(--color-bg-deep, #1A0A0A)' : gold) + '">' + SEPH[k].n.split(' ')[1] + '</text>';
+    }
+    return svg + '</svg>';
+  }
+
+  /** 路徑與四個世界的文字解讀（純文字，以換行分段） */
+  function getKabbalahPathsReading(tree) {
+    if (!tree) return '';
+    var parts = [];
+    var s = tree.sephirah;
+    parts.push('【本命質點】' + s.n + '：位於' + s.pillar + '，屬於' + s.world + '。與它相連的路徑有 ' + tree.adjacent.length + ' 條：'
+      + tree.adjacent.map(function(x) { return x.l + '（' + x.t + '）'; }).join('、') + '。');
+    if (tree.paths.length) {
+      parts.push('【名字走過的路徑】依金色黎明的轉寫，名字的字母化為 ' + tree.letters.length + ' 個希伯來字母，走過 ' + tree.paths.length + ' 條路徑：');
+      parts.push(tree.paths.map(function(x) {
+        var p = x.path;
+        return '・路徑 ' + p.p + ' ' + p.h + ' ' + p.l + '（' + x.src.join('/') + (x.count > 1 ? '，×' + x.count : '') + '）：'
+          + SEPH[p.a].n.split(' ')[1] + '↔' + SEPH[p.b].n.split(' ')[1] + '，' + KIND_TEXT[p.kind] + '・' + p.attr + '，塔羅「' + p.t + '」';
+      }).join('\n'));
+      var top = tree.paths[0];
+      if (top.count > 1 && (tree.paths.length === 1 || tree.paths[1].count < top.count)) {
+        parts.push('名字最常走的是路徑 ' + top.path.p + '（' + top.path.l + '，' + top.path.t + '），這條路的課題在你的名字裡反覆出現。');
+      }
+      if (tree.adjacent.some(function(x) { return x.p === top.path.p; })) {
+        parts.push('這條路徑正好連到你的本命質點，名字與靈數指向同一處。');
+      }
+      var k = tree.kinds;
+      parts.push('字母分類：母字母 ' + k['母'] + '、雙字母 ' + k['雙'] + '、單字母 ' + k['單'] + '。'
+        + (k['母'] > k['雙'] && k['母'] > k['單'] ? '母字母偏多，名字帶著較強的元素性、根本性的力量。'
+          : k['雙'] > k['母'] && k['雙'] > k['單'] ? '雙字母偏多，名字與行星的兩面性（剛柔、順逆）連結較深。'
+          : k['單'] > k['母'] && k['單'] > k['雙'] ? '單字母偏多，名字的能量偏向星座所代表的日常性格與節奏。' : ''));
+    }
+    parts.push('【四個世界】');
+    parts.push(tree.worlds.map(function(w) {
+      return '・' + w.n + '（' + w.el + '・' + w.yhvh + '・' + w.suit + '）' + (tree.withElement ? '：名字 ' + w.count + ' 個字母' : '') + ' — ' + w.desc;
+    }).join('\n'));
+    if (tree.mainWorld) {
+      parts.push('名字的元素最集中在「' + tree.mainWorld.n + '」，你最自在的層次是' + tree.mainWorld.desc.replace(/。$/, '') + '。'
+        + (tree.mainWorld.n !== s.world ? '本命質點則在' + s.world + '，兩個層次之間的落差，就是你成長的方向。' : '與本命質點同一個世界，內外一致。'));
+    } else if (tree.withElement) {
+      var max = Math.max.apply(null, tree.worlds.map(function(w) { return w.count; }));
+      var tied = tree.worlds.filter(function(w) { return w.count === max; });
+      parts.push(tied.length === 4
+        ? '名字的元素平均分布在四個世界，沒有特別偏重的層次。'
+        : '名字的元素在' + tied.map(function(w) { return '「' + w.n + '」'; }).join('與') + '並列最多，這幾個層次對你同樣重要。');
+    }
+    parts.push('（字母轉寫與四個世界的劃分依金色黎明系統；不同流派的對應略有差異，僅供參考。）');
+    return parts.join('\n');
+  }
+
   // ========== 公開 API ==========
   return {
     getHexagramDeepReading: getHexagramDeepReading,
     getTarotDeepReading: getTarotDeepReading,
     getKabbalahReading: getKabbalahReading,
+    getKabbalahTree: getKabbalahTree,
+    getKabbalahTreeSVG: getKabbalahTreeSVG,
+    getKabbalahPathsReading: getKabbalahPathsReading,
+    KABBALAH_PATHS: PATHS,
+    nameToHebrew: nameToHebrew,
     getPersonalGuidance: getPersonalGuidance
   };
 })();

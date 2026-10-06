@@ -1119,9 +1119,13 @@
       // 卡巴拉深度
       if (r.en && window.EnglishNumerology && window.DeepReadings) {
         var chal = window.EnglishNumerology.chaldeanNumber(r.en.name || r.enReport.name);
+        var kabName = r.en.name || r.enReport.name;
         var kabReading = window.DeepReadings.getKabbalahReading(chal);
+        var kabTree = window.DeepReadings.getKabbalahTree(chal, kabName);
         html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔯 卡巴拉生命樹</summary>';
-        html += '<p style="color:var(--color-text-secondary);line-height:1.8;">' + kabReading + '</p></details>';
+        html += '<p style="color:var(--color-text-secondary);line-height:1.8;">' + kabReading + '</p>';
+        html += window.DeepReadings.getKabbalahTreeSVG(kabTree);
+        html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + window.DeepReadings.getKabbalahPathsReading(kabTree) + '</p></details>';
       }
 
       // 今日幸運
