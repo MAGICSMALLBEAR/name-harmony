@@ -4,6 +4,11 @@
 window.Ziwei = (function() {
 
   var TIAN_GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  // 英文模式（js/l10n.js）：T 查字典、L 組合句子、Z 紫微星曜與宮位（命名空間 zw）、GZ 干支拼音
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  function Z(x) { return window.L10N ? window.L10N.tn('zw', x) : x; }
+  function GZ(x) { return window.L10N ? window.L10N.ganzhi(x) : x; }
 
   // 生年四化（中州派）：年干 → 化祿/化權/化科/化忌 對應的星曜
   // 部分對應星（文昌/文曲/左輔/右弼）不在14主星表中，此時該化落於輔星，不掛靠任何宮位
@@ -211,7 +216,8 @@ window.Ziwei = (function() {
     var yIdx = ((lunar.year - 4) % 60 + 60) % 60;
     var yearTG = TIAN_GAN[yIdx % 10];
     var yearDZ = DI_ZHI[yIdx % 12];
-    var lunarText = '農曆' + yearTG + yearDZ + '年' + (lunar.leap ? '閏' : '') + lunar.month + '月' + lunar.day + '日';
+    var lunarText = L('農曆' + yearTG + yearDZ + '年' + (lunar.leap ? '閏' : '') + lunar.month + '月' + lunar.day + '日',
+      'Lunar ' + GZ(yearTG + yearDZ) + ' year, ' + (lunar.leap ? 'leap ' : '') + 'month ' + lunar.month + ', day ' + lunar.day);
 
     if (!hasHour) {
       return { needHour: true, lunar: lunar, lunarText: lunarText, sihua: getSihua(yearTG, null) };
@@ -335,11 +341,11 @@ window.Ziwei = (function() {
         suiqian: y12.suiqian[pos],
         jiangqian: y12.jiangqian[pos],
         borrowed: borrowed,
-        star: stars.join('、') + (borrowed ? '（借）' : ''),
+        star: L(stars.join('、') + (borrowed ? '（借）' : ''), stars.map(Z).join(' + ') + (borrowed ? ' (borrowed)' : '')),
         starDesc: stars.map(function(s) { return s + '：' + STARS[s].desc; }).join(' '),
         starEle: first ? first.el : '土',
         starGlory: stars.map(function(s) { return STARS[s].g; }).join('/'),
-        starText: stars.map(function(s) { var b = brightnessOf(s, borrowed ? mod12(pos + 6) : pos); return s + (b ? '（' + b + '）' : ''); }).join('、') + (borrowed ? '（借）' : ''),
+        starText: stars.map(function(s) { var b = brightnessOf(s, borrowed ? mod12(pos + 6) : pos); return Z(s) + (b ? L('（' + b + '）', ' (' + Z(b).toLowerCase() + ')') : ''); }).join(L('、', ', ')) + (borrowed ? L('（借）', ' (borrowed)') : ''),
         isMing: i === 0,
         isShen: pos === shenPos
       };
@@ -366,13 +372,14 @@ window.Ziwei = (function() {
       palaces: palaces,
       lunar: lunar,
       lunarText: lunarText,
-      bureau: nayin + ['','','二','三','四','五','六'][bureau] + '局',
+      bureau: L(nayin + ['','','二','三','四','五','六'][bureau] + '局', T(nayin) + ' ' + bureau + ' Bureau'),
       mingPalace: mingPalace,
       shenPalace: shenPalace,
       mingStar: mingPalace.star,
       mingEle: mingPalace.starEle,
       mingGlory: mingPalace.starGlory,
-      mingDesc: (mingPalace.borrowed ? '命宮無主星，借對宮（遷移宮）' + mingPalace.stars.join('、') + '論。' : '') + mingPalace.starDesc,
+      mingDesc: (mingPalace.borrowed ? L('命宮無主星，借對宮（遷移宮）' + mingPalace.stars.join('、') + '論。', 'The Life Palace has no main star, so it borrows ' + mingPalace.stars.map(Z).join(' and ') + ' from the opposite (Travel) palace. ') : '')
+        + L(mingPalace.starDesc, mingPalace.stars.map(function(s) { return Z(s) + ': ' + T(STARS[s].desc); }).join(' ')),
       sihua: getSihua(yearTG, palaces),
       decadal: hasGender ? { forward: forward, current: currentDecadal, nowAge: nowAge } : null,
       birthLunarYear: lunar.year,
@@ -504,7 +511,8 @@ window.Ziwei = (function() {
           return (!p.borrowed && p.stars.indexOf(star) >= 0) || p.minorStars.indexOf(star) >= 0;
         })[0] || null;
       }
-      var reading = star + (palace ? '在' + palace.name : '') + type + '：' + SIHUA_MEANING[type];
+      var reading = L(star + (palace ? '在' + palace.name : '') + type + '：' + SIHUA_MEANING[type],
+        Z(star) + ' ' + Z(type) + (palace ? ' in the ' + Z(palace.name) : '') + ': ' + T(SIHUA_MEANING[type]));
       return { type: type, star: star, palace: palace, reading: reading };
     });
 
@@ -532,9 +540,12 @@ window.Ziwei = (function() {
     return {
       rel: rel,
       score: score,
-      reading: '命宮主星' + ziwei.mingStar + '（' + mingEle + '）與人格' + renEle + '的關係為「' + rel + '」。' +
+      reading: L('命宮主星' + ziwei.mingStar + '（' + mingEle + '）與人格' + renEle + '的關係為「' + rel + '」。' +
         (score >= 70 ? '命格與姓名五行和諧，先天命盤與後天姓名互相加持。' :
-         '命格與姓名五行有衝突，建議透過改名或開運物來調和。')
+         '命格與姓名五行有衝突，建議透過改名或開運物來調和。'),
+        'The Life Palace main star ' + ziwei.mingStar + ' (' + T(mingEle) + ') and the Person Grid\'s ' + T(renEle) + ' relate as "' + T(rel) + '". ' +
+        (score >= 70 ? 'The chart and the name\'s elements are in harmony, so birth chart and name reinforce each other.' :
+         'The chart and the name\'s elements clash; a name change or lucky objects can help balance them.'))
     };
   }
 

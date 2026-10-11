@@ -4,6 +4,11 @@
  */
 window.ZiweiReading = (function() {
 
+  // 英文模式（js/l10n.js）：T 查字典、L 組合句子、Z 紫微星曜與宮位（命名空間 zw）
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  function Z(x) { return window.L10N ? window.L10N.tn('zw', x) : x; }
+
   /**
    * 主星組合（38 種）：name 格局名、ming 命宮解讀、gist 落在其他宮位時的重點
    * 鍵值與 ziwei.js 的安星順序一致（紫微系在前、天府系在後）
@@ -137,11 +142,11 @@ window.ZiweiReading = (function() {
     if (palace.borrowed || !palace.brightness.length) return '';
     var good = palace.brightness.filter(function(b) { return b === '廟' || b === '旺'; }).length;
     var bad = palace.brightness.filter(function(b) { return b === '陷' || b === '不'; }).length;
-    var desc = palace.stars.map(function(s, i) { return s + palace.brightness[i]; }).join('、');
-    if (bad && !good) return '主星' + desc + '，力量較弱，上述優點較難自然展現，需要後天努力與環境配合，缺點也較容易浮現。';
-    if (bad) return '主星' + desc + '，強弱互見，能力發揮起伏較大，揚長避短最重要。';
-    if (good) return '主星' + desc + '，力量充足，優點容易發揮，能量正面。';
-    return '主星' + desc + '，力量中等，發揮程度視後天努力與大限流年而定。';
+    var desc = palace.stars.map(function(s, i) { return L(s + palace.brightness[i], Z(s) + ' (' + Z(palace.brightness[i]).toLowerCase() + ')'); }).join(L('、', ', '));
+    if (bad && !good) return L('主星' + desc + '，力量較弱，上述優點較難自然展現，需要後天努力與環境配合，缺點也較容易浮現。', 'Main star ' + desc + ' is weak: the strengths above do not come out naturally and need effort and the right surroundings, while weaknesses show more easily.');
+    if (bad) return L('主星' + desc + '，強弱互見，能力發揮起伏較大，揚長避短最重要。', 'Main stars ' + desc + ' are mixed in strength, so performance swings; play to your strengths and avoid your weak spots.');
+    if (good) return L('主星' + desc + '，力量充足，優點容易發揮，能量正面。', 'Main star ' + desc + ' is strong: its strengths come out easily and the energy is positive.');
+    return L('主星' + desc + '，力量中等，發揮程度視後天努力與大限流年而定。', 'Main star ' + desc + ' is of moderate strength; how far it shines depends on effort and on the decade and yearly cycles.');
   }
 
   /** 三方四正：命宮、財帛、官祿、遷移 */
@@ -160,15 +165,16 @@ window.ZiweiReading = (function() {
     (zw.sihua ? zw.sihua.list : []).forEach(function(s) {
       if (s.type === '化祿' && s.palace && set.indexOf(s.palace.pos) >= 0) lu = true;
     });
-    var text = '命宮三方四正（命、財、官、遷）';
-    text += lucky.length ? '會六吉星 ' + lucky.length + ' 顆（' + lucky.join('、') + '）' : '未會六吉星';
-    text += unlucky.length ? '，會六煞星 ' + unlucky.length + ' 顆（' + unlucky.join('、') + '）' : '，不見六煞星';
-    text += lu ? '，並見祿（祿存或化祿）' : '';
-    text += '。';
-    if (lucky.length >= 3 && unlucky.length <= 1) text += '吉多煞少，一生助力多，做事較順遂。';
-    else if (unlucky.length >= 3 && lucky.length <= 1) text += '煞多吉少，人生考驗較多，但磨練後的成就也更紮實，凡事穩健為上。';
-    else if (lucky.length || unlucky.length) text += '吉煞互見，順逆交替，把握貴人、避開衝動，就能趨吉避凶。';
-    else text += '格局單純，發展主要看主星特質與後天努力。';
+    var names = function(list) { return list.map(Z).join(L('、', ', ')); };
+    var text = L('命宮三方四正（命、財、官、遷）', 'The Life Palace\'s triad and opposite (Life, Wealth, Career, Travel) ');
+    text += lucky.length ? L('會六吉星 ' + lucky.length + ' 顆（' + names(lucky) + '）', 'meets ' + lucky.length + ' of the six lucky stars (' + names(lucky) + ')') : L('未會六吉星', 'meets none of the six lucky stars');
+    text += unlucky.length ? L('，會六煞星 ' + unlucky.length + ' 顆（' + names(unlucky) + '）', ', ' + unlucky.length + ' of the six malefic stars (' + names(unlucky) + ')') : L('，不見六煞星', ', and none of the six malefic stars');
+    text += lu ? L('，並見祿（祿存或化祿）', ', plus Lu (Lu Cun or Hua Lu)') : '';
+    text += L('。', '. ');
+    if (lucky.length >= 3 && unlucky.length <= 1) text += L('吉多煞少，一生助力多，做事較順遂。', 'More help than harm: plenty of support through life, and things tend to go smoothly.');
+    else if (unlucky.length >= 3 && lucky.length <= 1) text += L('煞多吉少，人生考驗較多，但磨練後的成就也更紮實，凡事穩健為上。', 'More harm than help: life brings more tests, but achievements earned through them are more solid — steady does it.');
+    else if (lucky.length || unlucky.length) text += L('吉煞互見，順逆交替，把握貴人、避開衝動，就能趨吉避凶。', 'Help and harm both appear, so good and bad times alternate; lean on your benefactors and avoid rash moves.');
+    else text += L('格局單純，發展主要看主星特質與後天努力。', 'A simple pattern: how things unfold depends mainly on the main stars and your own effort.');
     return { lucky: lucky, unlucky: unlucky, hasLu: lu, text: text };
   }
 
@@ -181,16 +187,17 @@ window.ZiweiReading = (function() {
     var p = zw.mingPalace;
     var combo = comboOf(p);
     var paras = [];
-    var title = combo ? combo.name : '命宮';
+    var title = combo ? T(combo.name) : Z('命宮');
     if (p.borrowed) {
-      title = '命無正曜，借' + (combo ? combo.name.replace(/獨坐|同宮/, '') : p.stars.join(''));
-      paras.push('命宮沒有主星，借對宮（遷移宮）' + p.stars.join('、') + '來看。個性可塑性高、適應力強，容易受環境與身邊的人影響，外出或換環境常帶來轉機。');
+      title = L('命無正曜，借' + (combo ? combo.name.replace(/獨坐|同宮/, '') : p.stars.join('')), 'No main star in the Life Palace — borrowing ' + (combo ? T(combo.name) : p.stars.map(Z).join(' + ')));
+      paras.push(L('命宮沒有主星，借對宮（遷移宮）' + p.stars.join('、') + '來看。個性可塑性高、適應力強，容易受環境與身邊的人影響，外出或換環境常帶來轉機。',
+        'The Life Palace has no main star, so it borrows ' + p.stars.map(Z).join(' and ') + ' from the opposite (Travel) palace. Adaptable and flexible, easily shaped by surroundings and people; moving or changing environments often brings a turn for the better.'));
     }
-    if (combo) paras.push(combo.ming);
+    if (combo) paras.push(T(combo.ming));
     var bn = brightnessNote(p);
     if (bn) paras.push(bn);
     paras.push(sanFang(zw).text);
-    if (zw.shenPalace && SHEN_IN[zw.shenPalace.name]) paras.push(SHEN_IN[zw.shenPalace.name]);
+    if (zw.shenPalace && SHEN_IN[zw.shenPalace.name]) paras.push(T(SHEN_IN[zw.shenPalace.name]));
     return { title: title, paragraphs: paras };
   }
 
@@ -202,7 +209,7 @@ window.ZiweiReading = (function() {
       return {
         palace: p,
         text: combo
-          ? (p.borrowed ? '無主星，借對宮' + combo.name.replace(/獨坐|同宮/, '') + '：' : combo.name + '：') + combo.gist + '。'
+          ? (p.borrowed ? L('無主星，借對宮' + combo.name.replace(/獨坐|同宮/, '') + '：', 'No main star; borrows ' + T(combo.name) + ' from the opposite palace: ') : T(combo.name) + L('：', ': ')) + T(combo.gist) + L('。', '. ')
           : ''
       };
     });
@@ -210,7 +217,7 @@ window.ZiweiReading = (function() {
 
   /** 四化入宮解讀 */
   function sihuaIn(type, palaceName) {
-    return (SIHUA_IN[type] && SIHUA_IN[type][palaceName]) || '';
+    return T((SIHUA_IN[type] && SIHUA_IN[type][palaceName]) || '');
   }
 
   return {

@@ -9,6 +9,7 @@
   function T(s) { return window.L10N ? window.L10N.t(s) : s; }
   function LL(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
   function GZ(s) { return window.L10N ? window.L10N.ganzhi(s) : s; }
+  function ZN(s) { return window.L10N ? window.L10N.tn('zw', s) : s; }
 
   var formSection = document.getElementById('formSection');
   var resultsSection = document.getElementById('resultsSection');
@@ -711,7 +712,7 @@
     var keys = months.map(function(mo) { return mo.month + (mo.leap ? 'L' : ''); });
     if (keys.indexOf(selKey) < 0) selKey = String(parseInt(selKey, 10) || 1);
     return months.map(function(mo, i) {
-      return '<option value="' + keys[i] + '"' + (keys[i] === selKey ? ' selected' : '') + '>' + (mo.leap ? '閏' : '') + LUNAR_MONTH_NAMES[mo.month - 1] + '月</option>';
+      return '<option value="' + keys[i] + '"' + (keys[i] === selKey ? ' selected' : '') + '>' + LL((mo.leap ? '閏' : '') + LUNAR_MONTH_NAMES[mo.month - 1] + '月', (mo.leap ? 'Leap month ' : 'Month ') + mo.month) + '</option>';
     }).join('');
   }
 
@@ -722,7 +723,7 @@
     var days = mo ? mo.days : 29;
     selDay = Math.min(Math.max(selDay || 1, 1), days);
     var html = '';
-    for (var i = 1; i <= days; i++) html += '<option value="' + i + '"' + (i === selDay ? ' selected' : '') + '>' + LUNAR_DAY_NAMES[i - 1] + '</option>';
+    for (var i = 1; i <= days; i++) html += '<option value="' + i + '"' + (i === selDay ? ' selected' : '') + '>' + LL(LUNAR_DAY_NAMES[i - 1], 'Day ' + i) + '</option>';
     return html;
   }
 
@@ -730,7 +731,7 @@
     var month = parseInt(monthKey, 10), leap = /L$/.test(monthKey);
     var dateKey = function(y, m, lp, d) { return ((y * 13 + m) * 2 + (lp ? 1 : 0)) * 31 + d; }; // 閏月排在同月之後
     if (dateKey(year, month, leap, day) < dateKey(zw.lunar.year, zw.lunar.month, zw.lunar.leap, zw.lunar.day)) {
-      return '<p style="font-size:0.72rem;color:var(--color-text-muted);">這一天還沒出生</p>';
+      return '<p style="font-size:0.72rem;color:var(--color-text-muted);">' + LL('這一天還沒出生', 'Not yet born on this day') + '</p>';
     }
     var md = window.Ziwei.getMonthlyDaily(zw, year, month, leap, day);
     if (!md) return '';
@@ -739,27 +740,28 @@
     };
     var sihuaText = function(list) {
       return list.map(function(s) {
-        var t = s.star + s.type + (s.palace ? '在' + s.palace.name : '');
+        var t = LL(s.star + s.type + (s.palace ? '在' + s.palace.name : ''), ZN(s.star) + ' ' + ZN(s.type) + (s.palace ? ' in ' + ZN(s.palace.name) : ''));
         return s.type === '化忌' ? '<span style="color:var(--color-danger, #c0392b);">' + t + '</span>' : t;
-      }).join('、');
+      }).join(LL('、', '; '));
     };
     var starsText = function(stars) {
       var out = [];
       zw.palaces.forEach(function(p) {
         var list = stars[p.pos];
-        if (list) out.push(list.map(function(n) { return zwStarSpan(n); }).join('、') + '在' + p.name);
+        if (list) out.push(list.map(function(n) { return zwStarSpan(n); }).join(LL('、', ', ')) + LL('在' + p.name, ' in ' + ZN(p.name)));
       });
-      return out.join('；');
+      return out.join(LL('；', '; '));
     };
-    var html = '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:4px 0 2px;">國曆 ' + md.solar.year + '/' + md.solar.month + '/' + md.solar.day
-      + '・斗君（流年正月）在' + md.douJun.name + '（' + md.douJun.branch + '）</p>';
-    [['流月', md.monthly, '這個月'], ['流日', md.daily, '這一天']].forEach(function(row) {
-      var label = row[0], f = row[1];
-      html += '<p style="font-size:0.78rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + label + '・' + f.ganzhi + '</p>';
-      html += line(label + '命宮', '落在本命' + f.ming.name + '（' + f.ming.branch + '），主星 ' + (f.ming.starText || '空宮'));
-      html += line(label + '四化', sihuaText(f.sihua));
-      html += line(label.charAt(1) + '曜', starsText(f.stars));
-      html += zwSihuaTips(f.sihua, row[2]);
+    var html = '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:4px 0 2px;">' + LL('國曆 ', 'Gregorian ') + md.solar.year + '/' + md.solar.month + '/' + md.solar.day
+      + LL('・斗君（流年正月）在' + md.douJun.name + '（' + md.douJun.branch + '）', ' · Dou Jun (first month of the year) in ' + ZN(md.douJun.name) + ' (' + GZ(md.douJun.branch) + ')') + '</p>';
+    [['流月', md.monthly, '這個月', 'Monthly', 'this month'], ['流日', md.daily, '這一天', 'Daily', 'this day']].forEach(function(row) {
+      var label = LL(row[0], row[3]), f = row[1];
+      html += '<p style="font-size:0.78rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + label + LL('・', ' · ') + GZ(f.ganzhi) + '</p>';
+      html += line(LL(row[0] + '命宮', row[3] + ' Life Palace'), LL('落在本命' + f.ming.name + '（' + f.ming.branch + '），主星 ' + (f.ming.starText || '空宮'),
+        'in the natal ' + ZN(f.ming.name) + ' (' + GZ(f.ming.branch) + '), main star ' + (f.ming.starText || 'none (empty palace)')));
+      html += line(LL(row[0] + '四化', row[3] + ' Four Transformations'), sihuaText(f.sihua));
+      html += line(LL(row[0].charAt(1) + '曜', row[3] + ' stars'), starsText(f.stars));
+      html += zwSihuaTips(f.sihua, LL(row[2], row[4]));
     });
     return html;
   }
@@ -770,7 +772,7 @@
     return list.filter(function(s) { return (s.type === '化祿' || s.type === '化忌') && s.palace; }).map(function(s) {
       var text = R ? R.sihuaIn(s.type, s.palace.name) : s.palace.desc;
       return '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0 0;line-height:1.6;">' + (s.type === '化祿' ? '🍀 ' : '⚠️ ')
-        + when + s.type + '入' + s.palace.name + '：' + text + '</p>';
+        + LL(when + s.type + '入' + s.palace.name + '：', 'With ' + ZN(s.type) + ' in the ' + ZN(s.palace.name) + ' ' + when + ': ') + text + '</p>';
     }).join('');
   }
 
@@ -779,64 +781,65 @@
     var color = Z.SHA_STARS.indexOf(name) >= 0 || /^[流月日](羊|陀)$/.test(name) ? 'var(--color-danger, #c0392b)'
       : Z.FLOWER_STARS.indexOf(name) >= 0 || /^[流月日](鸞|喜)$/.test(name) ? '#d4769b'
       : 'inherit';
-    return '<span style="color:' + color + ';">' + name + (extra || '') + '</span>';
+    return '<span style="color:' + color + ';">' + ZN(name) + (extra || '') + '</span>';
   }
 
   function renderZiweiPalaces(zw) {
     var html = '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin-top:8px;font-size:0.7rem;">';
     zw.palaces.forEach(function(p) {
-      html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + p.name
-        + '<br><span style="font-size:0.6rem;">' + p.ganzhi + (p.isShen ? '・身' : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '')
-        + (p.changsheng ? '・' + p.changsheng : '') + '</span>'
-        + '<br><span style="font-size:0.56rem;color:var(--color-text-muted);">' + [p.boshi, p.jiangqian, p.suiqian].filter(Boolean).join('・') + '</span></span>';
-      html += '<span style="color:var(--color-gold-light);' + (p.isMing ? 'font-weight:700;' : '') + '">' + (p.starText || '空宮')
+      html += '<span style="color:var(--color-text-secondary);' + (p.isCurrentDecadal ? 'text-decoration:underline;' : '') + '">' + ZN(p.name)
+        + '<br><span style="font-size:0.6rem;">' + GZ(p.ganzhi) + (p.isShen ? LL('・身', ' · Body') : '') + (p.decadal ? ' ' + p.decadal.start + '–' + p.decadal.end : '')
+        + (p.changsheng ? LL('・', ' · ') + ZN(p.changsheng) : '') + '</span>'
+        + '<br><span style="font-size:0.56rem;color:var(--color-text-muted);">' + [p.boshi, p.jiangqian, p.suiqian].filter(Boolean).map(ZN).join(LL('・', ' · ')) + '</span></span>';
+      html += '<span style="color:var(--color-gold-light);' + (p.isMing ? 'font-weight:700;' : '') + '">' + (p.starText || LL('空宮', 'Empty palace'))
         + (p.minorStars.length ? ' <span style="font-size:0.62rem;color:var(--color-text-secondary);">' + p.minorStars.map(function(n, i) {
             var b = p.minorBrightness[i];
-            return zwStarSpan(n, b ? '（' + b + '）' : '');
-          }).join('、') + '</span>' : '')
+            return zwStarSpan(n, b ? LL('（' + b + '）', ' (' + ZN(b).toLowerCase() + ')') : '');
+          }).join(LL('、', ', ')) + '</span>' : '')
         + (p.adjStars.length ? '<br><span style="font-size:0.58rem;color:var(--color-text-muted);">' + p.adjStars.map(function(n) { return zwStarSpan(n); }).join(' ') + '</span>' : '')
         + '</span>';
     });
     html += '</div>';
-    html += '<p style="font-size:0.62rem;color:var(--color-text-muted);margin:2px 0;">（）內為亮度：廟 旺 得 利 平 不 陷；紅字為煞星、粉字為桃花星；小字為雜曜'
-      + (zw.decadal ? '；宮名下方為大限歲數與十二長生，再下一行為博士・將前・歲前十二神' : '；宮名下方為將前・歲前十二神，填性別後另顯示大限、十二長生與博士十二神') + '</p>';
+    html += '<p style="font-size:0.62rem;color:var(--color-text-muted);margin:2px 0;">' + LL('（）內為亮度：廟 旺 得 利 平 不 陷；紅字為煞星、粉字為桃花星；小字為雜曜', 'Brightness in parentheses: temple, prosperous, favorable, beneficial, neutral, weak, fallen. Red = malefic stars, pink = romance stars, small print = minor stars')
+      + (zw.decadal ? LL('；宮名下方為大限歲數與十二長生，再下一行為博士・將前・歲前十二神', '. Under each palace: decade ages and the twelve life stages, then the Boshi, Jiangqian and Suiqian spirits') : LL('；宮名下方為將前・歲前十二神，填性別後另顯示大限、十二長生與博士十二神', '. Under each palace: the Jiangqian and Suiqian spirits; add gender to also see decades, life stages and Boshi spirits')) + '</p>';
     return html;
   }
 
   function renderZiweiHoroscope(zw, year) {
     var h = window.Ziwei.getHoroscope(zw, year);
-    if (!h) return '<p style="font-size:0.72rem;color:var(--color-text-muted);">這一年還沒出生</p>';
+    if (!h) return '<p style="font-size:0.72rem;color:var(--color-text-muted);">' + LL('這一年還沒出生', 'Not yet born in this year') + '</p>';
     var line = function(label, body) {
       return '<p style="font-size:0.74rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + label + '</strong> ' + body + '</p>';
     };
-    var palaceName = function(p) { return p ? p.name + '（' + p.branch + '）' : '—'; };
+    var palaceName = function(p) { return p ? LL(p.name + '（' + p.branch + '）', ZN(p.name) + ' (' + GZ(p.branch) + ')') : '—'; };
     var sihuaText = function(list) {
       return list.map(function(s) {
-        var t = s.star + s.type + (s.palace ? '在' + s.palace.name : '');
+        var t = LL(s.star + s.type + (s.palace ? '在' + s.palace.name : ''), ZN(s.star) + ' ' + ZN(s.type) + (s.palace ? ' in ' + ZN(s.palace.name) : ''));
         return s.type === '化忌' ? '<span style="color:var(--color-danger, #c0392b);">' + t + '</span>' : t;
-      }).join('、');
+      }).join(LL('、', '; '));
     };
-    var html = '<p style="font-size:0.8rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + h.ganzhi + '年・虛歲 ' + h.age + '</p>';
-    html += line('大限', h.decadal
-      ? palaceName(h.decadal) + ' ' + h.decadal.ganzhi + '，' + h.decadal.decadal.start + '–' + h.decadal.decadal.end + ' 歲，主星 ' + (h.decadal.starText || '空宮')
-      : '尚未起大限（童限期間）');
-    if (h.decadalSihua) html += line('大限四化', sihuaText(h.decadalSihua));
-    html += line('小限', palaceName(h.xiaoxian));
-    html += line('流年命宮', '落在本命' + palaceName(h.yearlyMing) + '，主星 ' + (h.yearlyMing.starText || '空宮'));
-    html += line('流年四化', sihuaText(h.yearlySihua));
+    var empty = LL('空宮', 'none (empty palace)');
+    var html = '<p style="font-size:0.8rem;color:var(--color-gold-primary);margin:6px 0 2px;">' + LL(h.ganzhi + '年・虛歲 ' + h.age, GZ(h.ganzhi) + ' year · age ' + h.age + ' (Chinese reckoning)') + '</p>';
+    html += line(LL('大限', 'Decade'), h.decadal
+      ? palaceName(h.decadal) + ' ' + GZ(h.decadal.ganzhi) + LL('，' + h.decadal.decadal.start + '–' + h.decadal.decadal.end + ' 歲，主星 ', ', ages ' + h.decadal.decadal.start + '–' + h.decadal.decadal.end + ', main star ') + (h.decadal.starText || empty)
+      : LL('尚未起大限（童限期間）', 'Decades have not started yet (childhood period)'));
+    if (h.decadalSihua) html += line(LL('大限四化', 'Decade Four Transformations'), sihuaText(h.decadalSihua));
+    html += line(LL('小限', 'Minor Limit'), palaceName(h.xiaoxian));
+    html += line(LL('流年命宮', 'Yearly Life Palace'), LL('落在本命', 'in the natal ') + palaceName(h.yearlyMing) + LL('，主星 ', ', main star ') + (h.yearlyMing.starText || empty));
+    html += line(LL('流年四化', 'Yearly Four Transformations'), sihuaText(h.yearlySihua));
     var liu = [];
     zw.palaces.forEach(function(p) {
       var list = h.yearlyStars[p.pos];
-      if (list) liu.push(list.map(function(n) { return zwStarSpan(n); }).join('、') + '在' + p.name);
+      if (list) liu.push(list.map(function(n) { return zwStarSpan(n); }).join(LL('、', ', ')) + LL('在' + p.name, ' in ' + ZN(p.name)));
     });
-    html += line('流曜', liu.join('；'));
+    html += line(LL('流曜', 'Yearly stars'), liu.join(LL('；', '; ')));
     var shenText = function(map) {
-      return zw.palaces.map(function(p) { return map[p.pos] + '在' + p.name.replace('宮', ''); }).join('、');
+      return zw.palaces.map(function(p) { return LL(map[p.pos] + '在' + p.name.replace('宮', ''), ZN(map[p.pos]) + ' in ' + ZN(p.name)); }).join(LL('、', '; '));
     };
-    html += line('歲前', shenText(h.yearly12.suiqian));
-    html += line('將前', shenText(h.yearly12.jiangqian));
-    if (h.decadalSihua) html += zwSihuaTips(h.decadalSihua, '這十年');
-    html += zwSihuaTips(h.yearlySihua, '今年');
+    html += line(LL('歲前', 'Suiqian spirits'), shenText(h.yearly12.suiqian));
+    html += line(LL('將前', 'Jiangqian spirits'), shenText(h.yearly12.jiangqian));
+    if (h.decadalSihua) html += zwSihuaTips(h.decadalSihua, LL('這十年', 'this decade'));
+    html += zwSihuaTips(h.yearlySihua, LL('今年', 'this year'));
     return html;
   }
 
@@ -1073,21 +1076,23 @@
       if (r.cn && bday && window.Ziwei) {
         var zw = window.Ziwei.getZiweiChart(bday.year, bday.month, bday.day, bday.hour, r.gender);
         if (zw && zw.needHour) {
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 紫微斗數：需要出生時間</summary>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.lunarText + '。命宮與十四主星的位置由出生時辰決定，填入出生時間即可排出完整命盤。</p>';
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 ' + LL('紫微斗數：需要出生時間', 'Zi Wei Dou Shu: birth time needed') + '</summary>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.lunarText + LL('。命宮與十四主星的位置由出生時辰決定，填入出生時間即可排出完整命盤。', '. The Life Palace and the fourteen main stars depend on the birth hour — add a birth time to see the full chart.') + '</p>';
           if (zw.sihua && zw.sihua.list.length) {
-            html += '<div style="margin-top:4px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）：' + zw.sihua.list.map(function(s) { return s.star + s.type; }).join('、') + '</div>';
+            html += '<div style="margin-top:4px;font-size:0.75rem;">🌟 ' + LL('生年四化（' + zw.sihua.tg + '干）：', 'Birth-year Four Transformations (' + GZ(zw.sihua.tg) + ' stem): ') + zw.sihua.list.map(function(s) { return LL(s.star + s.type, ZN(s.star) + ' ' + ZN(s.type)); }).join(LL('、', '; ')) + '</div>';
           }
           html += '</details>';
         } else if (zw) {
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 紫微斗數：命宮' + zw.mingStar + '</summary>';
-          html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">' + zw.lunarText + ' · ' + zw.bureau + ' · 身宮在' + zw.shenPalace.name + '</p>';
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔮 ' + LL('紫微斗數：命宮' + zw.mingStar, 'Zi Wei Dou Shu: Life Palace ' + zw.mingStar) + '</summary>';
+          html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">' + zw.lunarText + ' · ' + zw.bureau + LL(' · 身宮在' + zw.shenPalace.name, ' · Body Palace in ' + ZN(zw.shenPalace.name)) + '</p>';
           if (zw.decadal) {
             var cd = zw.decadal.current;
-            html += '<p style="font-size:0.78rem;color:var(--color-gold-light);margin:2px 0;">📅 大限' + (zw.decadal.forward ? '順行' : '逆行')
-              + (cd ? '，目前（虛歲 ' + zw.decadal.nowAge + '）走' + cd.name + '大限（' + cd.decadal.start + '–' + cd.decadal.end + ' 歲，' + cd.star + '）' : '') + '</p>';
+            html += '<p style="font-size:0.78rem;color:var(--color-gold-light);margin:2px 0;">📅 ' + LL('大限' + (zw.decadal.forward ? '順行' : '逆行')
+              + (cd ? '，目前（虛歲 ' + zw.decadal.nowAge + '）走' + cd.name + '大限（' + cd.decadal.start + '–' + cd.decadal.end + ' 歲，' + cd.star + '）' : ''),
+              'Decades run ' + (zw.decadal.forward ? 'forward' : 'backward')
+              + (cd ? '; now (age ' + zw.decadal.nowAge + ') in the ' + ZN(cd.name) + ' decade (ages ' + cd.decadal.start + '–' + cd.decadal.end + ', ' + cd.star + ')' : '')) + '</p>';
           } else {
-            html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">填入性別即可排出十年大限</p>';
+            html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:2px 0;">' + LL('填入性別即可排出十年大限', 'Add gender to chart the ten-year decades') + '</p>';
           }
           var zr = window.ZiweiReading && window.ZiweiReading.mingReading(zw);
           if (zr) {
@@ -1097,24 +1102,24 @@
             html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);line-height:1.8;">' + zw.mingDesc + '</p>';
           }
           var zc = window.Ziwei.ziweiNameCompare(zw, r.cn);
-          if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 命宮vs姓名：' + zc.reading + '</p>';
+          if (zc) html += '<p style="font-size:0.85rem;color:var(--color-gold-light);margin-top:4px;">📊 ' + LL('命宮vs姓名：', 'Life Palace vs. name: ') + zc.reading + '</p>';
           // 12宮簡表：主星（亮度）、輔星、雜曜、十二長生
           html += renderZiweiPalaces(zw);
           if (window.ZiweiReading) {
-            html += '<details style="margin-top:6px;"><summary style="font-size:0.75rem;color:var(--color-gold-primary);cursor:pointer;">📜 十二宮重點</summary>';
+            html += '<details style="margin-top:6px;"><summary style="font-size:0.75rem;color:var(--color-gold-primary);cursor:pointer;">📜 ' + LL('十二宮重點', 'The Twelve Palaces at a Glance') + '</summary>';
             window.ZiweiReading.palaceReadings(zw).forEach(function(pr) {
-              html += '<p style="font-size:0.72rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + pr.palace.name + '</strong> '
-                + pr.text + '<span style="color:var(--color-text-muted);">' + pr.palace.desc + '</span></p>';
+              html += '<p style="font-size:0.72rem;color:var(--color-text-secondary);margin:3px 0;line-height:1.6;"><strong style="color:var(--color-gold-light);">' + ZN(pr.palace.name) + '</strong> '
+                + pr.text + '<span style="color:var(--color-text-muted);">' + T(pr.palace.desc) + '</span></p>';
             });
             html += '</details>';
           }
           if (zw.sihua && zw.sihua.list.length) {
-            html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 生年四化（' + zw.sihua.tg + '干）</div>';
+            html += '<div style="margin-top:8px;font-size:0.75rem;">🌟 ' + LL('生年四化（' + zw.sihua.tg + '干）', 'Birth-year Four Transformations (' + GZ(zw.sihua.tg) + ' stem)') + '</div>';
             zw.sihua.list.forEach(function(s) {
               var color = s.type === '化忌' ? 'var(--color-danger, #c0392b)' : 'var(--color-gold-light)';
               var inText = s.palace && window.ZiweiReading ? window.ZiweiReading.sihuaIn(s.type, s.palace.name) : '';
               html += '<p style="font-size:0.75rem;color:' + color + ';margin:2px 0;line-height:1.6;">'
-                + (inText ? s.star + s.type + '入' + s.palace.name + '：' + inText : s.reading) + '</p>';
+                + (inText ? LL(s.star + s.type + '入' + s.palace.name + '：', ZN(s.star) + ' ' + ZN(s.type) + ' in the ' + ZN(s.palace.name) + ': ') + inText : s.reading) + '</p>';
             });
           }
           // 運限（大限、小限、流年）：可切換年份
@@ -1122,7 +1127,7 @@
             var zwIdx = zwCharts.push(zw) - 1;
             var thisYear = currentLunarYear();
             html += '<div class="zw-horoscope" data-zw="' + zwIdx + '" style="margin-top:10px;padding:8px 10px;background:rgba(212,168,67,0.06);border-radius:8px;">';
-            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">🗓️ 運限 <select class="form-input zw-year" style="width:auto;padding:2px 6px;font-size:0.75rem;">';
+            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">🗓️ ' + LL('運限', 'Cycles') + ' <select class="form-input zw-year" style="width:auto;padding:2px 6px;font-size:0.75rem;">';
             for (var yy = zw.birthLunarYear; yy <= zw.birthLunarYear + 100; yy++) {
               html += '<option value="' + yy + '"' + (yy === thisYear ? ' selected' : '') + '>' + yy + '</option>';
             }
@@ -1132,14 +1137,14 @@
             var today = todayLunar();
             var mKey = today.month + (today.leap ? 'L' : '');
             html += '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed rgba(212,168,67,0.25);">';
-            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">📆 流月、流日 '
+            html += '<label style="font-size:0.78rem;color:var(--color-gold-primary);">📆 ' + LL('流月、流日', 'Monthly & daily') + ' '
               + '<select class="form-input zw-month" style="width:auto;padding:2px 6px;font-size:0.75rem;">' + zwMonthOptions(thisYear, mKey) + '</select> '
               + '<select class="form-input zw-day" style="width:auto;padding:2px 6px;font-size:0.75rem;">' + zwDayOptions(thisYear, mKey, today.day) + '</select></label>';
             html += '<div class="zw-md-body">' + renderZiweiMonthDaily(zw, thisYear, mKey, today.day) + '</div>';
             html += '</div>';
             html += '</div>';
           } else {
-            html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">填入性別即可查看大限、小限與流年</p>';
+            html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">' + LL('填入性別即可查看大限、小限與流年', 'Add gender to see the decade, minor limit and yearly cycles') + '</p>';
           }
           html += '</details>';
         }

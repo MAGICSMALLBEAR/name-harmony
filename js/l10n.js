@@ -9,7 +9,7 @@
  */
 window.L10N = (function() {
   var dict = {};
-  var PACKS = ['core', 'numerology', 'extras', 'deep', 'astrology', 'bazi'];
+  var PACKS = ['core', 'numerology', 'extras', 'deep', 'astrology', 'bazi', 'ziwei'];
   var loaded = false, loading = null;
 
   function en() { return !!(window.I18N && window.I18N.getLang() === 'en'); }
@@ -21,6 +21,12 @@ window.L10N = (function() {
     if (!en() || zh == null) return zh;
     var s = String(zh);
     return Object.prototype.hasOwnProperty.call(dict, s) ? dict[s] : s;
+  }
+  /** 有命名空間的查詢：先查「ns:中文」，查不到再查一般字典（例：紫微的「火星」是煞星，不是占星的行星 Mars） */
+  function tn(ns, zh) {
+    if (!en() || zh == null) return zh;
+    var k = ns + ':' + zh;
+    return Object.prototype.hasOwnProperty.call(dict, k) ? dict[k] : t(zh);
   }
   function has(zh) { return Object.prototype.hasOwnProperty.call(dict, String(zh)); }
   function L(zh, enText) { return en() ? enText : zh; }
@@ -64,7 +70,7 @@ window.L10N = (function() {
   if (typeof document !== 'undefined' && en()) load();
 
   return {
-    en: en, add: add, t: t, term: t, has: has, L: L, terms: terms, ganzhi: ganzhi, load: load,
+    en: en, add: add, t: t, term: t, tn: tn, has: has, L: L, terms: terms, ganzhi: ganzhi, load: load,
     STEM: STEM, BRANCH: BRANCH, PACKS: PACKS,
     isLoaded: function() { return loaded; }, _dict: dict
   };

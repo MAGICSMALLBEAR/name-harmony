@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v44';
+var CACHE_NAME = 'name-harmony-v45';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -66,6 +66,7 @@ var ASSETS_TO_CACHE = [
   './js/l10n/deep.js',
   './js/l10n/astrology.js',
   './js/l10n/bazi.js',
+  './js/l10n/ziwei.js',
   './js/birth-place.js',
   './js/app.js',
   './js/naming-tools.js'
