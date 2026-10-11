@@ -3,6 +3,10 @@
  */
 window.SmartInsights = (function() {
 
+  // 英文模式（js/l10n.js）：T 查術語、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+
   // ========== 一句話總結 ==========
   function oneLiner(chineseResult, englishResult, zodiacData) {
     var parts = [];
@@ -10,17 +14,17 @@ window.SmartInsights = (function() {
       var g = chineseResult.grids.ren;
       var f = g.fortune ? g.fortune.glory : '?';
       var sancai = chineseResult.sancai.level;
-      parts.push('你的中文名五格為' + chineseResult.overall + '格局');
-      parts.push('人格' + g.number + '劃屬' + g.element + '（' + f + '）');
-      parts.push('三才配置' + sancai);
+      parts.push(L('你的中文名五格為' + chineseResult.overall + '格局', 'Your Chinese name\'s five grids are ' + T(chineseResult.overall).toLowerCase() + ' overall'));
+      parts.push(L('人格' + g.number + '劃屬' + g.element + '（' + f + '）', 'Person Grid ' + g.number + ' strokes, ' + T(g.element) + ' (' + T(f).toLowerCase() + ')'));
+      parts.push(L('三才配置' + sancai, 'Three Powers ' + T(sancai).toLowerCase()));
       if (zodiacData && zodiacData.zodiac) {
-        parts.push('生肖' + zodiacData.zodiac + '、日主' + (zodiacData.dayMaster||'?'));
+        parts.push(L('生肖' + zodiacData.zodiac + '、日主' + (zodiacData.dayMaster||'?'), 'zodiac ' + T(zodiacData.zodiac) + ', Day Master ' + T(zodiacData.dayMaster || '?')));
       }
     }
     if (englishResult) {
-      parts.push('英文命運數字' + englishResult.destiny + '。');
+      parts.push(L('英文命運數字' + englishResult.destiny, 'English Destiny Number ' + englishResult.destiny));
     }
-    return parts.join('，') + '。';
+    return parts.join(L('，', '; ')) + L('。', '.');
   }
 
   // ========== 優缺點清單 ==========
@@ -33,15 +37,15 @@ window.SmartInsights = (function() {
     // 人格
     var ren = grids.ren;
     if (ren.fortune && (ren.fortune.glory==='大吉'||ren.fortune.glory==='吉')) {
-      pros.push('人格' + ren.number + '劃為吉數，主運亨通，個人能力與運勢俱佳');
+      pros.push(L('人格' + ren.number + '劃為吉數，主運亨通，個人能力與運勢俱佳', 'Person Grid ' + ren.number + ' is auspicious: the main fortune flows well, with strong personal ability and luck'));
     } else {
-      cons.push('人格' + ren.number + '劃為凶數，主運受阻，需多修身養性');
+      cons.push(L('人格' + ren.number + '劃為凶數，主運受阻，需多修身養性', 'Person Grid ' + ren.number + ' is inauspicious: the main fortune meets obstacles — focus on self-cultivation'));
     }
     // 三才
     if (sancai.level.indexOf('吉') >= 0) {
-      pros.push('三才配置' + sancai.level + '，天人地和諧，基礎穩固');
+      pros.push(L('三才配置' + sancai.level + '，天人地和諧，基礎穩固', 'Three Powers ' + T(sancai.level).toLowerCase() + ': Heaven, Person and Earth in harmony, a solid foundation'));
     } else if (sancai.level === '凶' || sancai.level === '大凶') {
-      cons.push('三才配置' + sancai.level + '，五行相剋，需注意身心健康');
+      cons.push(L('三才配置' + sancai.level + '，五行相剋，需注意身心健康', 'Three Powers ' + T(sancai.level).toLowerCase() + ': the phases clash — look after your physical and mental health'));
     }
     // 五行
     var elements = {};
@@ -54,15 +58,15 @@ window.SmartInsights = (function() {
       if (!elements[el]) missing.push(el);
     });
     if (missing.length > 0) {
-      cons.push('五行缺' + missing.join('、') + '，建議補充對應屬性');
+      cons.push(L('五行缺' + missing.join('、') + '，建議補充對應屬性', 'Missing ' + missing.map(T).join(', ') + ' — consider strengthening these elements'));
     } else {
-      pros.push('五行俱全，命格均衡發展');
+      pros.push(L('五行俱全，命格均衡發展', 'All five elements present — a balanced pattern'));
     }
     // 總格
     if (grids.zong.fortune && (grids.zong.fortune.glory==='大吉'||grids.zong.fortune.glory==='吉')) {
-      pros.push('總格吉數，晚年運勢順遂');
+      pros.push(L('總格吉數，晚年運勢順遂', 'Total Grid is auspicious: later years go smoothly'));
     } else if (grids.zong.fortune && grids.zong.fortune.glory==='凶') {
-      cons.push('總格凶數，晚年需多加注意');
+      cons.push(L('總格凶數，晚年需多加注意', 'Total Grid is inauspicious: take extra care in later years'));
     }
 
     return { pros: pros, cons: cons };
@@ -85,11 +89,11 @@ window.SmartInsights = (function() {
       '金': ['保持果斷但別太強硬','白色金屬飾品有助運勢','適合往西發展'],
       '水': ['多與人交流，打開資訊管道','藍黑色系能增強智慧運','適合往北發展']
     };
-    if (elemTips[el]) actions.push(elemTips[el][Math.floor(Math.random()*elemTips[el].length)]);
+    if (elemTips[el]) actions.push(T(elemTips[el][Math.floor(Math.random()*elemTips[el].length)]));
 
     // 三才建議
     if (sancai.level === '凶' || sancai.level === '大凶') {
-      actions.push('三才不順，建議多行善積德、修身養性來化解');
+      actions.push(L('三才不順，建議多行善積德、修身養性來化解', 'The Three Powers are out of balance — good deeds and self-cultivation help offset it'));
     }
 
     // 五行建議
@@ -98,7 +102,10 @@ window.SmartInsights = (function() {
       elemCount[g[k].element] = (elemCount[g[k].element]||0) + 1;
     });
     var overMax = Object.keys(elemCount).filter(function(e) { return elemCount[e] >= 3; });
-    if (overMax.length) actions.push(overMax[0] + '氣過盛，可用' + ({'木':'金','火':'水','土':'木','金':'火','水':'土'})[overMax[0]] + '來平衡');
+    if (overMax.length) {
+      var bal = ({'木':'金','火':'水','土':'木','金':'火','水':'土'})[overMax[0]];
+      actions.push(L(overMax[0] + '氣過盛，可用' + bal + '來平衡', 'Too much ' + T(overMax[0]) + ' — balance it with ' + T(bal)));
+    }
 
     return actions;
   }
@@ -109,12 +116,13 @@ window.SmartInsights = (function() {
     var s = pairResult.score;
     var t = pairResult.tier;
     var prefix = '';
-    if (s >= 80) prefix = '天作之合！';
-    else if (s >= 65) prefix = '相當契合，';
-    else if (s >= 50) prefix = '中規中矩，';
-    else prefix = '需要努力，';
-    return prefix + '你們的' + pairResult.mode + '得分' + s + '分（' + t + '）。' +
-      (pairResult.dimensions && pairResult.dimensions[0] ? pairResult.dimensions[0].detail.substring(0,40) + '...' : '');
+    if (s >= 80) prefix = L('天作之合！', 'A perfect match! ');
+    else if (s >= 65) prefix = L('相當契合，', 'A strong fit — ');
+    else if (s >= 50) prefix = L('中規中矩，', 'A middling fit — ');
+    else prefix = L('需要努力，', 'Needs work — ');
+    var first = pairResult.dimensions && pairResult.dimensions[0] ? T(pairResult.dimensions[0].detail) : '';
+    return prefix + L('你們的' + pairResult.mode + '得分' + s + '分（' + t + '）。', 'your ' + T(pairResult.mode) + ' score is ' + s + ' (' + T(t) + '). ') +
+      (first ? first.substring(0, L(40, 90)) + '...' : '');
   }
 
   // ========== 關係改善指南 ==========
@@ -123,10 +131,11 @@ window.SmartInsights = (function() {
     var tips = [];
     pairResult.dimensions.forEach(function(d) {
       var pct = d.score / d.max;
-      if (pct < 0.5) tips.push('加強' + d.label.replace(/[🎭🎯🏠🌐🔢🩸🐉]/g,'') + '：得分偏低，建議多溝通磨合');
-      if (pct >= 0.8) tips.push('保持' + d.label.replace(/[🎭🎯🏠🌐🔢🩸🐉]/g,'') + '：這是你們的強項，繼續維持');
+      var label = d.label.replace(/[🎭🎯🏠🌐🔢🩸🐉]/g,'');
+      if (pct < 0.5) tips.push(L('加強' + label + '：得分偏低，建議多溝通磨合', 'Work on ' + T(label.trim()) + ': a low score — talk more and adjust to each other'));
+      if (pct >= 0.8) tips.push(L('保持' + label + '：這是你們的強項，繼續維持', 'Keep up ' + T(label.trim()) + ': this is a strength — keep it going'));
     });
-    if (!tips.length) tips.push('各方面均衡發展，持續保持良好互動');
+    if (!tips.length) tips.push(L('各方面均衡發展，持續保持良好互動', 'Balanced across the board — keep up the good interaction'));
     return tips;
   }
 

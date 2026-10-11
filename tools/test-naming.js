@@ -801,6 +801,37 @@ section('個人化取名偏好', function() {
   delete ctx.document;
 });
 
+section('英文分析內容字典（js/l10n）', function() {
+  // 英文模式：I18N.getLang() 回傳 en；字典檔逐一載入
+  var lctx = { console: console, document: undefined };
+  lctx.window = lctx;
+  lctx.I18N = { getLang: function() { return 'en'; } };
+  vm.createContext(lctx);
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'l10n.js'), 'utf8'), lctx, { filename: 'l10n.js' });
+  var L = lctx.L10N;
+  L.PACKS.forEach(function(p) {
+    vm.runInContext(fs.readFileSync(path.join(root, 'js', 'l10n', p + '.js'), 'utf8'), lctx, { filename: 'l10n/' + p + '.js' });
+  });
+  var keys = Object.keys(L._dict);
+  ok(keys.length > 300, '字典條目 ' + keys.length);
+  keys.forEach(function(k) {
+    var v = L._dict[k];
+    ok(/[一-鿿]/.test(k), '鍵是中文：' + k);
+    ok(typeof v === 'string' && v.trim() && !/[一-鿿]/.test(v), '英文翻譯不含中文、非空：' + k + ' → ' + v);
+  });
+  // 查表、組合、干支
+  ok(L.t('大吉') === 'Very auspicious' && L.t('查無此字串') === '查無此字串', '查表與查不到時回傳原文');
+  ok(L.L('中', 'en') === 'en' && L.ganzhi('庚午') === 'Geng-Wu', '組合句子與干支拼音');
+  lctx.I18N.getLang = function() { return 'zh'; };
+  ok(L.t('大吉') === '大吉' && L.L('中', 'en') === '中' && L.ganzhi('庚午') === '庚午', '中文模式一律回傳原文');
+  // 81 數每一條的名稱、簡述、詳解都有英文
+  var F = ctx.fortune81;
+  lctx.I18N.getLang = function() { return 'en'; };
+  for (var i = 1; i <= 81; i++) {
+    ok(L.has(F[i].name) && L.has(F[i].description) && L.has(F[i].implication), i + ' 數有英文');
+  }
+});
+
 section('AI 解讀用量與費用估算', function() {
   // ai-reading.js 載入時會找畫面元素；給一個沒有元素的 document 即可
   var actx = { console: console, document: { readyState: 'complete', getElementById: function() { return null; } } };

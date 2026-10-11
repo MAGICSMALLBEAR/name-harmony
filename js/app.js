@@ -5,6 +5,11 @@
   'use strict';
 
   // ============ DOM ============
+  // 分析內容的英文層（js/l10n.js）：T 查字典、LL 組合句子、GZ 干支拼音
+  function T(s) { return window.L10N ? window.L10N.t(s) : s; }
+  function LL(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  function GZ(s) { return window.L10N ? window.L10N.ganzhi(s) : s; }
+
   var formSection = document.getElementById('formSection');
   var resultsSection = document.getElementById('resultsSection');
   var analyzeBtn = document.getElementById('analyzeBtn');
@@ -127,8 +132,16 @@
       var next = window.I18N.getLang() === 'en' ? 'zh' : 'en';
       window.I18N.setLang(next);
       window.I18N.apply(next);
+      // 分析結果跟著換語言：英文要先載入字典
+      if (currentData) {
+        if (next === 'en' && window.L10N) window.L10N.load(rerenderLang);
+        else rerenderLang();
+      } else if (next === 'en' && window.L10N) window.L10N.load();
       toast(next === 'en' ? 'Switched to English' : '已切換為繁體中文');
     });
+
+    // 字典比分析晚載入完（一開始就是英文模式）：重畫一次
+    document.addEventListener('l10n:ready', function() { if (currentData && window.L10N.en()) rerenderLang(); });
 
     // 主題切換
     var themeToggle = document.getElementById('themeToggle');
@@ -648,25 +661,25 @@
     if (!cn && !en) return '';
     var gradeColor = function(g) { return g === '良好' ? 'var(--color-fortune-good)' : g === '尚可' ? 'var(--color-fortune-neutral)' : 'var(--color-danger, #c0392b)'; };
     var p = function(text, color) { return '<p style="font-size:0.76rem;color:' + (color || 'var(--color-text-secondary)') + ';margin:2px 0;line-height:1.6;">' + text + '</p>'; };
-    var summary = [cn ? '中文' + cn.grade : '', en ? '英文' + en.grade : ''].filter(Boolean).join('・');
+    var summary = [cn ? LL('中文', 'Chinese ') + T(cn.grade) : '', en ? LL('英文', 'English ') + T(en.grade) : ''].filter(Boolean).join(LL('・', ' · '));
     var worst = [cn && cn.grade, en && en.grade].indexOf('需注意') >= 0 ? '需注意' : [cn && cn.grade, en && en.grade].indexOf('尚可') >= 0 ? '尚可' : '良好';
-    var html = '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🗣️ 音韻與諧音：<span style="color:' + gradeColor(worst) + ';">' + summary + '</span></summary>';
+    var html = '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🗣️ ' + LL('音韻與諧音：', 'Sound and homophones: ') + '<span style="color:' + gradeColor(worst) + ';">' + summary + '</span></summary>';
     if (cn) {
-      html += p('<strong style="color:var(--color-gold-light);">中文</strong> ' + cn.toneText);
+      html += p('<strong style="color:var(--color-gold-light);">' + LL('中文', 'Chinese') + '</strong> ' + T(cn.toneText));
       cn.homophones.forEach(function(h) {
-        var how = h.level === 3 ? '同音' : h.level === 2 ? '口音相近（zh/z、sh/s、ing/in 等不分時）' : '音近（聲調不同）';
-        html += p('⚠️ 「' + h.text + '」與「' + h.word + '」' + how + '，屬' + h.cat + '聯想', h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)');
+        var how = h.level === 3 ? LL('同音', 'sounds the same as') : h.level === 2 ? LL('口音相近（zh/z、sh/s、ing/in 等不分時）', 'sounds close to (when zh/z, sh/s, ing/in are merged in speech)') : LL('音近（聲調不同）', 'sounds similar to (different tones)');
+        html += p(LL('⚠️ 「' + h.text + '」與「' + h.word + '」' + how + '，屬' + h.cat + '聯想', '⚠️ "' + h.text + '" ' + how + ' "' + h.word + '" — a ' + T(h.cat) + ' association'), h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)');
       });
-      cn.warns.forEach(function(t) { html += p('⚠️ ' + t, 'var(--color-fortune-neutral)'); });
-      cn.nicknames.forEach(function(t) { html += p('🏷️ 綽號風險：' + t, 'var(--color-text-muted)'); });
-      cn.notes.forEach(function(t) { html += p('・' + t); });
-      if (!cn.homophones.length) html += p('✅ 沒有發現常見的不雅諧音', 'var(--color-fortune-good)');
+      cn.warns.forEach(function(t) { html += p('⚠️ ' + T(t), 'var(--color-fortune-neutral)'); });
+      cn.nicknames.forEach(function(t) { html += p('🏷️ ' + LL('綽號風險：', 'Nickname risk: ') + T(t), 'var(--color-text-muted)'); });
+      cn.notes.forEach(function(t) { html += p('・' + T(t)); });
+      if (!cn.homophones.length) html += p('✅ ' + LL('沒有發現常見的不雅諧音', 'No common unfortunate homophones found'), 'var(--color-fortune-good)');
     }
     if (en) {
-      html += p('<strong style="color:var(--color-gold-light);">英文 ' + en.name + '</strong> ' + en.notes.join('；'));
-      if (en.slang) html += p('⚠️ ' + en.slang, 'var(--color-danger, #c0392b)');
-      en.hard.forEach(function(t) { html += p('🔤 難點：' + t, 'var(--color-fortune-neutral)'); });
-      en.warns.forEach(function(t) { html += p('・' + t); });
+      html += p('<strong style="color:var(--color-gold-light);">' + LL('英文 ', 'English ') + en.name + '</strong> ' + en.notes.map(T).join(LL('；', '; ')));
+      if (en.slang) html += p('⚠️ ' + T(en.slang), 'var(--color-danger, #c0392b)');
+      en.hard.forEach(function(t) { html += p('🔤 ' + LL('難點：', 'Tricky for Mandarin speakers: ') + T(t), 'var(--color-fortune-neutral)'); });
+      en.warns.forEach(function(t) { html += p('・' + T(t)); });
     }
     html += '</details>';
     return html;
@@ -877,7 +890,8 @@
   }
 
   // ============ 渲染 ============
-  function renderAll() {
+  /** @param keepAi 只是換語言重畫時為 true：分析內容沒變，保留 AI 對話 */
+  function renderAll(keepAi) {
     if (!currentData) return;
     renderMembers();
     renderMatrix();
@@ -886,9 +900,10 @@
     renderLuckyGuide();
     renderHistoryPanel();
     // 分析結果換了，舊的 AI 對話不再適用
-    if (window.AiReading) window.AiReading.reset();
+    if (window.AiReading && keepAi !== true) window.AiReading.reset();
     if (window.I18N) window.I18N.apply(window.I18N.getLang());
   }
+  function rerenderLang() { renderAll(true); }
 
   // ============ 成員分析（摺疊） ============
   function renderMembers() {
@@ -915,7 +930,7 @@
       var r = item.result;
       var isOpen = i === 0;
       html += '<div class="member-accordion"><div class="member-accordion-header" onclick="this.nextElementSibling.classList.toggle(\'open\')">';
-      html += '<span class="person-badge" style="background:var(--color-gold-dark);color:var(--color-bg-deep);">' + p.label + '</span>';
+      html += '<span class="person-badge" style="background:var(--color-gold-dark);color:var(--color-bg-deep);">' + T(p.label) + '</span>';
       html += '<span style="flex:1;color:var(--color-gold-light);font-weight:600;">' + (p.cn||'') + (p.cn&&p.en?' / ':'') + (p.en||'') + '</span>';
       html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">▼</span>';
       html += '</div><div class="member-accordion-body' + (isOpen ? ' open' : '') + '">';
@@ -934,56 +949,60 @@
       html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:rgba(212,168,67,0.06);border-radius:8px;">';
       if (r.zodiac.zodiac) {
         var ze = window.ZodiacBazi.zodiacElement(r.zodiac.zodiac);
-        html += '<span style="font-size:0.85rem;">🐉 生肖：<strong class="element-' + (ze||'earth') + '">' + r.zodiac.zodiac + '</strong></span>';
+        html += '<span style="font-size:0.85rem;">🐉 ' + LL('生肖：', 'Zodiac: ') + '<strong class="element-' + (ze||'earth') + '">' + T(r.zodiac.zodiac) + '</strong></span>';
       }
       if (r.zodiac.yearPillar) {
-        html += '<span style="font-size:0.85rem;">📜 ' + r.zodiac.yearPillar.tianGan + r.zodiac.yearPillar.diZhi + '年</span>';
+        html += '<span style="font-size:0.85rem;">📜 ' + LL(r.zodiac.yearPillar.tianGan + r.zodiac.yearPillar.diZhi + '年', GZ(r.zodiac.yearPillar.tianGan + r.zodiac.yearPillar.diZhi) + ' year') + '</span>';
       }
       if (r.zodiac.dayMaster) {
-        html += '<span style="font-size:0.85rem;">☀ 五行：<strong class="element-' + r.zodiac.dayMaster + '">' + r.zodiac.dayMaster + '</strong></span>';
+        html += '<span style="font-size:0.85rem;">☀ ' + LL('五行：', 'Element: ') + '<strong class="element-' + r.zodiac.dayMaster + '">' + T(r.zodiac.dayMaster) + '</strong></span>';
       }
       if (r.zodiac.starSign) {
-        html += '<span style="font-size:0.85rem;">' + r.zodiac.starSign.emoji + ' ' + r.zodiac.starSign.name + '</span>';
+        html += '<span style="font-size:0.85rem;">' + r.zodiac.starSign.emoji + ' ' + T(r.zodiac.starSign.name) + '</span>';
       }
       if (bday && bday.dst) {
-        html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">🕐 ' + bday.place.name + '當時實施夏令時間：' + pad2(bday.clock.hour) + ':' + pad2(bday.clock.minute)
-          + ' 已換算為標準時間 ' + pad2(bday.std.hour) + ':' + pad2(bday.std.minute) + '</span>';
+        html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">🕐 ' + LL(bday.place.name + '當時實施夏令時間：' + pad2(bday.clock.hour) + ':' + pad2(bday.clock.minute)
+          + ' 已換算為標準時間 ' + pad2(bday.std.hour) + ':' + pad2(bday.std.minute),
+          'Daylight saving time was in effect in ' + bday.place.name + ': ' + pad2(bday.clock.hour) + ':' + pad2(bday.clock.minute)
+          + ' converted to standard time ' + pad2(bday.std.hour) + ':' + pad2(bday.std.minute)) + '</span>';
       }
       if (bday && bday.tst) {
         var sgn = function(v) { v = Math.round(v); return (v >= 0 ? '+' : '−') + Math.abs(v); };
-        html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">☀️ 真太陽時 ' + pad2(bday.hour) + ':' + pad2(bday.minute)
-          + '（' + bday.place.name + '，經度校正 ' + sgn(bday.tst.lonMin) + ' 分、均時差 ' + sgn(bday.tst.eotMin) + ' 分）</span>';
+        html += '<span style="font-size:0.75rem;color:var(--color-text-muted);">☀️ ' + LL('真太陽時 ' + pad2(bday.hour) + ':' + pad2(bday.minute)
+          + '（' + bday.place.name + '，經度校正 ' + sgn(bday.tst.lonMin) + ' 分、均時差 ' + sgn(bday.tst.eotMin) + ' 分）',
+          'True solar time ' + pad2(bday.hour) + ':' + pad2(bday.minute)
+          + ' (' + bday.place.name + ', longitude ' + sgn(bday.tst.lonMin) + ' min, equation of time ' + sgn(bday.tst.eotMin) + ' min)') + '</span>';
       }
       // 完整四柱
       if (r.zodiac.bazi && r.zodiac.bazi.pillars) {
         html += '<div style="margin-top:4px;overflow-x:auto;"><table style="width:100%;font-size:0.75rem;border-collapse:collapse;">';
         html += '<tr style="color:var(--color-text-muted);">';
         r.zodiac.bazi.pillars.forEach(function(p) {
-          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + p.name + '</td>';
+          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + T(p.name) + '</td>';
         });
         html += '</tr><tr style="font-weight:700;font-size:0.85rem;">';
         r.zodiac.bazi.pillars.forEach(function(p) {
           var c = p.isDayMaster ? 'color:var(--color-gold-primary);' : '';
-          html += '<td style="text-align:center;padding:4px 6px;border:1px solid rgba(212,168,67,0.1);'+c+'">' + p.tg + p.dz + '</td>';
+          html += '<td style="text-align:center;padding:4px 6px;border:1px solid rgba(212,168,67,0.1);'+c+'">' + LL(p.tg + p.dz, GZ(p.tg + p.dz)) + '</td>';
         });
         html += '</tr><tr style="color:var(--color-text-muted);">';
         r.zodiac.bazi.pillars.forEach(function(p) {
-          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + p.tgEle + p.dzEle + '</td>';
+          html += '<td style="text-align:center;padding:2px 6px;border:1px solid rgba(212,168,67,0.1);">' + LL(p.tgEle + p.dzEle, T(p.tgEle) + ' / ' + T(p.dzEle)) + '</td>';
         });
         html += '</tr>';
         if (r.zodiac.bazi.hasHour) {
           html += '<tr style="color:var(--color-text-muted);font-size:0.65rem;">';
           r.zodiac.bazi.pillars.forEach(function(p) {
-            html += '<td style="text-align:center;padding:2px 6px;">' + (p.shiShen || '') + '</td>';
+            html += '<td style="text-align:center;padding:2px 6px;">' + T(p.shiShen || '') + '</td>';
           });
           html += '</tr>';
         }
         html += '</table></div>';
-        html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:2px 0;">☀ 日主：<strong class="element-' + r.zodiac.bazi.dayMaster + '">' + r.zodiac.bazi.dayMaster + '</strong>（' + r.zodiac.bazi.dayMasterTG + '） — 代表你的核心本質</p>';
+        html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:2px 0;">☀ ' + LL('日主：', 'Day Master: ') + '<strong class="element-' + r.zodiac.bazi.dayMaster + '">' + T(r.zodiac.bazi.dayMaster) + '</strong>' + LL('（' + r.zodiac.bazi.dayMasterTG + '） — 代表你的核心本質', ' (' + GZ(r.zodiac.bazi.dayMasterTG) + ') — your core nature') + '</p>';
       }
 
       if (r.zodiac.zodiacNature) {
-        html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:4px 0 0;">' + r.zodiac.zodiacNature + '</p>';
+        html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:4px 0 0;">' + T(r.zodiac.zodiacNature) + '</p>';
       }
       html += '</div>';
 
@@ -992,19 +1011,19 @@
         var mbti = window.FunExtras.getMBTI(r.en.destiny);
         html += '<div class="mbti-card" style="margin-bottom:8px;">';
         html += '<span class="mbti-type">' + mbti.mbti + '</span>';
-        html += '<span class="mbti-label">' + mbti.label + ' — ' + mbti.desc + '</span>';
+        html += '<span class="mbti-label">' + T(mbti.label) + ' — ' + T(mbti.desc) + '</span>';
         html += '</div>';
         // 相配類型：滑過或長按可看該類型的說明
         var MD = window.FunExtras.MBTI_DESC;
-        html += '<p class="mbti-match" style="font-size:0.75rem;color:var(--color-text-muted);margin:-4px 0 8px;">🤝 合拍類型：' + mbti.match.map(function(t) {
-          return '<span title="' + (MD[t] || '') + '" style="border-bottom:1px dotted currentColor;cursor:help;">' + t + '</span>';
-        }).join('、') + '（' + mbti.match.map(function(t) { return (MD[t] || '').split('，')[0]; }).join('、') + '）</p>';
+        html += '<p class="mbti-match" style="font-size:0.75rem;color:var(--color-text-muted);margin:-4px 0 8px;">🤝 ' + LL('合拍類型：', 'Good matches: ') + mbti.match.map(function(t) {
+          return '<span title="' + T(MD[t] || '') + '" style="border-bottom:1px dotted currentColor;cursor:help;">' + t + '</span>';
+        }).join(LL('、', ', ')) + LL('（', ' (') + mbti.match.map(function(t) { return T((MD[t] || '').split('，')[0]); }).join(LL('、', ', ')) + LL('）', ')') + '</p>';
       }
 
       // 塔羅深度詳解
       if (r.en && window.FunExtras && window.DeepReadings) {
         var tarotDeep = window.DeepReadings.getTarotDeepReading(r.en.destiny, r.en);
-        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🃏 塔羅解析</summary>';
+        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🃏 ' + LL('塔羅解析', 'Tarot Reading') + '</summary>';
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + tarotDeep + '</p></details>';
       }
 
@@ -1013,27 +1032,27 @@
         var astroPlace = bday.place ? { name: bday.place.name, lat: bday.place.lat, lon: bday.place.lon, tz: bday.tzOffset } : null;
         var astro = window.Astrology.getChart(bday.year, bday.month, bday.day, bday.hour, bday.minute, astroPlace);
         if (astro) {
-          var astroTitle = '太陽' + astro.sunSign.n + (astro.timeKnown ? ' · 月亮' + astro.moonSign.n : '') + (astro.ascendant ? ' · 上升' + astro.ascendant.sign.n : '');
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 占星盤：' + astroTitle + '</summary>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + astro.sunSign.desc + '</p>';
-          if (astro.ascendant) html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">⬆️ 上升' + astro.ascendant.sign.n + ' ' + astro.ascendant.degree + '：' + astro.ascendant.sign.desc + '</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">主導元素：<strong class="element-' + astro.dominantElement + '">' + astro.dominantElement + '</strong> — ' + astro.nameAdvice + '</p>';
+          var astroTitle = LL('太陽', 'Sun ') + T(astro.sunSign.n) + (astro.timeKnown ? LL(' · 月亮', ' · Moon ') + T(astro.moonSign.n) : '') + (astro.ascendant ? LL(' · 上升', ' · Rising ') + T(astro.ascendant.sign.n) : '');
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 ' + LL('占星盤：', 'Astrology chart: ') + astroTitle + '</summary>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + T(astro.sunSign.desc) + '</p>';
+          if (astro.ascendant) html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">⬆️ ' + LL('上升', 'Rising ') + T(astro.ascendant.sign.n) + ' ' + astro.ascendant.degree + LL('：', ': ') + T(astro.ascendant.sign.desc) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('主導元素：', 'Dominant element: ') + '<strong class="element-' + astro.dominantElement + '">' + T(astro.dominantElement) + '</strong> — ' + T(astro.nameAdvice) + '</p>';
           html += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;font-size:0.72rem;color:var(--color-text-secondary);margin-top:6px;">';
           astro.planets.forEach(function(pl) {
-            html += '<span>' + pl.emoji + ' ' + pl.name + '</span>';
-            html += '<span style="color:var(--color-gold-light);">' + pl.sign.n + ' ' + pl.degree + (pl.retrograde ? ' <span title="逆行">℞</span>' : '') + '</span>';
-            html += '<span>' + pl.house.n.split(' ')[0] + '</span>';
+            html += '<span>' + pl.emoji + ' ' + T(pl.name) + '</span>';
+            html += '<span style="color:var(--color-gold-light);">' + T(pl.sign.n) + ' ' + pl.degree + (pl.retrograde ? ' <span title="' + LL('逆行', 'retrograde') + '">℞</span>' : '') + '</span>';
+            html += '<span>' + T(pl.house.n.split(' ')[0]) + '</span>';
           });
           html += '</div>';
           html += '<p style="font-size:0.68rem;color:var(--color-text-muted);margin:4px 0;">' + (astro.timeKnown
-            ? '宮位：' + astro.houseSystem
-            : '未填出生時間：以正午計算，月亮位置可能差數度，宮位採太陽宮位制，並略過月亮相位') + '</p>';
+            ? LL('宮位：', 'Houses: ') + T(astro.houseSystem)
+            : LL('未填出生時間：以正午計算，月亮位置可能差數度，宮位採太陽宮位制，並略過月亮相位', 'No birth time: calculated for noon, so the Moon may be off by several degrees; houses use the solar-house system and Moon aspects are skipped')) + '</p>';
           if (astro.aspects && astro.aspects.length) {
             var topAspects = astro.aspects.slice(0, 6);
-            html += '<div style="margin-top:8px;font-size:0.75rem;">📐 主要相位（共' + astro.aspects.length + '組）</div>';
+            html += '<div style="margin-top:8px;font-size:0.75rem;">📐 ' + LL('主要相位（共' + astro.aspects.length + '組）', 'Major aspects (' + astro.aspects.length + ' in total)') + '</div>';
             topAspects.forEach(function(a) {
               var color = a.nature === '吉' ? 'var(--color-gold-light)' : (a.nature === '挑戰' ? 'var(--color-danger, #c0392b)' : 'var(--color-text-secondary)');
-              html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + a.p1 + ' × ' + a.p2Emoji + a.p2 + ' ' + a.type + '（' + a.angle + '，差 ' + a.orb + '°）— ' + (a.nature === '吉' ? '和諧' : a.nature === '挑戰' ? '張力' : '融合') + '</p>';
+              html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + T(a.p1) + ' × ' + a.p2Emoji + T(a.p2) + ' ' + T(a.type) + LL('（' + a.angle + '，差 ' + a.orb + '°）— ', ' (' + a.angle + ', orb ' + a.orb + '°) — ') + (a.nature === '吉' ? LL('和諧', 'harmonious') : a.nature === '挑戰' ? LL('張力', 'tense') : LL('融合', 'blending')) + '</p>';
             });
           }
           html += '</details>';
@@ -1122,7 +1141,7 @@
         var kabName = r.en.name || r.enReport.name;
         var kabReading = window.DeepReadings.getKabbalahReading(chal);
         var kabTree = window.DeepReadings.getKabbalahTree(chal, kabName);
-        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔯 卡巴拉生命樹</summary>';
+        html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔯 ' + LL('卡巴拉生命樹', 'Kabbalah Tree of Life') + '</summary>';
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;">' + kabReading + '</p>';
         html += window.DeepReadings.getKabbalahTreeSVG(kabTree);
         html += '<p style="color:var(--color-text-secondary);line-height:1.8;white-space:pre-line;">' + window.DeepReadings.getKabbalahPathsReading(kabTree) + '</p></details>';
@@ -1135,11 +1154,11 @@
         html += '<div class="daily-fortune">';
         html += '<span class="fortune-stars" style="color:var(--color-gold-primary);">' + df.starDisplay + '</span>';
         html += '<div class="fortune-items">';
-        html += '<span class="fortune-item">🎨 <strong>' + df.color + '</strong></span>';
-        html += '<span class="fortune-item">🧭 <strong>' + df.direction + '</strong></span>';
+        html += '<span class="fortune-item">🎨 <strong>' + T(df.color) + '</strong></span>';
+        html += '<span class="fortune-item">🧭 <strong>' + T(df.direction) + '</strong></span>';
         html += '<span class="fortune-item">🔢 <strong>' + df.number + '</strong></span>';
         html += '</div>';
-        html += '<span style="font-size:0.7rem;color:var(--color-text-muted);margin-left:auto;">' + df.tip.substring(0,20) + '...</span>';
+        html += '<span style="font-size:0.7rem;color:var(--color-text-muted);margin-left:auto;">' + (window.L10N && window.L10N.en() ? T(df.tip).substring(0, 48) : df.tip.substring(0,20)) + '...</span>';
         html += '</div>';
       }
     }
@@ -1147,16 +1166,16 @@
     if (r.cn) {
       html += '<div class="letter-grid">';
       var allS = r.cn.wuge.strokeDetails.surname.concat(r.cn.wuge.strokeDetails.givenName);
-      allS.forEach(function(s) { html += '<div class="letter-chip"><span class="letter">'+s.char+'</span><span class="number">'+(s.strokes<0?'?':s.strokes)+'劃</span></div>'; });
+      allS.forEach(function(s) { html += '<div class="letter-chip"><span class="letter">'+s.char+'</span><span class="number">'+(s.strokes<0?'?':s.strokes)+LL('劃', ' str.')+'</span></div>'; });
       html += '</div>';
       html += '<div class="wuge-grid">';
       ['tian','ren','di','wai','zong'].forEach(function(k) {
         var g = r.cn.grids[k];
         var fc = g.fortune?'fortune-'+(g.fortune.glory==='大吉'?'great':g.fortune.glory==='吉'?'good':g.fortune.glory==='中吉'||g.fortune.glory==='半吉'?'neutral':g.fortune.glory==='凶'?'bad':'terrible'):'';
-        html += '<div class="wuge-row'+(g.isMain?' is-main':'')+'"><span class="wuge-name">'+g.name+'</span><span class="wuge-number">'+g.number+reducedNote(g.fortune)+'</span><span class="wuge-element element-'+g.element+'">'+g.element+'</span><span class="wuge-fortune '+fc+'">'+(g.fortune?g.fortune.glory:'?')+'</span></div>';
+        html += '<div class="wuge-row'+(g.isMain?' is-main':'')+'"><span class="wuge-name">'+T(g.name)+'</span><span class="wuge-number">'+g.number+reducedNote(g.fortune)+'</span><span class="wuge-element element-'+g.element+'">'+T(g.element)+'</span><span class="wuge-fortune '+fc+'">'+(g.fortune?T(g.fortune.glory):'?')+'</span></div>';
       });
       html += '</div>';
-      html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">三才：'+r.cn.sancai.level+' | 整體：'+r.cn.overall+'</p>';
+      html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">'+LL('三才：', 'Three Powers: ')+T(r.cn.sancai.level)+LL(' | 整體：', ' | Overall: ')+T(r.cn.overall)+'</p>';
     }
     // 英文名含義
     if (r.enReport && window.englishNameMeanings) {
@@ -1164,7 +1183,7 @@
       nameParts.forEach(function(np) {
         var meaning = window.englishNameMeanings[np];
         if (meaning) {
-          html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + '：' + meaning + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + LL('：', ': ') + T(meaning) + '</p>';
         }
       });
     }
@@ -1177,11 +1196,11 @@
 
     if (r.enReport) {
       var enData = r.enReport;
-      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(212,168,67,0.1);"><strong style="color:var(--color-gold-primary);">🔢 英文靈數</strong></div>';
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(212,168,67,0.1);"><strong style="color:var(--color-gold-primary);">🔢 ' + LL('英文靈數', 'Name Numerology') + '</strong></div>';
       html += '<div class="numerology-grid">';
       enData.coreNumbers.forEach(function(n) {
         var isM = (n.number===11||n.number===22||n.number===33);
-        html += '<div class="number-card"><div class="'+(isM?'number-circle master-number':'number-circle')+'">'+n.number+'</div><div class="number-info"><div class="number-name">'+n.name+'</div><div class="number-desc">'+ (n.meaning.title||'') +'</div></div></div>';
+        html += '<div class="number-card"><div class="'+(isM?'number-circle master-number':'number-circle')+'">'+n.number+'</div><div class="number-info"><div class="number-name">'+T(n.name)+'</div><div class="number-desc">'+ (LL(n.meaning.title||'', n.meaning.enTitle||T(n.meaning.title||''))) +'</div></div></div>';
       });
       html += '</div>';
     }
@@ -1196,13 +1215,13 @@
     var chip = 'font-size:0.8rem;color:var(--color-text-secondary);background:var(--color-bg-mid);padding:4px 10px;border-radius:12px;';
     var E = window.EnglishNumerology;
     var html = '<div class="birth-numerology" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">';
-    if (adv.lifePath) html += '<span style="' + chip + '">🧭 生命靈數 <strong>' + adv.lifePath + '</strong> ' + ((E.getMeaning(adv.lifePath) || {}).title || '') + '</span>';
-    if (adv.personalYear) html += '<span style="' + chip + '">📅 ' + adv.personalYear.year + ' 個人年 <strong>' + adv.personalYear.number + '</strong> ' + adv.personalYear.focus + '</span>';
-    if (adv.maturity) html += '<span style="' + chip + '">🌟 成熟數 <strong>' + adv.maturity + '</strong></span>';
-    if (adv.balance) html += '<span style="' + chip + '">⚖️ 平衡數 <strong>' + adv.balance + '</strong></span>';
+    if (adv.lifePath) html += '<span style="' + chip + '">🧭 ' + LL('生命靈數', 'Life Path') + ' <strong>' + adv.lifePath + '</strong> ' + T((E.getMeaning(adv.lifePath) || {}).title || '') + '</span>';
+    if (adv.personalYear) html += '<span style="' + chip + '">📅 ' + adv.personalYear.year + LL(' 個人年', ' Personal Year') + ' <strong>' + adv.personalYear.number + '</strong> ' + T(adv.personalYear.focus) + '</span>';
+    if (adv.maturity) html += '<span style="' + chip + '">🌟 ' + LL('成熟數', 'Maturity') + ' <strong>' + adv.maturity + '</strong></span>';
+    if (adv.balance) html += '<span style="' + chip + '">⚖️ ' + LL('平衡數', 'Balance') + ' <strong>' + adv.balance + '</strong></span>';
     html += '</div>';
     if (!hasBirth) {
-      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0;">填入完整出生日期即可查看生命靈數、個人年、高峰數與挑戰數</p>';
+      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0;">' + LL('填入完整出生日期即可查看生命靈數、個人年、高峰數與挑戰數', 'Enter a full birth date to see your Life Path, Personal Year, Pinnacles and Challenges') + '</p>';
       return html;
     }
 
@@ -1215,23 +1234,23 @@
     var nowAge = thisYear - adv.pinnacles[0].startYear;
     var inRange = function(from, to) { return nowAge >= from && (to == null || nowAge <= to); };
 
-    html += '<details class="birth-numerology-detail" style="margin:6px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔢 生日靈數：高峰、挑戰與生命週期</summary>';
-    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin:6px 0;">' + adv.personalYear.year + ' 年是你的個人年 ' + adv.personalYear.number + '（' + adv.personalYear.focus + '）：' + adv.personalYear.desc + '</p>';
+    html += '<details class="birth-numerology-detail" style="margin:6px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🔢 ' + LL('生日靈數：高峰、挑戰與生命週期', 'Birth numerology: Pinnacles, Challenges and Life Cycles') + '</summary>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin:6px 0;">' + LL(adv.personalYear.year + ' 年是你的個人年 ' + adv.personalYear.number + '（' + adv.personalYear.focus + '）：', adv.personalYear.year + ' is your Personal Year ' + adv.personalYear.number + ' (' + T(adv.personalYear.focus) + '): ') + T(adv.personalYear.desc) + '</p>';
 
-    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⛰️ 高峰數</div>';
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⛰️ ' + LL('高峰數', 'Pinnacles') + '</div>';
     adv.pinnacles.forEach(function(p, i) {
-      html += row('第' + '一二三四'[i] + '高峰　' + p.age, '<strong>' + p.number + '</strong> ' + p.title, p.keywords, inRange(p.startAge, p.endAge));
+      html += row(LL('第' + '一二三四'[i] + '高峰　' + p.age, ['1st', '2nd', '3rd', '4th'][i] + ' Pinnacle · ' + T(p.age)), '<strong>' + p.number + '</strong> ' + T(p.title), T(p.keywords), inRange(p.startAge, p.endAge));
     });
-    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⚔️ 挑戰數</div>';
-    adv.challenges.forEach(function(c) { html += row(c.name, '<strong>' + c.number + '</strong>', c.desc, false); });
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">⚔️ ' + LL('挑戰數', 'Challenges') + '</div>';
+    adv.challenges.forEach(function(c) { html += row(T(c.name), '<strong>' + c.number + '</strong>', T(c.desc), false); });
 
-    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">🌱 生命週期</div>';
+    html += '<div style="margin-top:6px;font-weight:600;font-size:0.8rem;">🌱 ' + LL('生命週期', 'Life Cycles') + '</div>';
     adv.cycles.forEach(function(c) {
-      html += row(c.name + '　' + c.age, '<strong>' + c.number + '</strong> ' + c.focus, c.desc, inRange(c.startAge, c.endAge));
+      html += row(T(c.name) + LL('　', ' · ') + T(c.age), '<strong>' + c.number + '</strong> ' + T(c.focus), T(c.desc), inRange(c.startAge, c.endAge));
     });
-    html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">🔄 轉折年：' + adv.turningYears.map(function(t) {
-      return t.year + '（' + t.age + ' 歲）' + (t.isPast ? '✓' : '');
-    }).join('、') + '。以出生月、日、年各自化簡後計算；目前所在的階段以金色標示。</p>';
+    html += '<p style="font-size:0.72rem;color:var(--color-text-muted);margin-top:6px;">🔄 ' + LL('轉折年：', 'Turning years: ') + adv.turningYears.map(function(t) {
+      return t.year + LL('（' + t.age + ' 歲）', ' (age ' + t.age + ')') + (t.isPast ? '✓' : '');
+    }).join(LL('、', ', ')) + LL('。以出生月、日、年各自化簡後計算；目前所在的階段以金色標示。', '. Calculated from the reduced birth month, day and year; your current stage is shown in gold.') + '</p>';
     html += '</details>';
     return html;
   }
@@ -1465,14 +1484,14 @@
     var el = r.result.cn ? r.result.cn.grids.ren.element : '?';
     var df = window.FunExtras.getDailyFortune(r.result.en.destiny, el);
     var html = '<div class="fortune-detail" style="text-align:center;background:linear-gradient(135deg,rgba(212,168,67,0.06),rgba(196,30,58,0.04));">';
-    html += '<h3>🔮 今日姓名運勢</h3>';
+    html += '<h3>🔮 ' + LL('今日姓名運勢', "Today's Name Fortune") + '</h3>';
     html += '<div style="font-size:1.5rem;margin:8px 0;color:var(--color-gold-primary);">' + df.starDisplay + '</div>';
     html += '<div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:0.85rem;">';
-    html += '<span>🎨 <strong style="color:var(--color-gold-light);">' + df.color + '</strong></span>';
-    html += '<span>🧭 <strong style="color:var(--color-gold-light);">' + df.direction + '</strong></span>';
+    html += '<span>🎨 <strong style="color:var(--color-gold-light);">' + T(df.color) + '</strong></span>';
+    html += '<span>🧭 <strong style="color:var(--color-gold-light);">' + T(df.direction) + '</strong></span>';
     html += '<span>🔢 <strong style="color:var(--color-gold-light);">' + df.number + '</strong></span>';
     html += '</div>';
-    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px;">' + df.tip + '</p>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px;">' + T(df.tip) + '</p>';
     html += '<p style="font-size:0.65rem;color:var(--color-text-muted);">' + df.date + '</p>';
     html += '</div>';
     return html;
@@ -1485,22 +1504,22 @@
     var withCN = currentData.results.filter(function(r) { return r.result.cn; });
     if (withCN.length < 2) return '';
 
-    var html = '<h3 style="color:var(--color-gold-primary);margin:1rem 0;font-size:1rem;">⚖️ 五格並排比較</h3>';
+    var html = '<h3 style="color:var(--color-gold-primary);margin:1rem 0;font-size:1rem;">⚖️ ' + LL('五格並排比較', 'Five Grids Side by Side') + '</h3>';
     html += '<div class="compare-grid">';
 
     withCN.forEach(function(item) {
       var cn = item.result.cn;
       var g = cn.grids;
       html += '<div class="compare-card">';
-      html += '<div class="compare-card-header"><span class="compare-name">' + item.person.label + '</span>';
+      html += '<div class="compare-card-header"><span class="compare-name">' + T(item.person.label) + '</span>';
       html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">' + (cn.parsed.surname + cn.parsed.givenName) + '</span></div>';
       html += '<div class="compare-mini-grid">';
       ['tian','ren','di','wai','zong'].forEach(function(k) {
         var v = g[k];
         var fc = v.fortune ? 'fortune-'+(v.fortune.glory==='大吉'?'great':v.fortune.glory==='吉'?'good':v.fortune.glory==='中吉'||v.fortune.glory==='半吉'?'neutral':v.fortune.glory==='凶'?'bad':'terrible') : '';
-        html += '<span class="compare-mini-label">' + v.name + '</span>';
-        html += '<span class="compare-mini-val">' + v.number + ' <span class="element-' + v.element + '" style="font-size:0.7rem;">' + v.element + '</span></span>';
-        html += '<span class="compare-mini-tag ' + fc + '">' + (v.fortune ? v.fortune.glory : '?') + '</span>';
+        html += '<span class="compare-mini-label">' + T(v.name) + '</span>';
+        html += '<span class="compare-mini-val">' + v.number + ' <span class="element-' + v.element + '" style="font-size:0.7rem;">' + T(v.element) + '</span></span>';
+        html += '<span class="compare-mini-tag ' + fc + '">' + (v.fortune ? T(v.fortune.glory) : '?') + '</span>';
       });
       html += '</div></div>';
     });
@@ -1826,7 +1845,7 @@
   function reducedNote(fortune) {
     if (!fortune || !fortune.reducedFrom) return '';
     var n = fortune.reducedFrom, r = (n - 1) % 80 + 1;
-    return '<small class="wuge-reduced" title="81 數循環：超過 81 減 80 查表" style="font-size:0.65em;color:var(--color-text-muted);margin-left:2px;">（取 ' + r + '）</small>';
+    return '<small class="wuge-reduced" title="' + LL('81 數循環：超過 81 減 80 查表', '81-number cycle: numbers above 81 wrap around by subtracting 80') + '" style="font-size:0.65em;color:var(--color-text-muted);margin-left:2px;">' + LL('（取 ' + r + '）', ' (as ' + r + ')') + '</small>';
   }
 
   function escHtml(s) { return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -2071,7 +2090,7 @@
       var pc = window.SmartInsights.prosAndCons(r.cn);
 
       html += '<div class="fortune-detail" style="margin-bottom:var(--space-md);border-left:3px solid var(--color-gold-primary);">';
-      html += '<h3 style="margin-bottom:4px;">' + item.person.label + '</h3>';
+      html += '<h3 style="margin-bottom:4px;">' + T(item.person.label) + '</h3>';
       html += '<p style="font-size:0.9rem;color:var(--color-gold-light);line-height:1.8;">💬 ' + one + '</p>';
 
       if (pc) {
@@ -2094,7 +2113,7 @@
       // 行動建議
       var actions = window.SmartInsights.actionCard(r.cn, r.zodiac);
       if (actions.length) {
-        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">💡 建議：' + actions.slice(0,3).join('；') + '</p>';
+        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">💡 ' + LL('建議：', 'Suggestions: ') + actions.slice(0,3).join(LL('；', '; ')) + '</p>';
       }
 
       html += '</div>';
@@ -2109,15 +2128,15 @@
     if (r.length === 0) return '';
 
     var html = '<div class="summary-card">';
-    html += '<h3>📊 分析摘要</h3>';
+    html += '<h3>📊 ' + LL('分析摘要', 'Summary') + '</h3>';
     html += '<div class="summary-quick-stats">';
-    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + r.length + '</div><div class="summary-stat-label">成員數</div></div>';
-    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + currentData.pairs.length + '</div><div class="summary-stat-label">配對組數</div></div>';
+    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + r.length + '</div><div class="summary-stat-label">' + LL('成員數', 'Members') + '</div></div>';
+    html += '<div class="summary-stat"><div class="summary-stat-val" style="color:var(--color-gold-light);">' + currentData.pairs.length + '</div><div class="summary-stat-label">' + LL('配對組數', 'Pairs') + '</div></div>';
 
     if (currentData.pairs.length > 0) {
       var avg = Math.round(currentData.pairs.reduce(function(a,b){return a+b.pair.score;},0) / currentData.pairs.length);
       var ac = avg>=80?'var(--color-fortune-great)':avg>=60?'var(--color-fortune-good)':'var(--color-fortune-neutral)';
-      html += '<div class="summary-stat"><div class="summary-stat-val" style="color:'+ac+';">' + avg + '</div><div class="summary-stat-label">平均分數</div></div>';
+      html += '<div class="summary-stat"><div class="summary-stat-val" style="color:'+ac+';">' + avg + '</div><div class="summary-stat-label">' + LL('平均分數', 'Average score') + '</div></div>';
     }
     html += '</div></div>';
     return html;
@@ -2126,19 +2145,19 @@
   // ============ 姓名生成器 UI ============
   function genCardsHtml(names) {
     if (names && names.length && names[0].note) {
-      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">⚠️ ' + escHtml(names[0].note) + '</p>';
+      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">⚠️ ' + escHtml(T(names[0].note)) + '</p>';
     }
     if (!names || !names.length) {
-      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">這個姓氏暫時找不到合適的吉數組合，換個性別或稍後再試。</p>';
+      return '<p style="font-size:0.75rem;color:var(--color-text-secondary);">' + LL('這個姓氏暫時找不到合適的吉數組合，換個性別或稍後再試。', 'No suitable auspicious combinations for this surname right now — try another gender or try again.') + '</p>';
     }
     var html = '';
     names.slice(0, 6).forEach(function(n) {
       if (!n.name) return;
       var fc = n.goodCount >= 4 ? 'var(--color-fortune-great)' : 'var(--color-fortune-good)';
-      html += '<div class="gen-name-card" onclick="document.getElementById(\'cnA\').value=\'' + n.name + '\';document.getElementById(\'cnB\').focus();window.scrollTo({top:0,behavior:\'smooth\'});var t=document.createElement(\'div\');t.className=\'share-toast\';t.textContent=\'已填入：' + n.name + '\';document.body.appendChild(t);setTimeout(function(){t.remove();},2000);">';
+      html += '<div class="gen-name-card" onclick="document.getElementById(\'cnA\').value=\'' + n.name + '\';document.getElementById(\'cnB\').focus();window.scrollTo({top:0,behavior:\'smooth\'});var t=document.createElement(\'div\');t.className=\'share-toast\';t.textContent=\'' + LL('已填入：', 'Filled in: ') + n.name + '\';document.body.appendChild(t);setTimeout(function(){t.remove();},2000);">';
       html += '<div class="gen-name-text">' + n.name + '</div>';
-      html += '<div class="gen-name-info">人格' + n.grids.ren + ' ' + n.element + ' <span style="color:' + fc + ';">' + n.goodCount + '吉</span></div>';
-      html += '<div class="gen-name-strokes">天' + n.grids.tian + ' 地' + n.grids.di + ' 外' + n.grids.wai + ' 總' + n.grids.zong + '</div>';
+      html += '<div class="gen-name-info">' + LL('人格', 'Person ') + n.grids.ren + ' ' + T(n.element) + ' <span style="color:' + fc + ';">' + n.goodCount + LL('吉', ' good') + '</span></div>';
+      html += '<div class="gen-name-strokes">' + LL('天' + n.grids.tian + ' 地' + n.grids.di + ' 外' + n.grids.wai + ' 總' + n.grids.zong, 'H' + n.grids.tian + ' E' + n.grids.di + ' O' + n.grids.wai + ' T' + n.grids.zong) + '</div>';
       html += '</div>';
     });
     return html;
@@ -2161,15 +2180,15 @@
     var names = window.NameGenerator.suggestNames(surname, genGender, manualStrokes);
 
     var html = '<div class="fortune-detail" id="genBlock" data-surname="' + surname + '" style="margin-bottom:var(--space-lg);">';
-    html += '<h3>🎯 吉數姓名推薦（姓氏：' + surname + '）</h3>';
+    html += '<h3>🎯 ' + LL('吉數姓名推薦（姓氏：' + surname + '）', 'Auspicious Name Suggestions (surname: ' + surname + ')') + '</h3>';
     html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
     html += '<select id="genGender" class="form-input" style="width:auto;padding:4px 8px;font-size:0.75rem;">'
-      + '<option value=""' + (genGender === '' ? ' selected' : '') + '>全部</option>'
-      + '<option value="male"' + (genGender === 'male' ? ' selected' : '') + '>男</option>'
-      + '<option value="female"' + (genGender === 'female' ? ' selected' : '') + '>女</option></select>';
-    html += '<button id="genRefresh" class="btn-download-img" style="font-size:0.75rem;">🔄 換一批</button>';
+      + '<option value=""' + (genGender === '' ? ' selected' : '') + '>' + LL('全部', 'Any') + '</option>'
+      + '<option value="male"' + (genGender === 'male' ? ' selected' : '') + '>' + LL('男', 'Male') + '</option>'
+      + '<option value="female"' + (genGender === 'female' ? ' selected' : '') + '>' + LL('女', 'Female') + '</option></select>';
+    html += '<button id="genRefresh" class="btn-download-img" style="font-size:0.75rem;">🔄 ' + LL('換一批', 'Shuffle') + '</button>';
     html += '</div>';
-    html += '<p style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:8px;">確保<strong>人格（主運）為吉數</strong>，點擊名字可填入甲方：</p>';
+    html += '<p style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:8px;">' + LL('確保<strong>人格（主運）為吉數</strong>，點擊名字可填入甲方：', 'Every suggestion keeps the <strong>Person Grid (main fortune) auspicious</strong>. Click a name to fill it in as Person A:') + '</p>';
     html += '<div class="generator-results" id="genResults">' + genCardsHtml(names) + '</div>';
     html += '</div>';
     return html;
@@ -2206,23 +2225,23 @@
     var clash = '🌳木剋⛰️土 → ⛰️土剋💧水 → 💧水剋🔥火 → 🔥火剋⚔️金 → ⚔️金剋🌳木';
 
     var html = '<details style="margin:12px 0;font-size:0.85rem;">';
-    html += '<summary style="color:var(--color-gold-primary);cursor:pointer;font-weight:600;">📖 五行是什麼？點擊展開說明</summary>';
+    html += '<summary style="color:var(--color-gold-primary);cursor:pointer;font-weight:600;">📖 ' + LL('五行是什麼？點擊展開說明', 'What are the Five Elements? Click to expand') + '</summary>';
     html += '<div style="margin-top:8px;padding:12px;background:rgba(212,168,67,0.05);border-radius:8px;">';
-    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">姓名學中每個數字尾數對應一個五行屬性。五格（天/人/地/外/總）各有五行，組合起來可以看出你的命理特質。</p>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">' + LL('姓名學中每個數字尾數對應一個五行屬性。五格（天/人/地/外/總）各有五行，組合起來可以看出你的命理特質。', 'In Chinese name numerology, the last digit of each number maps to one of the Five Elements. Each of the five grids (Heaven, Person, Earth, Outer, Total) has an element, and together they describe your character.') + '</p>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:8px;">';
     Object.keys(elInfo).forEach(function(el) {
       var info = elInfo[el];
       html += '<div style="padding:6px 10px;background:rgba(0,0,0,0.1);border-radius:6px;">';
       html += '<span style="font-size:1.1rem;">' + info.icon + '</span> ';
-      html += '<strong style="color:' + info.color + ';">' + el + '</strong>';
-      html += '<span style="font-size:0.7rem;color:var(--color-text-secondary);"> — ' + info.nature + '</span>';
-      html += '<div style="font-size:0.65rem;color:var(--color-text-muted);">臟腑:' + info.body + ' | 方位:' + info.direction + ' | 季節:' + info.season + '</div>';
+      html += '<strong style="color:' + info.color + ';">' + T(el) + '</strong>';
+      html += '<span style="font-size:0.7rem;color:var(--color-text-secondary);"> — ' + T(info.nature) + '</span>';
+      html += '<div style="font-size:0.65rem;color:var(--color-text-muted);">' + LL('臟腑:' + info.body + ' | 方位:' + info.direction + ' | 季節:' + info.season, 'Organs: ' + T(info.body) + ' | Direction: ' + T(info.direction) + ' | Season: ' + T(info.season)) + '</div>';
       html += '</div>';
     });
     html += '</div>';
-    html += '<p style="font-size:0.75rem;color:var(--color-fortune-good);">✅ <strong>相生（好）</strong>：' + cycle + '</p>';
-    html += '<p style="font-size:0.75rem;color:var(--color-fortune-bad);">⚠️ <strong>相剋（衝突）</strong>：' + clash + '</p>';
-    html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin-top:4px;">當你的名字五行分佈不均（某個過強或缺失），可以透過改名、配戴飾品、選擇有利方位來平衡。</p>';
+    html += '<p style="font-size:0.75rem;color:var(--color-fortune-good);">✅ <strong>' + LL('相生（好）', 'Generating (good)') + '</strong>' + LL('：', ': ') + LL(cycle, '🌳 Wood → 🔥 Fire → ⛰️ Earth → ⚔️ Metal → 💧 Water → 🌳 Wood') + '</p>';
+    html += '<p style="font-size:0.75rem;color:var(--color-fortune-bad);">⚠️ <strong>' + LL('相剋（衝突）', 'Controlling (clash)') + '</strong>' + LL('：', ': ') + LL(clash, '🌳 Wood ⊣ ⛰️ Earth ⊣ 💧 Water ⊣ 🔥 Fire ⊣ ⚔️ Metal ⊣ 🌳 Wood') + '</p>';
+    html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin-top:4px;">' + LL('當你的名字五行分佈不均（某個過強或缺失），可以透過改名、配戴飾品、選擇有利方位來平衡。', 'When the elements in your name are unbalanced (one too strong or missing), traditional remedies include renaming, wearing accessories and choosing favorable directions.') + '</p>';
     html += '</div></details>';
     return html;
   }
@@ -2251,14 +2270,14 @@
     if (memberRoles.length < 2) return '';
 
     var html = '<div class="fortune-detail" style="margin-top:var(--space-lg);">';
-    html += '<h3>👥 團隊角色建議</h3>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;">根據每位成員的五行屬性，以下是建議的團隊分工：</p>';
+    html += '<h3>👥 ' + LL('團隊角色建議', 'Suggested Team Roles') + '</h3>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;">' + LL('根據每位成員的五行屬性，以下是建議的團隊分工：', 'Based on each member\'s element, here is a suggested division of roles:') + '</p>';
 
     memberRoles.forEach(function(mr) {
       html += '<div class="team-pair-card" style="border-left-color:var(--color-wuxing-' + mr.element + ');cursor:default;">';
-      html += '<div class="team-pair-rank element-' + mr.element + '">' + mr.element + '</div>';
-      html += '<div class="team-pair-info"><div class="team-pair-names">' + mr.label + '：' + mr.role.role + '</div>';
-      html += '<div class="team-pair-detail">' + mr.role.desc + '</div></div></div>';
+      html += '<div class="team-pair-rank element-' + mr.element + '">' + T(mr.element) + '</div>';
+      html += '<div class="team-pair-info"><div class="team-pair-names">' + T(mr.label) + LL('：', ': ') + T(mr.role.role) + '</div>';
+      html += '<div class="team-pair-detail">' + T(mr.role.desc) + '</div></div></div>';
     });
 
     // 缺失元素提醒
