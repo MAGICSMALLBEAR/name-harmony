@@ -680,5 +680,472 @@ window.EnglishTranslit = {
   WESTON: 'wei si dun',    // 威斯頓
   WHITNEY: 'hui ni',       // 惠妮
   WILLIE: 'wei li',        // 威利
-  WYATT: 'huai ya te',     // 懷亞特
+  WYATT: 'huai ya te',     // 懷亞特,
+  // 2026-10-11 補齊：美國 SSA 各年代前 200 名（拼音由譯名經拼音庫轉換）
+  ABBY: 'ai bi',           // 艾比
+  ABEL: 'ya bo',           // 亞伯
+  ABRAHAM: 'ya bo la han', // 亞伯拉罕
+  ACE: 'ai si',            // 艾斯
+  ADA: 'ai da',            // 艾達
+  ADALYN: 'ai de lin',     // 艾德琳
+  ADALYNN: 'ai de lin',    // 艾德琳
+  ADRIANA: 'ya de li an na',// 雅德里安娜
+  ADRIANNA: 'ya de li an na',// 雅德里安娜
+  ADRIEL: 'ya de lie',     // 亞德列
+  ADRIENNE: 'ya de li an', // 雅德莉安
+  AILANI: 'ai la ni',      // 艾拉妮
+  AILANY: 'ai la ni',      // 艾拉妮
+  AIMEE: 'ai mei',         // 艾美
+  ALAIA: 'ai lai ya',      // 艾萊雅
+  ALAINA: 'ai lei na',     // 艾蕾娜
+  ALANA: 'ai la na',       // 艾拉娜
+  ALANI: 'ai la ni',       // 艾拉妮
+  ALEC: 'ya li ke',        // 亞歷克
+  ALEJANDRA: 'ya li shan zhuo',// 亞莉珊卓
+  ALEJANDRO: 'ya li hang de luo',// 亞歷杭德羅
+  ALEXIA: 'ya li ke xi ya',// 亞莉克希亞
+  ALINA: 'ai lin na',      // 艾琳娜
+  ALISHA: 'ai li xia',     // 艾莉夏
+  ALISON: 'ai li sen',     // 艾莉森
+  ALIYAH: 'ai li ya',      // 艾莉亞
+  ALLAN: 'ai lun',         // 艾倫
+  ALMA: 'ai ma',           // 艾瑪
+  ALONDRA: 'ai long de la',// 艾隆德拉
+  ALORA: 'ai luo la',      // 艾羅拉
+  ALVIN: 'ai wen',         // 艾文
+  AMARA: 'ai ma la',       // 艾瑪拉
+  AMARI: 'a ma li',        // 阿瑪里
+  AMAYA: 'ai ma ya',       // 艾瑪雅
+  AMIRA: 'ai mi la',       // 艾米拉
+  ANA: 'an na',            // 安娜
+  ANASTASIA: 'an na si ta xi ya',// 安娜斯塔西亞
+  ANDRE: 'an de lie',      // 安德烈
+  ANDRES: 'an de lie si',  // 安德烈斯
+  ANGELICA: 'an jie li ka',// 安潔莉卡
+  ANGIE: 'an qi',          // 安琪
+  ARCHER: 'ya che',        // 亞徹
+  ARIEL: 'ai rui er',      // 艾瑞兒
+  ARIELLA: 'ai rui la',    // 艾瑞拉
+  ARLENE: 'ai lin',        // 艾琳
+  ARLO: 'a luo',           // 阿洛
+  ARNOLD: 'a nuo de',      // 阿諾德
+  ARYA: 'ai li ya',        // 艾莉亞
+  ASHLEE: 'ai xi li',      // 艾希莉
+  ASHLYN: 'ai xi lin',     // 艾希琳
+  ASHTON: 'ai xu dun',     // 艾許頓
+  ATLAS: 'ya te la si',    // 亞特拉斯
+  AZIEL: 'a qi er',        // 阿齊爾
+  BARRETT: 'ba rui te',    // 巴瑞特
+  BEATRICE: 'bi cui si',   // 碧翠絲
+  BECKETT: 'bei ke te',    // 貝克特
+  BECKHAM: 'bei ke han',   // 貝克漢
+  BECKY: 'bei qi',         // 貝琪
+  BELINDA: 'bei lin da',   // 貝琳達
+  BENNIE: 'ban ni',        // 班尼
+  BENNY: 'ban ni',         // 班尼
+  BERNICE: 'bo ni si',     // 柏妮絲
+  BERTHA: 'bo sha',        // 柏莎
+  BIANCA: 'bi ang ka',     // 碧昂卡
+  BILLIE: 'bi li',         // 比莉
+  BLAIR: 'bu lai er',      // 布萊兒
+  BLAKELY: 'bu lai ke li', // 布萊克莉
+  BOB: 'bao bo',           // 鮑伯
+  BOBBIE: 'ba bi',         // 芭比
+  BRAD: 'bu lai de',       // 布萊德
+  BRADEN: 'bu lei deng',   // 布雷登
+  BRADY: 'bu lei di',      // 布雷迪
+  BRANTLEY: 'bu lan te li',// 布蘭特利
+  BRAXTON: 'bu lai si dun',// 布萊斯頓
+  BRENDAN: 'bu lan deng',  // 布蘭登
+  BRIDGET: 'bu li ji',     // 布莉姬
+  BRODY: 'bu luo di',      // 布羅迪
+  BROOKLYNN: 'bu lu ke lin',// 布魯克琳
+  BRYCE: 'bu lai si',      // 布萊斯
+  BRYSON: 'bu lai sen',    // 布萊森
+  CADEN: 'kai deng',       // 凱登
+  CAITLYN: 'kai te lin',   // 凱特琳
+  CALLAN: 'ka lun',        // 卡倫
+  CALLIE: 'ka li',         // 卡莉
+  CALLUM: 'ka lun',        // 卡倫
+  CALVIN: 'ka er wen',     // 卡爾文
+  CAMDEN: 'ka mu deng',    // 卡姆登
+  CANDACE: 'kan di si',    // 坎蒂絲
+  CARLY: 'ka li',          // 卡莉
+  CARMEN: 'ka men',        // 卡門
+  CASSIDY: 'ka xi di',     // 卡西迪
+  CASSIE: 'ka xi',         // 卡西
+  CATALINA: 'ka ta li na', // 卡塔莉娜
+  CAYDEN: 'kai deng',      // 凱登
+  CECIL: 'sai xi er',      // 塞西爾
+  CECILIA: 'sai xi li ya', // 塞西莉亞
+  CELESTE: 'sai li si te', // 賽莉絲特
+  CESAR: 'sai sa er',      // 賽薩爾
+  CHARLENE: 'xia lin',     // 夏琳
+  CHELSEY: 'que er xi',    // 雀兒喜
+  CHESTER: 'qie si te',    // 切斯特
+  CHRISTIE: 'ke li si di', // 克莉絲蒂
+  CLAUDE: 'ke lao de',     // 克勞德
+  CLAUDIA: 'ke lao di ya', // 克勞蒂亞
+  CLAYTON: 'ke lei dun',   // 克雷頓
+  CLIFFORD: 'ke li fu de', // 克利福德
+  CLINTON: 'ke lin dun',   // 柯林頓
+  CLYDE: 'ke lai de',      // 克萊德
+  COLBY: 'ke bi',          // 柯比
+  COLLIN: 'ke lin',        // 柯林
+  COLTER: 'ke er te',      // 柯爾特
+  CONNER: 'kang na',       // 康納
+  CONSTANCE: 'kang si tan si',// 康斯坦絲
+  CRISTIAN: 'ke li si ti an',// 克里斯提安
+  CRISTINA: 'ke li si di na',// 克莉絲蒂娜
+  DALTON: 'dao er dun',    // 道爾頓
+  DAMIAN: 'dai mi en',     // 戴米恩
+  DAMON: 'dai meng',       // 戴蒙
+  DAN: 'dan',              // 丹
+  DANIELA: 'dan ni la',    // 丹妮拉
+  DAPHNE: 'da fu ni',      // 達芙妮
+  DARIN: 'da lin',         // 達林
+  DARIUS: 'da liu shi',    // 大流士
+  DARREN: 'da lun',        // 達倫
+  DARYL: 'da rui er',      // 達瑞爾
+  DAVE: 'dai fu',          // 戴夫
+  DAWSON: 'dao sen',       // 道森
+  DEANNA: 'di an na',      // 狄安娜
+  DECLAN: 'de ke lan',     // 德克蘭
+  DELANEY: 'de lan ni',    // 德蘭妮
+  DELORES: 'duo luo li si',// 多洛莉絲
+  DESIREE: 'dai si rui',   // 黛絲瑞
+  DEVON: 'de wen',         // 德文
+  DIAMOND: 'dai meng',     // 戴蒙
+  DILLON: 'di lun',        // 狄倫
+  DOMINIQUE: 'duo ming ni ke',// 多明妮克
+  DONNIE: 'tang ni',       // 唐尼
+  DONOVAN: 'tang na wen',  // 唐納文
+  DOREEN: 'duo lin',       // 朵琳
+  DREW: 'de lu',           // 德魯
+  DUANE: 'du an',          // 杜安
+  DWAYNE: 'de wei en',     // 德韋恩
+  DWIGHT: 'de huai te',    // 德懷特
+  EARNEST: 'e ni si te',   // 厄尼斯特
+  EBONY: 'ai bo ni',       // 艾波妮
+  EDGAR: 'ai de jia',      // 艾德加
+  EDITH: 'yi di si',       // 伊迪絲
+  EDNA: 'ai de na',        // 艾德娜
+  EDUARDO: 'ai de hua duo',// 愛德華多
+  EDWIN: 'ai de wen',      // 艾德溫
+  EITHAN: 'yi sen',        // 伊森
+  ELIAN: 'yi lai an',      // 伊萊安
+  ELISE: 'ai li si',       // 艾莉絲
+  ELIZA: 'yi lai sha',     // 伊萊莎
+  ELLIANA: 'ai li an na',  // 艾莉安娜
+  ELLIOT: 'ai lue te',     // 艾略特
+  ELLIOTT: 'ai lue te',    // 艾略特
+  ELMER: 'ai mo',          // 艾默
+  ELSIE: 'ai xi',          // 艾希
+  EMBER: 'an bo',          // 安柏
+  EMERSON: 'ai mo sen',    // 艾默森
+  EMERSYN: 'ai mo sen',    // 艾默森
+  EMILIANO: 'ai mi li ya nuo',// 艾米利亞諾
+  EMILIO: 'ai mi li ou',   // 艾米里歐
+  EMMANUEL: 'yi ma nei li',// 以馬內利
+  EMMETT: 'ai mi te',      // 艾米特
+  ERICK: 'ai rui ke',      // 艾瑞克
+  ESTHER: 'yi si tie',     // 以斯帖
+  ETHEL: 'ai se er',       // 艾瑟兒
+  EVANGELINE: 'yi fan jie lin',// 伊凡潔琳
+  EVERLEIGH: 'ai fu li',   // 艾芙莉
+  FAYE: 'fei',             // 菲
+  FELICIA: 'fei li xi ya', // 菲莉西亞
+  FELIX: 'fei li ke si',   // 菲利克斯
+  FERNANDO: 'fei er nan duo',// 費爾南多
+  FINN: 'fen en',          // 芬恩
+  FLORENCE: 'fo luo lun si',// 佛蘿倫絲
+  FLOYD: 'fo luo yi de',   // 佛洛伊德
+  FRANCISCO: 'fa lan xi si ke',// 法蘭西斯可
+  FRANKLIN: 'fu lan ke lin',// 富蘭克林
+  FREDDIE: 'fo lai di',    // 佛萊迪
+  FREDRICK: 'fo rui de li ke',// 佛瑞德里克
+  GABRIELA: 'jia bu li ye la',// 嘉布莉耶拉
+  GAGE: 'gai ji',          // 蓋吉
+  GARRY: 'gai rui',        // 蓋瑞
+  GAYLE: 'gai er',         // 蓋兒
+  GEMMA: 'jie ma',         // 潔瑪
+  GENEVIEVE: 'zhen ni wei',// 珍妮薇
+  GEOFFREY: 'jie fo rui',  // 傑佛瑞
+  GEORGIA: 'qiao zhi ya',  // 喬治亞
+  GERARD: 'jie la de',     // 傑拉德
+  GILBERT: 'ji er bo te',  // 吉爾伯特
+  GIOVANNI: 'qiao fan ni', // 喬凡尼
+  GISELLE: 'ji sai er',    // 吉賽兒
+  GLADYS: 'ge lai di si',  // 葛萊蒂絲
+  GLEN: 'ge lun',          // 葛倫
+  GORDON: 'ge deng',       // 戈登
+  GRACIE: 'ge lei xi',     // 葛蕾西
+  GRAHAM: 'ge la han',     // 葛拉漢
+  GRANT: 'ge lan te',      // 葛蘭特
+  GREGG: 'ge rui ge',      // 葛瑞格
+  GUY: 'gai yi',           // 蓋伊
+  GWENDOLYN: 'ge wen de lin',// 葛雯德琳
+  HADLEY: 'hai de li',     // 海德莉
+  HALLIE: 'ha li',         // 哈莉
+  HARRIET: 'ha li te',     // 哈莉特
+  HARVEY: 'ha wei',        // 哈維
+  HAVEN: 'hai wen',        // 海文
+  HAYES: 'hai si',         // 海斯
+  HAYLEY: 'hai li',        // 海莉
+  HECTOR: 'he ke tuo',     // 赫克托
+  HERMAN: 'he er man',     // 赫爾曼
+  HOPE: 'he pu',           // 荷普
+  HUGH: 'xiu',             // 休
+  IDA: 'ai da',            // 艾達
+  IRENE: 'ai lin',         // 艾琳
+  ISABELLE: 'yi sha bei er',// 伊莎貝爾
+  IVAN: 'yi fan',          // 伊凡
+  IZABELLA: 'yi sha bei la',// 伊莎貝拉
+  JACKIE: 'jia ji',        // 賈姬
+  JACLYN: 'jia gui lin',   // 賈桂琳
+  JAIME: 'hai mei',        // 海梅
+  JAKE: 'jie ke',          // 傑克
+  JALEN: 'jie lun',        // 傑倫
+  JAN: 'zhen',             // 珍
+  JANIE: 'zhen ni',        // 珍妮
+  JANIS: 'zhen ni si',     // 珍妮絲
+  JASMIN: 'jie si min',    // 潔絲敏
+  JAVIER: 'ha wei er',     // 哈維爾
+  JAYCE: 'jie si',         // 傑斯
+  JAYLA: 'jie la',         // 潔拉
+  JAZIEL: 'ha qi er',      // 哈齊爾
+  JAZMIN: 'jie si min',    // 潔絲敏
+  JEANETTE: 'zhen ni te',  // 珍妮特
+  JEANNE: 'zhen ni',       // 珍妮
+  JERMAINE: 'jie man',     // 傑曼
+  JEROME: 'jie luo mi',    // 傑洛米
+  JESSIE: 'jie xi',        // 潔西
+  JETT: 'jie te',          // 傑特
+  JILLIAN: 'ji li an',     // 吉莉安
+  JIMMIE: 'ji mi',         // 吉米
+  JOANNA: 'qiao an na',    // 喬安娜
+  JODI: 'qiu di',          // 裘蒂
+  JODY: 'qiu di',          // 裘蒂
+  JOHNATHAN: 'qiang na sen',// 強納森
+  JOHNNIE: 'qiang ni',     // 強尼
+  JONAH: 'yue na',         // 約拿
+  JONATHON: 'qiang na sen',// 強納森
+  JORDYN: 'qiao dan',      // 喬丹
+  JORGE: 'he hei',         // 荷黑
+  JUANITA: 'huang ni ta',  // 璜妮塔
+  JUDAH: 'you da',         // 猶大
+  JUDE: 'qiu de',          // 裘德
+  JULIANA: 'zhu li an na', // 茱莉安娜
+  JULIANNA: 'zhu li an na',// 茱莉安娜
+  JULIETTE: 'zhu li ye',   // 茱麗葉
+  JUNE: 'qiong',           // 瓊
+  JUNIPER: 'zhu ni po',    // 茱妮珀
+  KADEN: 'kai deng',       // 凱登
+  KAIA: 'kai ya',          // 凱雅
+  KAIDEN: 'kai deng',      // 凱登
+  KAITLIN: 'kai te lin',   // 凱特琳
+  KALEB: 'jia le',         // 迦勒
+  KARA: 'ka la',           // 卡拉
+  KARI: 'ka li',           // 卡莉
+  KARINA: 'ka li na',      // 卡莉娜
+  KARL: 'ka er',           // 卡爾
+  KARLA: 'ka la',          // 卡拉
+  KATRINA: 'ka cui na',    // 卡崔娜
+  KAYLANI: 'kai la ni',    // 凱拉妮
+  KEHLANI: 'kai la ni',    // 凱拉妮
+  KELLI: 'kai li',         // 凱莉
+  KELLIE: 'kai li',        // 凱莉
+  KENDALL: 'ken de er',    // 肯德爾
+  KENDRA: 'ken zhuo',      // 肯卓
+  KENT: 'ken te',          // 肯特
+  KERRI: 'kai li',         // 凱莉
+  KERRY: 'kai rui',        // 凱瑞
+  KING: 'jin en',          // 金恩
+  KINGSTON: 'jin si dun',  // 金斯頓
+  KIRK: 'ke ke',           // 柯克
+  KIRSTEN: 'ke si ting',   // 克絲汀
+  KNOX: 'nuo ke si',       // 諾克斯
+  KRISTA: 'ke li si ta',   // 克莉絲塔
+  KRISTI: 'ke li si di',   // 克莉絲蒂
+  KRISTIE: 'ke li si di',  // 克莉絲蒂
+  KRISTINE: 'ke li si ting',// 克莉絲汀
+  KRISTOPHER: 'ke li si duo fu',// 克里斯多福
+  KRISTY: 'ke li si di',   // 克莉絲蒂
+  KURT: 'kou te',          // 寇特
+  KYLEE: 'kai li',         // 凱莉
+  LACEY: 'lei xi',         // 蕾西
+  LAILA: 'lai la',         // 萊拉
+  LANCE: 'lan si',         // 蘭斯
+  LATASHA: 'la ta sha',    // 拉塔莎
+  LEGEND: 'lei jian de',   // 雷堅德
+  LEON: 'li ang',          // 里昂
+  LESTER: 'lai si te',     // 萊斯特
+  LEWIS: 'lu yi si',       // 路易斯
+  LIA: 'li ya',            // 莉亞
+  LILAH: 'lai la',         // 萊拉
+  LILLIE: 'li li',         // 莉莉
+  LILLY: 'li li',          // 莉莉
+  LLOYD: 'luo yi de',      // 洛伊德
+  LONDON: 'lun dun',       // 倫敦
+  LONDYN: 'lun dun',       // 倫敦
+  LONNIE: 'lang ni',       // 朗尼
+  LORENZO: 'luo lun zuo',  // 羅倫佐
+  LORETTA: 'luo rui ta',   // 羅瑞塔
+  LUCILLE: 'lu xi er',     // 露西兒
+  LYLE: 'lai er',          // 萊爾
+  LYNDA: 'lin da',         // 琳達
+  LYNNE: 'lin',            // 琳
+  MADDOX: 'mai da ke si',  // 麥達克斯
+  MAGNOLIA: 'mu lan',      // 木蘭
+  MAKENZIE: 'mai ken qi',  // 麥肯琪
+  MALACHI: 'ma la ji',     // 瑪拉基
+  MALIK: 'ma li ke',       // 馬利克
+  MALLORY: 'ma luo li',    // 瑪洛莉
+  MANDY: 'man di',         // 曼蒂
+  MANUEL: 'man nu ai er',  // 曼努埃爾
+  MARCO: 'ma ke',          // 馬可
+  MARGIE: 'ma ji',         // 瑪姬
+  MARGOT: 'ma ge',         // 瑪歌
+  MARIAN: 'ma li an',      // 瑪麗安
+  MARIANNE: 'ma li an',    // 瑪麗安
+  MARIO: 'ma li ou',       // 馬里歐
+  MARION: 'ma li an',      // 瑪麗安
+  MARISA: 'ma li sha',     // 瑪麗莎
+  MARLENE: 'ma lian',      // 瑪蓮
+  MARSHA: 'ma sha',        // 瑪莎
+  MARSHALL: 'ma xie er',   // 馬歇爾
+  MARYANN: 'ma li an',     // 瑪莉安
+  MATHEW: 'ma xiu',        // 馬修
+  MATIAS: 'ma di ya si',   // 馬蒂亞斯
+  MATTEO: 'ma te ao',      // 馬特奧
+  MATTIE: 'ma di',         // 瑪蒂
+  MAUREEN: 'mo lin',       // 莫琳
+  MAURICE: 'mo li si',     // 莫里斯
+  MAXINE: 'ma ke xin',     // 瑪克辛
+  MAXWELL: 'mai si wei er',// 麥斯威爾
+  MCKENZIE: 'mai ken qi',  // 麥肯琪
+  MEAGAN: 'mei gen',       // 梅根
+  MERCEDES: 'mei sai de si',// 梅賽德絲
+  MEREDITH: 'mei rui di si',// 梅瑞狄斯
+  MESSIAH: 'mi sai ya',    // 彌賽亞
+  MICHAELA: 'mi kai la',   // 蜜凱拉
+  MIKAYLA: 'mi kai la',    // 蜜凱拉
+  MILO: 'mai luo',         // 麥洛
+  MILTON: 'mi er dun',     // 米爾頓
+  MINDY: 'ming di',        // 明蒂
+  MINNIE: 'mi ni',         // 米妮
+  MONIQUE: 'mo ni ke',     // 莫妮克
+  MORRIS: 'mo li si',      // 莫里斯
+  MYA: 'mi ya',            // 米亞
+  NEIL: 'ni er',           // 尼爾
+  NICHOLE: 'ni ke',        // 妮可
+  NICO: 'ni ke',           // 尼可
+  NICOLAS: 'ni ke la si',  // 尼可拉斯
+  NINA: 'ni na',           // 妮娜
+  OAKLEY: 'ou ke li',      // 歐克莉
+  OAKLYNN: 'ou ke lin',    // 歐克琳
+  OLIVE: 'ao li fu',       // 奧莉芙
+  OMAR: 'ao ma',           // 奧瑪
+  PAM: 'pan',              // 潘
+  PAT: 'pai te',           // 派特
+  PATTI: 'pei di',         // 佩蒂
+  PATTY: 'pei di',         // 佩蒂
+  PAULETTE: 'bao lei te',  // 寶蕾特
+  PAULINE: 'bao lin',      // 寶琳
+  PAYTON: 'pei dun',       // 佩頓
+  PEDRO: 'pei de luo',     // 佩德羅
+  PENNY: 'pan ni',         // 潘妮
+  PERRY: 'pai rui',        // 派瑞
+  PRISCILLA: 'pu li xi la',// 普莉希拉
+  RACHAEL: 'rui qiu',      // 瑞秋
+  RAELYNN: 'rui lin',      // 瑞琳
+  RANDOLPH: 'lan dao fu',  // 蘭道夫
+  RAVEN: 'rui wen',        // 瑞雯
+  REBEKAH: 'lei bei ka',   // 蕾貝卡
+  REESE: 'rui si',         // 瑞絲
+  REGINALD: 'lei jin na de',// 雷金納德
+  REMI: 'lei mi',          // 雷米
+  REX: 'lei ke si',        // 雷克斯
+  RHETT: 'rui de',         // 瑞德
+  RICARDO: 'li ka duo',    // 里卡多
+  RICK: 'rui ke',          // 瑞克
+  RICKEY: 'rui qi',        // 瑞奇
+  RIVER: 'rui fo',         // 瑞佛
+  ROBERTO: 'luo bei tuo',  // 羅貝托
+  ROBYN: 'luo pin',        // 蘿蘋
+  ROLAND: 'luo lan',       // 羅蘭
+  RORY: 'luo li',          // 羅里
+  ROSA: 'luo sha',         // 蘿莎
+  ROSALIE: 'luo sha li',   // 蘿莎莉
+  ROSIE: 'luo xi',         // 蘿西
+  ROSS: 'luo si',          // 羅斯
+  ROXANNE: 'luo shan',     // 蘿珊
+  RUBEN: 'lu ben',         // 魯本
+  RYDER: 'lai de',         // 萊德
+  RYKER: 'lai ke',         // 萊克
+  RYLEE: 'lai li',         // 萊莉
+  RYLEIGH: 'lai li',       // 萊莉
+  SAGE: 'sai ji',          // 賽姬
+  SAMMY: 'shan mi',        // 山米
+  SANDY: 'shan di',        // 珊蒂
+  SAWYER: 'suo ye',        // 索耶
+  SCOTTIE: 'shi kao di',   // 史考蒂
+  SELENA: 'sai lin na',    // 賽琳娜
+  SERGIO: 'sai ji ou',     // 塞吉歐
+  SHARI: 'xue li',         // 雪莉
+  SHAUN: 'shang en',       // 尚恩
+  SHAWNA: 'shang na',      // 尚娜
+  SHEENA: 'xi na',         // 希娜
+  SHELIA: 'xi la',         // 希拉
+  SHELLEY: 'xue li',       // 雪莉
+  SHELLY: 'xue li',        // 雪莉
+  SHERI: 'xue li',         // 雪莉
+  SHERYL: 'xue rou',       // 雪柔
+  SIDNEY: 'xi de ni',      // 席德尼
+  SLOANE: 'shi long',      // 史隆
+  SONIA: 'sang ni ya',     // 桑妮雅
+  SONYA: 'sang ya',        // 桑雅
+  STACIE: 'shi dai xi',    // 史黛西
+  STEFANIE: 'shi dai fen ni',// 史黛芬妮
+  STETSON: 'si tai sen',   // 斯泰森
+  STUART: 'shi dou hua',   // 史都華
+  SUMMER: 'sang ma',       // 桑瑪
+  SUTTON: 'su dun',        // 蘇頓
+  TABITHA: 'ta bi sha',    // 塔比莎
+  TAMI: 'tan mei',         // 譚美
+  TAMMIE: 'tan mei',       // 譚美
+  TANNER: 'tan na',        // 坦納
+  TASHA: 'ta sha',         // 塔莎
+  TATE: 'tai te',          // 泰特
+  TATUM: 'ta tu mu',       // 塔圖姆
+  TED: 'tai de',           // 泰德
+  TERRANCE: 'tai lun si',  // 泰倫斯
+  TERRENCE: 'tai lun si',  // 泰倫斯
+  THELMA: 'sai er ma',     // 塞爾瑪
+  TONI: 'dong ni',         // 東妮
+  TRACI: 'cui xi',         // 崔西
+  TRACIE: 'cui xi',        // 崔西
+  TRENTON: 'chuan dun',    // 川頓
+  TRICIA: 'cui xi ya',     // 翠西亞
+  TUCKER: 'ta ke',         // 塔克
+  TYRONE: 'tai long',      // 泰隆
+  VALERIA: 'wa lai li ya', // 瓦萊莉亞
+  VERNON: 'fo nong',       // 佛農
+  VICKY: 'wei qi',         // 薇琪
+  VIRGIL: 'wei ji er',     // 維吉爾
+  VIVIENNE: 'wei wei an',  // 薇薇安
+  WALLACE: 'hua le si',    // 華勒斯
+  WARREN: 'hua lun',       // 華倫
+  WENDELL: 'wen de er',    // 溫德爾
+  WILLARD: 'wei la de',    // 威拉德
+  WILMA: 'wei ma',         // 威瑪
+  WRENLEY: 'rui en li',    // 芮恩莉
+  XANDER: 'shan de',       // 山德
+  XIMENA: 'xi mei na',     // 希梅娜
+  YESENIA: 'ye sai ni ya', // 葉賽妮雅
+  YOLANDA: 'you lan da',   // 尤蘭達
+  YVETTE: 'yi wei te',     // 伊薇特
+  YVONNE: 'yi feng',       // 伊鳳
+  ZAYDEN: 'zan deng',      // 贊登
+  ZION: 'xi an',           // 錫安
 };

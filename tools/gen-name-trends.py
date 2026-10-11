@@ -1,18 +1,14 @@
 # 產生 js/data/name-trends.js：美國 SSA 各年代英文名排名 + 台灣各出生年代前十大名字
 # 用法：
-#   1. 下載 SSA 逐年檔 yob1940.txt ~ yob2024.txt 到 tools/ssa/
-#      （ssa.gov 的 names.zip 會擋自動下載；鏡像：https://github.com/dxdc/babynames 的 raw/ 目錄）
+#   1. 下載 SSA 逐年檔 yob1940.txt ~ yob2025.txt 到 tools/ssa/
+#      （ssa.gov 的 names.zip 會擋 curl；用瀏覽器下載，或以 headless 瀏覽器開 ssa.gov 後在頁面內 fetch。
+#       SSA 每年會小幅修訂歷年人數，更新時要整包替換，不要只加新的一年）
 #   2. 在專案根目錄執行 python tools/gen-name-trends.py
 import collections, json
 
-DECADES = list(range(1940, 2030, 10))   # 2020 年代只到 2024
-LATEST = 2024
+DECADES = list(range(1940, 2030, 10))   # 2020 年代只到 2025
+LATEST = 2025
 
-# SSA 2025 年前十名（2026-05-08 官方公布；完整逐年檔尚未有可下載的鏡像）
-TOP_2025 = {
-    'M': ['Liam', 'Noah', 'Oliver', 'Theodore', 'Henry', 'James', 'Elijah', 'Mateo', 'William', 'Lucas'],
-    'F': ['Olivia', 'Charlotte', 'Emma', 'Amelia', 'Sophia', 'Mia', 'Isabella', 'Evelyn', 'Sofia', 'Eliana'],
-}
 
 # 內政部戶政司《全國姓名統計分析》112 年版，統計表五十六「各出生年前十大名字排名與人數按性別分」（第 280–281 頁）
 # 人數是 112 年 6 月 30 日仍設籍者，依出生年代分組；民國 1–9 年人數太少，不收
@@ -77,7 +73,7 @@ for y in range(DECADES[0], LATEST + 1):
         decade_counts[s][y // 10 * 10].update(d[s])
 latest = load(LATEST)
 
-us = {'decades': DECADES, 'latest': LATEST, 'top2025': TOP_2025}
+us = {'decades': DECADES, 'latest': LATEST}
 for s in 'FM':
     rk = {D: ranks(decade_counts[s][D]) for D in DECADES}
     r_latest = ranks(collections.Counter(latest[s]))

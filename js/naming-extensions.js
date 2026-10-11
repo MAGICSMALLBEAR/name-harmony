@@ -47,8 +47,7 @@ window.NamingExtensions = (function() {
       notFoundEnEra: '時代感：少見或新創的名字，不容易撞名；也可能是拼法較少見，可試試常見拼法。',
       sexTrendBadge: function(p) { return p.sexText + '名・' + p.trend; },
       peakLine: function(p) {
-        return '最流行：' + p.decade + ' 年代第 ' + p.rank + ' 名；' + p.latestYear + ' 年：' + (p.latest ? '第 ' + p.latest + ' 名' : '不在前 1,000 名') +
-          (p.top2025 ? '；2025 年第 ' + p.top2025 + ' 名' : '');
+        return '最流行：' + p.decade + ' 年代第 ' + p.rank + ' 名；' + p.latestYear + ' 年：' + (p.latest ? '第 ' + p.latest + ' 名' : '不在前 1,000 名');
       },
       eraLabel: '時代感：',
       twOverall: function(p) { return '全國' + p.sexText + '性第 ' + p.rank + ' 大常見名（' + num(p.count) + ' 人）'; },
@@ -202,8 +201,7 @@ window.NamingExtensions = (function() {
       notFoundEnEra: 'Era: rare or newly coined — unlikely to be shared. It may also be an uncommon spelling; try a common one.',
       sexTrendBadge: function(p) { return p.sexText + ' name · ' + p.trend; },
       peakLine: function(p) {
-        return 'Peak: #' + p.rank + ' in the ' + p.decade + 's; ' + p.latestYear + ': ' + (p.latest ? '#' + p.latest : 'not in top 1,000') +
-          (p.top2025 ? '; 2025: #' + p.top2025 : '');
+        return 'Peak: #' + p.rank + ' in the ' + p.decade + 's; ' + p.latestYear + ': ' + (p.latest ? '#' + p.latest : 'not in top 1,000');
       },
       eraLabel: 'Era: ',
       twOverall: function(p) { return ord(p.rank) + ' most common ' + p.sexText.toLowerCase() + ' name in Taiwan (' + num(p.count) + ' people)'; },
@@ -414,7 +412,7 @@ window.NamingExtensions = (function() {
   /**
    * 英文名在美國各年代的排名
    * @param sex 'F' | 'M' | ''（不指定時取排名較好的性別）
-   * @return { found:false } 或 { name, sex, decades:[{ decade, rank }], latest, peak, trend, era, top2025 }
+   * @return { found:false } 或 { name, sex, decades:[{ decade, rank }], latest, latestYear, peak, trend, era }
    */
   function trendEnglish(name, sex) {
     if (!buildIndex()) return { error: tr('trendsNotLoaded') };
@@ -431,7 +429,6 @@ window.NamingExtensions = (function() {
       var peak = Math.min.apply(null, e.ranks.slice(0, nDec).filter(Boolean));
       if (!best || peak < best.peakRank) best = { sex: s, e: e, peakRank: peak };
     });
-    var top25 = function(s) { var i = T.top2025[s].map(function(x) { return x.toLowerCase(); }).indexOf(key); return i >= 0 ? i + 1 : 0; };
     if (!best) return { found: false, name: key.charAt(0).toUpperCase() + key.slice(1), sex: sexes.length === 1 ? sexes[0] : '' };
 
     var ranks = best.e.ranks;
@@ -456,7 +453,7 @@ window.NamingExtensions = (function() {
 
     return {
       found: true, name: best.e.name, sex: best.sex, decades: decades, latest: latest,
-      latestYear: T.latest, peak: peak, trend: trend, era: era, top2025: top25(best.sex)
+      latestYear: T.latest, peak: peak, trend: trend, era: era
     };
   }
 
@@ -555,7 +552,7 @@ window.NamingExtensions = (function() {
     var html = '<div class="tool-cand"><div class="tool-cand-head"><span class="tool-cand-name">' + esc(r.name) + '</span>' +
       '<span class="tool-badge">' + tr('sexTrendBadge', { sexText: tr(r.sex), trend: tr('trend.' + r.trend) }) + '</span></div>';
     html += rankBars(r.decades);
-    html += '<p class="tool-line">' + tr('peakLine', { decade: r.peak.decade, rank: r.peak.rank, latestYear: r.latestYear, latest: r.latest, top2025: r.top2025 }) + '</p>';
+    html += '<p class="tool-line">' + tr('peakLine', { decade: r.peak.decade, rank: r.peak.rank, latestYear: r.latestYear, latest: r.latest }) + '</p>';
     html += '<p class="tool-line">' + tr('eraLabel') + esc(r.era) + '</p>';
     return html + '</div>';
   }

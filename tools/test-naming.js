@@ -60,7 +60,7 @@ section('熱門度資料格式', function() {
       rows.forEach(function(row) { var c = row.split(':')[1].split(',')[d]; if (c) seen[c] = (seen[c] || 0) + 1; });
       ok(Object.keys(seen).length === 1000 && Object.keys(seen).every(function(k) { return seen[k] === 1; }), sex + ' ' + T.us.decades[d] + ' 年代排名不連續');
     }
-    ok(T.us.top2025[sex].length === 10, sex + ' 2025 前十名');
+    ok(T.us.latest === 2025, sex + ' 最新年份 2025');
   });
   T.tw.decades.forEach(function(d) {
     ['M', 'F'].forEach(function(sex) {
@@ -85,7 +85,8 @@ section('英文名時代感（已知事實）', function() {
     ok(r.found && r.peak.decade === c[2] && r.peak.rank === c[3], c[0] + ' 巔峰應為 ' + c[2] + ' 年代第 ' + c[3] + ' 名，得到 ' + JSON.stringify(r.peak));
   });
   ok(N.trendEnglish('Olivia', 'F').latest === 1 && N.trendEnglish('Liam', 'M').latest === 1, '2024 年第一名');
-  ok(N.trendEnglish('Olivia', 'F').top2025 === 1 && N.trendEnglish('Eliana', 'F').top2025 === 10, '2025 前十名');
+  // SSA 2026-05-08 公布的 2025 年前十名：女 Olivia 第 1、Eliana 第 10；男 Liam 第 1、Theodore 第 4
+  ok(N.trendEnglish('Olivia', 'F').latest === 1 && N.trendEnglish('Eliana', 'F').latest === 10 && N.trendEnglish('Liam', 'M').latest === 1 && N.trendEnglish('Theodore', 'M').latest === 4, '2025 年排名');
   ok(N.trendEnglish('olivia smith', '').name === 'Olivia', '大小寫與姓氏');
   ok(N.trendEnglish('Emma', 'F').trend === 'steady', 'Emma 第 1 → 2 名應為持平');
   ok(N.trendEnglish('Linda', 'F').trend === 'falling' || N.trendEnglish('Linda', 'F').trend === 'steady', 'Linda 趨勢');
@@ -755,17 +756,17 @@ section('卡巴拉生命樹（路徑與四個世界）', function() {
   }
 });
 
-section('英文姓名資料覆蓋（SSA 各年代前 100 名）', function() {
+section('英文姓名資料覆蓋（SSA 各年代前 200 名）', function() {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', 'data', 'english-names.js'), 'utf8'), ctx, { filename: 'english-names.js' });
   var M = ctx.englishNameMeanings, X = ctx.EnglishTranslit, P = ctx.EnglishPhonetics, best = {};
   ['F', 'M'].forEach(function(s) {
     T.us[s].split('|').forEach(function(row) {
       var i = row.indexOf(':'), ranks = row.slice(i + 1).split(',').map(Number).filter(Boolean);
-      if (ranks.length && Math.min.apply(null, ranks) <= 100) best[row.slice(0, i).toUpperCase()] = true;
+      if (ranks.length && Math.min.apply(null, ranks) <= 200) best[row.slice(0, i).toUpperCase()] = true;
     });
   });
   var names = Object.keys(best);
-  ok(names.length > 600, '前 100 名共 ' + names.length + ' 個名字');
+  ok(names.length > 1100, '前 200 名共 ' + names.length + ' 個名字');
   var miss = function(o) { return names.filter(function(n) { return !o[n]; }); };
   ok(miss(M).length === 0, '都有字義，缺：' + miss(M).join(' '));
   ok(miss(X).length === 0, '都有中文譯名，缺：' + miss(X).join(' '));
