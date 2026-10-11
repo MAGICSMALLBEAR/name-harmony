@@ -5,6 +5,9 @@
 
 window.EnglishNumerology = (function() {
 
+  // 英文模式（js/l10n.js）
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+
   // ============ 畢達哥拉斯字母數字對照表 ============
   // 卡巴拉系統 (Chaldean/Hebrew) — 另一套字母數字對照
   var CHALDEAN_MAP = {
@@ -210,7 +213,7 @@ window.EnglishNumerology = (function() {
       var t = CYCLE_TEXT[reduceSingle(n)], b = bounds[i];
       return {
         number: n, name: names[i], startAge: b[0], endAge: b[1],
-        age: b[1] == null ? b[0] + ' 歲以後' : b[0] + '–' + b[1] + ' 歲',
+        age: b[1] == null ? L(b[0] + ' 歲以後', 'age ' + b[0] + '+') : L(b[0] + '–' + b[1] + ' 歲', 'ages ' + b[0] + '–' + b[1]),
         focus: t[i * 2], desc: t[i * 2 + 1]
       };
     });
@@ -250,7 +253,7 @@ window.EnglishNumerology = (function() {
       return {
         number: n,
         startAge: from, endAge: to,
-        age: to == null ? from + ' 歲以後' : from + '–' + to + ' 歲',
+        age: to == null ? L(from + ' 歲以後', 'age ' + from + '+') : L(from + '–' + to + ' 歲', 'ages ' + from + '–' + to),
         startYear: birth.year + from,
         title: m.title || '',
         keywords: m.keywords || ''

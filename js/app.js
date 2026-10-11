@@ -133,15 +133,13 @@
       window.I18N.setLang(next);
       window.I18N.apply(next);
       // 分析結果跟著換語言：英文要先載入字典
-      if (currentData) {
-        if (next === 'en' && window.L10N) window.L10N.load(rerenderLang);
-        else rerenderLang();
-      } else if (next === 'en' && window.L10N) window.L10N.load();
+      if (next === 'en' && window.L10N) window.L10N.load(function() { relabelPlaceOptions(); rerenderLang(); });
+      else { relabelPlaceOptions(); rerenderLang(); }
       toast(next === 'en' ? 'Switched to English' : '已切換為繁體中文');
     });
 
     // 字典比分析晚載入完（一開始就是英文模式）：重畫一次
-    document.addEventListener('l10n:ready', function() { if (currentData && window.L10N.en()) rerenderLang(); });
+    document.addEventListener('l10n:ready', function() { if (window.L10N.en()) { relabelPlaceOptions(); rerenderLang(); } });
 
     // 主題切換
     var themeToggle = document.getElementById('themeToggle');
@@ -299,7 +297,7 @@
     extraCount++;
     var clone = document.importNode(personTemplate.content, true);
     var el = clone.querySelector('.extra-person');
-    el.querySelector('.person-badge-extra').textContent = '成員' + (extraCount + 2);
+    el.querySelector('.person-badge-extra').textContent = LL('成員' + (extraCount + 2), 'Member ' + (extraCount + 2));
     el.querySelector('.btn-remove-person').addEventListener('click', function() {
       el.remove();
       extraCount--;
@@ -307,6 +305,7 @@
     });
     initPlaceSelects(el);
     extraPersons.appendChild(el);
+    relabelPlaceOptions();
     updateAddBtn();
     return el;
   }
@@ -326,6 +325,17 @@
       row.appendChild(box);
       sel.addEventListener('change', function() { toggleCustomPlace(sel); });
     });
+  }
+
+  /** 出生地選單跟著換語言：只改選項文字（原文存在 data-zh），不重建選單，已選的值不變 */
+  function relabelPlaceOptions() {
+    document.querySelectorAll('.place-input option, .place-input optgroup').forEach(function(o) {
+      var attr = o.tagName === 'OPTGROUP' ? 'label' : null;
+      if (o.dataset.zh === undefined) o.dataset.zh = attr ? o.label : o.textContent;
+      if (attr) o.label = T(o.dataset.zh); else o.textContent = T(o.dataset.zh);
+    });
+    document.querySelectorAll('.place-lat').forEach(function(i) { i.placeholder = LL('緯度（北正南負）', 'Latitude (+N / −S)'); });
+    document.querySelectorAll('.place-lon').forEach(function(i) { i.placeholder = LL('經度（東正西負）', 'Longitude (+E / −W)'); });
   }
 
   function toggleCustomPlace(sel) {

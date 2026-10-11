@@ -54,6 +54,10 @@ window.Phonetics = (function() {
   };
 
   var TONE_NAME = ['', '一聲', '二聲', '三聲', '四聲', '輕聲'];
+  var TONE_EN = ['', 'tone 1', 'tone 2', 'tone 3', 'tone 4', 'neutral tone'];
+  // 英文模式（js/l10n.js）：T 查字典、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
 
   /** 拼音拆成聲母、韻母、聲調 */
   function splitPy(py) {
@@ -127,30 +131,30 @@ window.Phonetics = (function() {
 
     // 聲調與平仄
     var tones = sylls.map(function(s) { return s ? s.tone : 0; });
-    var toneText = chars.map(function(c, i) { return c + (sylls[i] ? '（' + sylls[i].py.replace(/\d/, '') + ' ' + TONE_NAME[sylls[i].tone] + '）' : '（?）'); }).join(' ');
+    var toneText = chars.map(function(c, i) { return c + (sylls[i] ? L('（' + sylls[i].py.replace(/\d/, '') + ' ' + TONE_NAME[sylls[i].tone] + '）', ' (' + sylls[i].py.replace(/\d/, '') + ', ' + TONE_EN[sylls[i].tone] + ')') : L('（?）', ' (?)')); }).join(' ');
     if (known === chars.length) {
       var ping = tones.filter(function(t) { return t === 1 || t === 2; }).length;
       var ze = tones.filter(function(t) { return t === 3 || t === 4; }).length;
       var allSame = tones.every(function(t) { return t === tones[0]; });
-      if (allSame && chars.length >= 3) warns.push('全名都是' + TONE_NAME[tones[0]] + '，唸起來平板、缺少起伏');
-      else if (!ze) warns.push('全名都是平聲（一、二聲），聲音偏柔、少了頓挫');
-      else if (!ping) warns.push('全名都是仄聲（三、四聲），唸起來較硬、較費力');
-      else notes.push('平仄相間（平聲 ' + ping + '、仄聲 ' + ze + '），唸起來有高低起伏');
+      if (allSame && chars.length >= 3) warns.push(L('全名都是' + TONE_NAME[tones[0]] + '，唸起來平板、缺少起伏', 'Every character is ' + TONE_EN[tones[0]] + ', so the name sounds flat'));
+      else if (!ze) warns.push(L('全名都是平聲（一、二聲），聲音偏柔、少了頓挫', 'All level tones (1 and 2): soft-sounding, lacking contrast'));
+      else if (!ping) warns.push(L('全名都是仄聲（三、四聲），唸起來較硬、較費力', 'All oblique tones (3 and 4): sounds hard and takes effort to say'));
+      else notes.push(L('平仄相間（平聲 ' + ping + '、仄聲 ' + ze + '），唸起來有高低起伏', 'A mix of level and oblique tones (' + ping + ' level, ' + ze + ' oblique) gives the name a pleasant rise and fall'));
       var run3 = 0, maxRun3 = 0;
       tones.forEach(function(t) { run3 = t === 3 ? run3 + 1 : 0; maxRun3 = Math.max(maxRun3, run3); });
-      if (maxRun3 >= 3) warns.push('連續三個三聲，會產生連續變調，別人容易唸錯');
-      else if (maxRun3 === 2) notes.push('有兩個三聲相連，前一字會變成二聲（例：「小雨」唸成 xiáo yǔ），屬正常現象');
+      if (maxRun3 >= 3) warns.push(L('連續三個三聲，會產生連續變調，別人容易唸錯', 'Three third tones in a row trigger chained tone sandhi, so people often mispronounce it'));
+      else if (maxRun3 === 2) notes.push(L('有兩個三聲相連，前一字會變成二聲（例：「小雨」唸成 xiáo yǔ），屬正常現象', 'Two third tones in a row: the first becomes a second tone (e.g. 小雨 is said xiáo yǔ) — perfectly normal'));
       var last = tones[tones.length - 1];
-      notes.push(last === 1 || last === 2 ? '名字以平聲收尾，叫起來響亮、容易拉長' : '名字以仄聲收尾，叫起來短促有力');
+      notes.push(last === 1 || last === 2 ? L('名字以平聲收尾，叫起來響亮、容易拉長', 'Ends on a level tone: rings out clearly when called and is easy to draw out') : L('名字以仄聲收尾，叫起來短促有力', 'Ends on an oblique tone: short and punchy when called'));
     }
 
     // 拗口：相鄰字聲母或韻母相同（同字疊字除外）
     for (var i = 1; i < chars.length; i++) {
       var a = sylls[i - 1], b = sylls[i];
       if (!a || !b || chars[i] === chars[i - 1]) continue;
-      if (a.base === b.base) warns.push('「' + chars[i - 1] + chars[i] + '」同音（' + a.base + '），連讀像重複');
-      else if (a.ini && a.ini === b.ini) notes.push('「' + chars[i - 1] + chars[i] + '」聲母相同（' + a.ini + '），唸快時稍微繞口');
-      else if (a.fin === b.fin && a.fin.length >= 2) notes.push('「' + chars[i - 1] + chars[i] + '」韻母相同（' + a.fin + '），有押韻感，唸快時稍微繞口');
+      if (a.base === b.base) warns.push(L('「' + chars[i - 1] + chars[i] + '」同音（' + a.base + '），連讀像重複', '"' + chars[i - 1] + chars[i] + '" share the same sound (' + a.base + ') and sound repetitive together'));
+      else if (a.ini && a.ini === b.ini) notes.push(L('「' + chars[i - 1] + chars[i] + '」聲母相同（' + a.ini + '），唸快時稍微繞口', '"' + chars[i - 1] + chars[i] + '" share the initial ' + a.ini + ' — a slight tongue-twister when said quickly'));
+      else if (a.fin === b.fin && a.fin.length >= 2) notes.push(L('「' + chars[i - 1] + chars[i] + '」韻母相同（' + a.fin + '），有押韻感，唸快時稍微繞口', '"' + chars[i - 1] + chars[i] + '" rhyme (-' + a.fin + ') — a slight tongue-twister when said quickly'));
     }
 
     // 不雅諧音：全名、名字、以及常見叫法（小X、阿X、疊字）
@@ -162,13 +166,13 @@ window.Phonetics = (function() {
       [['小', 'xiao3'], ['阿', 'a1']].forEach(function(pre) {
         if (chars.join('').indexOf(pre[0] + last) >= 0) return; // 名字本身就是這個叫法，已在上面的諧音檢查
         var h = findHomophones([splitPy(pre[1]), lastPy], [pre[0], last]).filter(function(x) { return x.level === 3; });
-        h.forEach(function(x) { nicknames.push('「' + pre[0] + last + '」聽起來像「' + x.word + '」'); });
+        h.forEach(function(x) { nicknames.push(L('「' + pre[0] + last + '」聽起來像「' + x.word + '」', 'The nickname "' + pre[0] + last + '" sounds like "' + x.word + '"')); });
       });
       findHomophones([lastPy, lastPy], [last, last]).filter(function(x) { return x.level === 3; })
-        .forEach(function(x) { nicknames.push('疊字「' + last + last + '」聽起來像「' + x.word + '」'); });
+        .forEach(function(x) { nicknames.push(L('疊字「' + last + last + '」聽起來像「' + x.word + '」', 'The doubled nickname "' + last + last + '" sounds like "' + x.word + '"')); });
     }
     var sn = SURNAME_NICK[parsed.surname];
-    if (sn) nicknames.push('姓「' + parsed.surname + '」在學校常被聯想成「' + sn + '」');
+    if (sn) nicknames.push(L('姓「' + parsed.surname + '」在學校常被聯想成「' + sn + '」', 'At school the surname "' + parsed.surname + '" is often teased as "' + sn + '"'));
 
     // 評等
     var severe = homos.filter(function(h) { return h.level >= 2; }).length;
@@ -249,10 +253,11 @@ window.Phonetics = (function() {
     var syll = stress.length;
     var primary = stress.indexOf('1') + 1;
     var notes = [], warns = [];
-    notes.push(syll + ' 個音節' + (syll > 1 ? '，重音在第 ' + primary + ' 音節' : '') + (estimated ? '（依拼字估計）' : ''));
-    if (syll >= 4) warns.push('音節較多，朋友之間常會簡稱');
+    notes.push(L(syll + ' 個音節' + (syll > 1 ? '，重音在第 ' + primary + ' 音節' : '') + (estimated ? '（依拼字估計）' : ''),
+      syll + ' syllable' + (syll > 1 ? 's, stress on syllable ' + primary : '') + (estimated ? ' (estimated from spelling)' : '')));
+    if (syll >= 4) warns.push(L('音節較多，朋友之間常會簡稱', 'Several syllables — friends will often shorten it'));
     var hard = flags.map(function(f) { return FLAG_TEXT[f]; }).filter(Boolean);
-    if (!hard.length) notes.push('沒有華語使用者特別難發的音，容易唸對');
+    if (!hard.length) notes.push(L('沒有華語使用者特別難發的音，容易唸對', 'No sounds that are especially hard for Mandarin speakers — easy to say correctly'));
     var slang = SLANG[key] || null;
     var grade = slang ? '需注意' : hard.length >= 2 ? '尚可' : '良好';
     return { name: key.charAt(0) + key.slice(1).toLowerCase(), syllables: syll, stressAt: primary, stress: stress, hard: hard, slang: slang, notes: notes, warns: warns, estimated: estimated, grade: grade };

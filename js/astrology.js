@@ -3,6 +3,10 @@
  */
 window.Astrology = (function() {
 
+  // 英文模式（js/l10n.js）
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+
   var PLANETS = [
     {n:'太陽',e:'☀️',el:'火',desc:'核心自我、生命力、外在形象。代表你的本質與人生目標。'},
     {n:'月亮',e:'🌙',el:'水',desc:'情緒、潛意識、內在需求。代表你的情感模式與安全感來源。'},
@@ -119,7 +123,8 @@ window.Astrology = (function() {
             p2: planets[j].name, p2Emoji: planets[j].emoji,
             type: def.type, angle: def.angle + '°', orb: Math.round(orb * 10) / 10,
             nature: def.nature, priority: def.priority,
-            desc: planets[i].name + '與' + planets[j].name + '形成' + def.type + '（' + def.angle + '°，容許度 ' + orb.toFixed(1) + '°）：' + def.desc
+            desc: L(planets[i].name + '與' + planets[j].name + '形成' + def.type + '（' + def.angle + '°，容許度 ' + orb.toFixed(1) + '°）：' + def.desc,
+              T(planets[i].name) + ' and ' + T(planets[j].name) + ' form a ' + T(def.type).toLowerCase() + ' (' + def.angle + '°, orb ' + orb.toFixed(1) + '°): ' + T(def.desc))
           });
           break;
         }
@@ -178,7 +183,7 @@ window.Astrology = (function() {
       moonSign: planets[1].sign,
       ascendant: asc != null ? { lon: asc, sign: signOf(asc), degree: fmtDeg(asc) } : null,
       timeKnown: timeKnown,
-      houseSystem: timeKnown ? '整宮制（' + place.name + '）' : '太陽宮位制',
+      houseSystem: timeKnown ? L('整宮制（' + place.name + '）', 'Whole Sign (' + T(place.name) + ')') : L('太陽宮位制', 'Solar houses'),
       planets: planets,
       aspects: getAspects(planets, !timeKnown),
       elementScore: score,

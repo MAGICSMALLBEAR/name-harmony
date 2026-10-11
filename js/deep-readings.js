@@ -3,6 +3,10 @@
  */
 window.DeepReadings = (function() {
 
+  // 英文模式（js/l10n.js）：T 查字典、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+
   // ========== 易經爻辭擴充 ==========
   function getHexagramDeepReading(hexResult, cnResult) {
     if (!hexResult) return '';
@@ -74,7 +78,7 @@ window.DeepReadings = (function() {
     if (!tarot) return '';
 
     var parts = [];
-    parts.push('【塔羅本命牌】' + tarot.e + ' ' + tarot.card);
+    parts.push(L('【塔羅本命牌】', '[Birth Tarot Card] ') + tarot.e + ' ' + T(tarot.card));
 
     // 擴充解讀
     var expanded = {
@@ -91,12 +95,14 @@ window.DeepReadings = (function() {
       'XXI 世界': '正位：完成、圓滿、成就。你已走到一個重要里程碑。享受成功的喜悅，準備迎接下一個循環。逆位：未完成的課題或延遲。',
       '0 愚者': '正位：新的開始、冒險、無限可能。你正站在一個全新的起點，帶著赤子之心踏上未知的旅程。相信宇宙的安排。逆位：魯莽、不負責任。'
     };
-    if (expanded[tarot.card]) parts.push(expanded[tarot.card]);
+    if (expanded[tarot.card]) parts.push(T(expanded[tarot.card]));
 
     // 與名字關聯
     if (enResult) {
-      parts.push('【與你的名字】你的命運數字是' + destinyNumber + '，這張牌反映你人生旅程的核心課題。' +
-        '當你在人生重要關頭需要指引時，可以回想這張牌的智慧。');
+      parts.push(L('【與你的名字】你的命運數字是' + destinyNumber + '，這張牌反映你人生旅程的核心課題。' +
+        '當你在人生重要關頭需要指引時，可以回想這張牌的智慧。',
+        '[Your name] Your Destiny Number is ' + destinyNumber + ', and this card reflects the core lesson of your life journey. ' +
+        'When you need guidance at an important moment, recall the wisdom of this card.'));
     }
 
     return parts.join('\n\n');
@@ -122,9 +128,11 @@ window.DeepReadings = (function() {
     if (isMaster) base = chaldeanNum === 11 ? 2 : chaldeanNum === 22 ? 4 : 6;
     var s = sephiroth[base] || sephiroth[9];
     var head = isMaster
-      ? '【卡巴拉生命樹】' + chaldeanNum + ' 屬大師數，化簡為 ' + base + '，對應生命之樹的「' + s.n + '」質點。'
-      : '【卡巴拉生命樹】數字' + chaldeanNum + '對應生命之樹的「' + s.n + '」質點。';
-    return head + s.desc + ' 代表色：' + s.color + '。';
+      ? L('【卡巴拉生命樹】' + chaldeanNum + ' 屬大師數，化簡為 ' + base + '，對應生命之樹的「' + s.n + '」質點。',
+        '[Kabbalah Tree of Life] ' + chaldeanNum + ' is a master number; reduced to ' + base + ', it corresponds to the sephirah ' + T(s.n) + '. ')
+      : L('【卡巴拉生命樹】數字' + chaldeanNum + '對應生命之樹的「' + s.n + '」質點。',
+        '[Kabbalah Tree of Life] The number ' + chaldeanNum + ' corresponds to the sephirah ' + T(s.n) + '. ');
+    return head + T(s.desc) + L(' 代表色：' + s.color + '。', ' Color: ' + T(s.color + '色') + '.');
   }
 
   // ---------- 生命之樹的 22 條路徑與四個世界（金色黎明系統） ----------
@@ -171,6 +179,8 @@ window.DeepReadings = (function() {
     { p: 31, h: 'ש', l: 'Shin', a: 8, b: 10, t: 'XX 審判', kind: '母', attr: '火', el: '火' },
     { p: 32, h: 'ת', l: 'Tav', a: 9, b: 10, t: 'XXI 世界', kind: '雙', attr: '土星（兼屬土）', el: '土' }
   ];
+  function sephShort(k) { var n = SEPH[k].n.split(' '); return L(n[1], n[0]); }
+
   var BY_LETTER = {};
   PATHS.forEach(function(x) { BY_LETTER[x.l] = x; });
   var KIND_TEXT = { '母': '母字母（元素）', '雙': '雙字母（行星）', '單': '單字母（星座）' };
@@ -252,11 +262,11 @@ window.DeepReadings = (function() {
     var used = {};
     (tree ? tree.paths : []).forEach(function(x) { used[x.path.p] = x.count; });
     var gold = 'var(--color-gold-primary, #D4A843)', dim = 'var(--color-text-muted, #8B7355)';
-    var svg = '<svg viewBox="0 0 300 470" role="img" aria-label="生命之樹" style="width:100%;max-width:260px;display:block;margin:6px auto;">';
+    var svg = '<svg viewBox="0 0 300 470" role="img" aria-label="' + L('生命之樹', 'Tree of Life') + '" style="width:100%;max-width:260px;display:block;margin:6px auto;">';
     PATHS.forEach(function(x) {
       var A = POS[x.a], B = POS[x.b], n = used[x.p] || 0;
       svg += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="' + (n ? gold : dim) + '"'
-        + ' stroke-width="' + (n ? Math.min(2 + n, 7) : 1) + '" stroke-opacity="' + (n ? 0.9 : 0.35) + '"><title>' + x.p + ' ' + x.l + ' ' + x.h + ' — ' + x.t + (n ? '（名字 ×' + n + '）' : '') + '</title></line>';
+        + ' stroke-width="' + (n ? Math.min(2 + n, 7) : 1) + '" stroke-opacity="' + (n ? 0.9 : 0.35) + '"><title>' + x.p + ' ' + x.l + ' ' + x.h + ' — ' + T(x.t) + (n ? L('（名字 ×' + n + '）', ' (name ×' + n + ')') : '') + '</title></line>';
       if (n) {
         var mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
         svg += '<text x="' + mx + '" y="' + (my + 4) + '" text-anchor="middle" font-size="13" fill="' + gold + '" stroke="var(--color-bg-card, #3D2218)" stroke-width="3" paint-order="stroke">' + x.h + '</text>';
@@ -264,8 +274,8 @@ window.DeepReadings = (function() {
     });
     for (var k = 1; k <= 10; k++) {
       var P = POS[k], me = tree && tree.base === k;
-      svg += '<circle cx="' + P[0] + '" cy="' + P[1] + '" r="17" fill="' + (me ? gold : 'var(--color-bg-card, #3D2218)') + '" stroke="' + gold + '" stroke-width="' + (me ? 3 : 1.5) + '"><title>' + k + ' ' + SEPH[k].n + '</title></circle>';
-      svg += '<text x="' + P[0] + '" y="' + (P[1] + 4) + '" text-anchor="middle" font-size="11" fill="' + (me ? 'var(--color-bg-deep, #1A0A0A)' : gold) + '">' + SEPH[k].n.split(' ')[1] + '</text>';
+      svg += '<circle cx="' + P[0] + '" cy="' + P[1] + '" r="17" fill="' + (me ? gold : 'var(--color-bg-card, #3D2218)') + '" stroke="' + gold + '" stroke-width="' + (me ? 3 : 1.5) + '"><title>' + k + ' ' + T(SEPH[k].n) + '</title></circle>';
+      svg += '<text x="' + P[0] + '" y="' + (P[1] + 4) + '" text-anchor="middle" font-size="' + L(11, 8) + '" fill="' + (me ? 'var(--color-bg-deep, #1A0A0A)' : gold) + '">' + sephShort(k) + '</text>';
     }
     return svg + '</svg>';
   }
@@ -275,43 +285,53 @@ window.DeepReadings = (function() {
     if (!tree) return '';
     var parts = [];
     var s = tree.sephirah;
-    parts.push('【本命質點】' + s.n + '：位於' + s.pillar + '，屬於' + s.world + '。與它相連的路徑有 ' + tree.adjacent.length + ' 條：'
-      + tree.adjacent.map(function(x) { return x.l + '（' + x.t + '）'; }).join('、') + '。');
+    parts.push(L('【本命質點】' + s.n + '：位於' + s.pillar + '，屬於' + s.world + '。與它相連的路徑有 ' + tree.adjacent.length + ' 條：'
+      + tree.adjacent.map(function(x) { return x.l + '（' + x.t + '）'; }).join('、') + '。',
+      '[Your sephirah] ' + T(s.n) + ': on the ' + T(s.pillar) + ', in ' + T(s.world) + '. ' + tree.adjacent.length + ' paths connect to it: '
+      + tree.adjacent.map(function(x) { return x.l + ' (' + T(x.t) + ')'; }).join(', ') + '.'));
     if (tree.paths.length) {
-      parts.push('【名字走過的路徑】依金色黎明的轉寫，名字的字母化為 ' + tree.letters.length + ' 個希伯來字母，走過 ' + tree.paths.length + ' 條路徑：');
+      parts.push(L('【名字走過的路徑】依金色黎明的轉寫，名字的字母化為 ' + tree.letters.length + ' 個希伯來字母，走過 ' + tree.paths.length + ' 條路徑：',
+        '[Paths your name walks] Using the Golden Dawn transliteration, your name becomes ' + tree.letters.length + ' Hebrew letters walking ' + tree.paths.length + ' paths:'));
       parts.push(tree.paths.map(function(x) {
         var p = x.path;
-        return '・路徑 ' + p.p + ' ' + p.h + ' ' + p.l + '（' + x.src.join('/') + (x.count > 1 ? '，×' + x.count : '') + '）：'
-          + SEPH[p.a].n.split(' ')[1] + '↔' + SEPH[p.b].n.split(' ')[1] + '，' + KIND_TEXT[p.kind] + '・' + p.attr + '，塔羅「' + p.t + '」';
+        return L('・路徑 ' + p.p + ' ' + p.h + ' ' + p.l + '（' + x.src.join('/') + (x.count > 1 ? '，×' + x.count : '') + '）：'
+          + sephShort(p.a) + '↔' + sephShort(p.b) + '，' + KIND_TEXT[p.kind] + '・' + p.attr + '，塔羅「' + p.t + '」',
+          '・Path ' + p.p + ' ' + p.h + ' ' + p.l + ' (' + x.src.join('/') + (x.count > 1 ? ', ×' + x.count : '') + '): '
+          + sephShort(p.a) + '↔' + sephShort(p.b) + ', ' + T(KIND_TEXT[p.kind]) + ' · ' + T(p.attr) + ', tarot "' + T(p.t) + '"');
       }).join('\n'));
       var top = tree.paths[0];
       if (top.count > 1 && (tree.paths.length === 1 || tree.paths[1].count < top.count)) {
-        parts.push('名字最常走的是路徑 ' + top.path.p + '（' + top.path.l + '，' + top.path.t + '），這條路的課題在你的名字裡反覆出現。');
+        parts.push(L('名字最常走的是路徑 ' + top.path.p + '（' + top.path.l + '，' + top.path.t + '），這條路的課題在你的名字裡反覆出現。',
+          'Your name walks path ' + top.path.p + ' (' + top.path.l + ', ' + T(top.path.t) + ') most often — its lesson keeps returning in your name.'));
       }
       if (tree.adjacent.some(function(x) { return x.p === top.path.p; })) {
-        parts.push('這條路徑正好連到你的本命質點，名字與靈數指向同一處。');
+        parts.push(L('這條路徑正好連到你的本命質點，名字與靈數指向同一處。', 'This path connects directly to your sephirah — your name and your number point to the same place.'));
       }
       var k = tree.kinds;
-      parts.push('字母分類：母字母 ' + k['母'] + '、雙字母 ' + k['雙'] + '、單字母 ' + k['單'] + '。'
-        + (k['母'] > k['雙'] && k['母'] > k['單'] ? '母字母偏多，名字帶著較強的元素性、根本性的力量。'
-          : k['雙'] > k['母'] && k['雙'] > k['單'] ? '雙字母偏多，名字與行星的兩面性（剛柔、順逆）連結較深。'
-          : k['單'] > k['母'] && k['單'] > k['雙'] ? '單字母偏多，名字的能量偏向星座所代表的日常性格與節奏。' : ''));
+      parts.push(L('字母分類：母字母 ' + k['母'] + '、雙字母 ' + k['雙'] + '、單字母 ' + k['單'] + '。', 'Letter types: ' + k['母'] + ' mother, ' + k['雙'] + ' double, ' + k['單'] + ' simple. ')
+        + (k['母'] > k['雙'] && k['母'] > k['單'] ? L('母字母偏多，名字帶著較強的元素性、根本性的力量。', 'Mostly mother letters: your name carries strong elemental, fundamental force.')
+          : k['雙'] > k['母'] && k['雙'] > k['單'] ? L('雙字母偏多，名字與行星的兩面性（剛柔、順逆）連結較深。', 'Mostly double letters: your name is closely tied to the two-sidedness of the planets (hard and soft, direct and retrograde).')
+          : k['單'] > k['母'] && k['單'] > k['雙'] ? L('單字母偏多，名字的能量偏向星座所代表的日常性格與節奏。', 'Mostly simple letters: your name leans toward the everyday temperament and rhythm of the zodiac signs.') : ''));
     }
-    parts.push('【四個世界】');
+    parts.push(L('【四個世界】', '[The Four Worlds]'));
     parts.push(tree.worlds.map(function(w) {
-      return '・' + w.n + '（' + w.el + '・' + w.yhvh + '・' + w.suit + '）' + (tree.withElement ? '：名字 ' + w.count + ' 個字母' : '') + ' — ' + w.desc;
+      return L('・' + w.n + '（' + w.el + '・' + w.yhvh + '・' + w.suit + '）' + (tree.withElement ? '：名字 ' + w.count + ' 個字母' : '') + ' — ' + w.desc,
+        '・' + T(w.n) + ' (' + T(w.el) + ' · ' + T(w.yhvh) + ' · ' + T(w.suit) + ')' + (tree.withElement ? ': ' + w.count + ' letter' + (w.count === 1 ? '' : 's') + ' in your name' : '') + ' — ' + T(w.desc));
     }).join('\n'));
     if (tree.mainWorld) {
-      parts.push('名字的元素最集中在「' + tree.mainWorld.n + '」，你最自在的層次是' + tree.mainWorld.desc.replace(/。$/, '') + '。'
-        + (tree.mainWorld.n !== s.world ? '本命質點則在' + s.world + '，兩個層次之間的落差，就是你成長的方向。' : '與本命質點同一個世界，內外一致。'));
+      parts.push(L('名字的元素最集中在「' + tree.mainWorld.n + '」，你最自在的層次是' + tree.mainWorld.desc.replace(/。$/, '') + '。'
+        + (tree.mainWorld.n !== s.world ? '本命質點則在' + s.world + '，兩個層次之間的落差，就是你成長的方向。' : '與本命質點同一個世界，內外一致。'),
+        'Your name\'s elements gather most in ' + T(tree.mainWorld.n) + ' — the level where you feel most at home: ' + T(tree.mainWorld.desc).replace(/\.$/, '') + '. '
+        + (tree.mainWorld.n !== s.world ? 'Your sephirah sits in ' + T(s.world) + '; the gap between the two levels is your direction of growth.' : 'It is the same world as your sephirah — inner and outer are aligned.')));
     } else if (tree.withElement) {
       var max = Math.max.apply(null, tree.worlds.map(function(w) { return w.count; }));
       var tied = tree.worlds.filter(function(w) { return w.count === max; });
       parts.push(tied.length === 4
-        ? '名字的元素平均分布在四個世界，沒有特別偏重的層次。'
-        : '名字的元素在' + tied.map(function(w) { return '「' + w.n + '」'; }).join('與') + '並列最多，這幾個層次對你同樣重要。');
+        ? L('名字的元素平均分布在四個世界，沒有特別偏重的層次。', 'Your name\'s elements are spread evenly across the four worlds, with no level standing out.')
+        : L('名字的元素在' + tied.map(function(w) { return '「' + w.n + '」'; }).join('與') + '並列最多，這幾個層次對你同樣重要。',
+          'Your name\'s elements are tied between ' + tied.map(function(w) { return T(w.n); }).join(' and ') + ' — these levels matter equally to you.'));
     }
-    parts.push('（字母轉寫與四個世界的劃分依金色黎明系統；不同流派的對應略有差異，僅供參考。）');
+    parts.push(L('（字母轉寫與四個世界的劃分依金色黎明系統；不同流派的對應略有差異，僅供參考。）', '(Transliteration and the division into four worlds follow the Golden Dawn system; other schools differ slightly. For reference only.)'));
     return parts.join('\n');
   }
 
