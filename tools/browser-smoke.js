@@ -330,7 +330,7 @@
     out.renameUnknown = rename.querySelector('.rename-result').innerText.trim();
 
     // 英文模式：分析後才切語言，配對解說要重新產生；矩陣、團隊、開運指南不該剩中文
-    // （鑑定書只剩使用者的名字、建議用字與易經段落）；點矩陣格子要開到同一組最高分的配對
+    // （鑑定書只剩使用者的名字與建議用字，易經卦爻也是英文）；點矩陣格子要開到同一組最高分的配對
     {
       const zhOf = s => (s.match(/[一-鿿]/g) || []).length;
       $('langToggle').click();
@@ -339,8 +339,7 @@
       cell.click();
       const opened = (document.querySelector('#modalBody .pair-score-value') || {}).textContent;
       $('modalClose').click();
-      const reportZh = $('reportContent').innerText.replace(/【卦象解讀】[\\s\\S]*?(?=Excellent|Above Average|Average|Below Average|Poor)/g, '')
-        .replace(/陳小明|林大維/g, '').replace(/(Wood|Fire|Earth|Metal|Water): [一-鿿、]+/g, '');
+      const reportZh = $('reportContent').innerText.replace(/陳小明|林大維/g, '').replace(/(Wood|Fire|Earth|Metal|Water): [一-鿿、]+/g, '');
       out.englishTabs = ['matrixContent', 'teamContent', 'luckyContent'].map(id => id + ':' + zhOf($(id).innerText)).join(' ')
         + ' report:' + zhOf(reportZh) + ' click:' + (opened === cell.querySelector('.matrix-score-big').textContent ? 'same' : opened)
         + (zhOf(reportZh) ? '\\n' + [...new Set(reportZh.match(/[^\\n]*[一-鿿][^\\n]*/g))].map(s => s.slice(0, 120)).join('\\n') : '');

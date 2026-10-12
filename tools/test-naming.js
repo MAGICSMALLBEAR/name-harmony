@@ -830,6 +830,13 @@ section('英文分析內容字典（js/l10n）', function() {
   for (var i = 1; i <= 81; i++) {
     ok(L.has(F[i].name) && L.has(F[i].description) && L.has(F[i].implication), i + ' 數有英文');
   }
+  // 易經：64 卦卦名、簡解都有英文；384 爻各有 [原文英譯, 白話英譯]
+  var noZh = function(s) { return typeof s === 'string' && s.trim() && !/[　-〿㐀-鿿＀-￯]/.test(s); };
+  ctx.IChing.HEXAGRAMS.slice(1).forEach(function(h, k) {
+    ok(L.has(h.n) && L.has(h.d), (k + 1) + ' ' + h.n + ' 卦名與簡解有英文');
+    var y = L.ICHING_YAO && L.ICHING_YAO[k + 1];
+    ok(y && y.length === 6 && y.every(function(p) { return p.length === 2 && noZh(p[0]) && noZh(p[1]); }), (k + 1) + ' ' + h.n + ' 六爻英譯');
+  });
 });
 
 section('AI 解讀用量與費用估算', function() {

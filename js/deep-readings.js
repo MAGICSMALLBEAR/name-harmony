@@ -8,42 +8,55 @@ window.DeepReadings = (function() {
   function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
 
   // ========== 易經爻辭擴充 ==========
+  // 英文模式：卦名、卦辭簡解在 l10n/iching.js 的字典；爻辭英譯在 L10N.ICHING_YAO（[原文英譯, 白話英譯] ×6）
   function getHexagramDeepReading(hexResult, cnResult) {
     if (!hexResult) return '';
     var parts = [];
     var hex = hexResult;
 
-    parts.push('【卦象解讀】' + hex.hexUnicode + ' ' + hex.hexName);
-    parts.push('本卦「' + hex.hexName + '」五行屬' + hex.element + '，判為' + hex.glory + '。');
-    parts.push(hex.description);
+    parts.push(L('【卦象解讀】', '[Hexagram] ') + hex.hexUnicode + ' ' + T(hex.hexName));
+    parts.push(L('本卦「' + hex.hexName + '」五行屬' + hex.element + '，判為' + hex.glory + '。',
+      'Primary hexagram: ' + T(hex.hexName) + '. Element: ' + T(hex.element) + '; verdict: ' + T(hex.glory) + '.'));
+    parts.push(T(hex.description));
 
     // 爻辭解讀
     var yaoReadings = getYaoReading(hex.hexIndex, hex.movingYao);
     if (yaoReadings) {
-      parts.push('【動爻解析 — 第' + hex.movingYao + '爻】');
+      parts.push(L('【動爻解析 — 第' + hex.movingYao + '爻】', '[Moving Line — line ' + hex.movingYao + ' from the bottom]'));
       parts.push(yaoReadings);
     }
 
     // 變卦（動爻陰陽翻轉）
     var changedHex = getChangedHexagram(hex);
     if (changedHex) {
-      parts.push('【變卦】' + changedHex.u + ' ' + changedHex.n + '（' + changedHex.g + '）');
-      parts.push('此卦代表事情發展的趨勢與結果：' + changedHex.d);
+      parts.push(L('【變卦】' + changedHex.u + ' ' + changedHex.n + '（' + changedHex.g + '）',
+        '[Changing To] ' + changedHex.u + ' ' + T(changedHex.n) + ' (' + T(changedHex.g) + ')'));
+      parts.push(L('此卦代表事情發展的趨勢與結果：', 'This shows where things are heading: ') + T(changedHex.d));
     }
 
     // 人生指引
-    parts.push('【對你的啟示】');
+    parts.push(L('【對你的啟示】', '[What It Means for You]'));
     parts.push(getPersonalGuidance(hex.glory, cnResult));
 
     return parts.join('\n\n');
+  }
+
+  /** 爻題英譯：初九 → Nine at the beginning、六二 → Six in the second place、上六 → Six at the top */
+  var YAO_PLACE = { '初': 'at the beginning', '二': 'in the second place', '三': 'in the third place', '四': 'in the fourth place', '五': 'in the fifth place', '上': 'at the top' };
+  function yaoTitleEn(title) {
+    var num = title.indexOf('九') >= 0 ? 'Nine' : 'Six';
+    var place = YAO_PLACE[title.replace(/[九六]/g, '')];
+    return place ? num + ' ' + place : title;
   }
 
   /** 動爻爻辭：原文＋白話（js/data/iching-yao.js）；資料未載入時退回爻位解讀 */
   function getYaoReading(hexIdx, yao) {
     var lines = window.IChingYao && window.IChingYao[hexIdx];
     var y = lines && lines[yao - 1];
-    if (y) return y[0] + '：' + y[1] + '\n白話：' + y[2];
-    return '（爻辭資料未載入，以下依爻位解讀）' + YAO_POSITION[yao];
+    var en = window.L10N && window.L10N.en() && window.L10N.ICHING_YAO && window.L10N.ICHING_YAO[hexIdx];
+    if (y && en && en[yao - 1]) return yaoTitleEn(y[0]) + ': ' + en[yao - 1][0] + '\nIn plain words: ' + en[yao - 1][1];
+    if (y && !(window.L10N && window.L10N.en())) return y[0] + '：' + y[1] + '\n白話：' + y[2];
+    return L('（爻辭資料未載入，以下依爻位解讀）', '(Line text not available; reading by line position) ') + L(YAO_POSITION[yao], YAO_POSITION_EN[yao]);
   }
 
   // 六爻爻位的基本意義：由下而上代表事情的發展階段
@@ -55,6 +68,14 @@ window.DeepReadings = (function() {
     5: '五爻居上卦之中，是全卦最尊貴的君位，多半為吉。宜承擔責任、發揮影響力，是全局的關鍵。',
     6: '上爻居全卦之極，物極必反。此時宜知所進退、見好就收，不宜戀棧。'
   };
+  var YAO_POSITION_EN = {
+    1: 'The first line sits at the very bottom and marks the beginning of a matter. Position and strength are still slight: prepare quietly and lay foundations rather than rushing to show yourself.',
+    2: 'The second line is central in the lower trigram, usually one of the steadiest places. Keep to the middle way, cooperate with others and build steadily.',
+    3: 'The third line is at the top of the lower trigram, on the border between inner and outer, caught between advancing and retreating — traditionally a dangerous place. Be careful and restrained; do not push ahead.',
+    4: 'The fourth line begins the upper trigram: close to the centre of power but not yet secure. Speak and act carefully, watch the situation and move when the time is right.',
+    5: 'The fifth line is central in the upper trigram — the ruler\'s place and usually auspicious. Take responsibility and use your influence; this is the key to the whole situation.',
+    6: 'The top line is at the extreme of the hexagram, where things turn into their opposite. Know when to stop, quit while ahead and do not cling to your position.'
+  };
 
   function getChangedHexagram(hexResult) {
     if (!hexResult) return null;
@@ -64,10 +85,14 @@ window.DeepReadings = (function() {
 
   function getPersonalGuidance(glory, cnResult) {
     var guides = {
-      '大吉': '這是一個極為吉利的卦象。命運正處於上升期，現在是展開新計劃、建立新關係的最佳時機。你的名字筆劃所起的卦與你的命格高度契合，建議把握當下的好運，勇敢前行。',
-      '吉': '整體卦象吉祥，雖然不是完美無缺，但主流是好的。建議在順利時也保持警惕，不要在順境中放鬆警覺。你的名字與此卦的能量相容，可以信賴自己的直覺。',
-      '平': '卦象平穩，沒有大起大落。這是一個適合耕耘而非收穫的時期。建議踏實地做好每件小事，累積實力。' + (cnResult ? '你的人格「' + cnResult.grids.ren.name + '」為' + cnResult.grids.ren.number + '劃，建議多加發揮' + cnResult.grids.ren.element + '屬性的優勢。' : ''),
-      '凶': '卦象警示較多阻礙，但易經的核心精神是「變易」— 凶中可以轉吉。現在最重要的是保持耐心與冷靜，不要做重大決定。靜待時機，凶象自然會過去。'
+      '大吉': L('這是一個極為吉利的卦象。命運正處於上升期，現在是展開新計劃、建立新關係的最佳時機。你的名字筆劃所起的卦與你的命格高度契合，建議把握當下的好運，勇敢前行。',
+        'A very auspicious hexagram. Your fortunes are on the rise, making this the best time to start new plans and new relationships. The hexagram cast from your name\'s strokes fits your chart closely — seize the moment and move forward boldly.'),
+      '吉': L('整體卦象吉祥，雖然不是完美無缺，但主流是好的。建議在順利時也保持警惕，不要在順境中放鬆警覺。你的名字與此卦的能量相容，可以信賴自己的直覺。',
+        'An auspicious hexagram overall — not flawless, but the main current is good. Stay alert even when things go smoothly and do not let your guard down. Your name is in tune with this hexagram, so you can trust your intuition.'),
+      '平': L('卦象平穩，沒有大起大落。這是一個適合耕耘而非收穫的時期。建議踏實地做好每件小事，累積實力。' + (cnResult ? '你的人格「' + cnResult.grids.ren.name + '」為' + cnResult.grids.ren.number + '劃，建議多加發揮' + cnResult.grids.ren.element + '屬性的優勢。' : ''),
+        'A steady hexagram without big ups and downs — a time for sowing rather than reaping. Do each small task well and build up your strength.' + (cnResult ? ' Your Person Grid is ' + cnResult.grids.ren.number + ' strokes; make the most of its ' + T(cnResult.grids.ren.element) + ' strengths.' : '')),
+      '凶': L('卦象警示較多阻礙，但易經的核心精神是「變易」— 凶中可以轉吉。現在最重要的是保持耐心與冷靜，不要做重大決定。靜待時機，凶象自然會過去。',
+        'The hexagram warns of obstacles, but the heart of the I Ching is change — misfortune can turn to good fortune. For now, stay patient and calm and avoid major decisions. Wait for the right moment and the bad omens will pass.')
     };
     return guides[glory] || guides['平'];
   }
