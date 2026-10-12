@@ -1205,8 +1205,10 @@
       var nameParts = r.enReport.name.toUpperCase().split(/\s+/);
       nameParts.forEach(function(np) {
         var meaning = window.englishNameMeanings[np];
+        // 英文模式：字義英譯依名字查（js/l10n/names.js）
+        var meaningEn = window.L10N && window.L10N.NAME_MEANINGS && window.L10N.NAME_MEANINGS[np];
         if (meaning) {
-          html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + LL('：', ': ') + T(meaning) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-muted);margin:2px 0;">📛 ' + np + LL('：', ': ') + LL(meaning, meaningEn || meaning) + '</p>';
         }
       });
     }

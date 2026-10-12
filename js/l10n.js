@@ -9,7 +9,7 @@
  */
 window.L10N = (function() {
   var dict = {};
-  var PACKS = ['core', 'numerology', 'extras', 'deep', 'astrology', 'bazi', 'ziwei', 'report', 'iching'];
+  var PACKS = ['core', 'numerology', 'extras', 'deep', 'astrology', 'bazi', 'ziwei', 'report', 'iching', 'names'];
   var loaded = false, loading = null;
 
   function en() { return !!(window.I18N && window.I18N.getLang() === 'en'); }

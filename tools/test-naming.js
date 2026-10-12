@@ -837,6 +837,9 @@ section('英文分析內容字典（js/l10n）', function() {
     var y = L.ICHING_YAO && L.ICHING_YAO[k + 1];
     ok(y && y.length === 6 && y.every(function(p) { return p.length === 2 && noZh(p[0]) && noZh(p[1]); }), (k + 1) + ' ' + h.n + ' 六爻英譯');
   });
+  // 英文名字義：每個名字都有英譯
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', 'data', 'english-names.js'), 'utf8'), lctx, { filename: 'english-names.js' });
+  Object.keys(lctx.englishNameMeanings).forEach(function(n) { ok(L.NAME_MEANINGS && noZh(L.NAME_MEANINGS[n]), n + ' 字義英譯'); });
 });
 
 section('AI 解讀用量與費用估算', function() {
