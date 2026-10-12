@@ -406,6 +406,60 @@
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ============ 生成所有配對 ============
+  // 配對解說依目前語言產生，換語言時重新產生（分析結果本身不變）
+  function buildPairs(results) {
+    var pairs = [];
+    for (var i = 0; i < results.length; i++) {
+      for (var j = i + 1; j < results.length; j++) {
+        var a = results[i].result;
+        var b = results[j].result;
+        var labelA = results[i].person.label;
+        var labelB = results[j].person.label;
+        var bdA = results[i].birthday;
+        var bdB = results[j].birthday;
+
+        // 中中和盤
+        if (a.cn && b.cn) {
+          var p = window.PairHarmony.cncnHarmony(a.cn, b.cn);
+          if (p) {
+            // 血型配對
+            var bA = results[i].person.blood, bB = results[j].person.blood;
+            if (bA && bB) {
+              var bc = bloodCompatibility(bA, bB);
+              if (bc) { p.dimensions.push({ label: LL('🩸 血型配對', '🩸 Blood Type Match'), score: bc.score, max: 100, detail: bc.detail }); }
+            }
+            // 加入生肖配對
+            if (bdA && bdB && a.zodiac && b.zodiac && a.zodiac.zodiac && b.zodiac.zodiac) {
+              var zc = window.ZodiacBazi.zodiacCompatibility(a.zodiac.zodiac, b.zodiac.zodiac);
+              if (zc) {
+                p.dimensions.push({ label: LL('🐉 生肖配對', '🐉 Zodiac Match'), score: zc.score, max: 100, detail: zc.detail });
+                if (p.reading && p.reading.summary) p.reading.summary += LL('\n\n【生肖加成】', '\n\n[Zodiac Bonus] ') + zc.detail;
+              }
+            }
+            pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-cn' });
+          }
+        }
+        // 英英和盤
+        if (a.en && b.en) {
+          var p = window.PairHarmony.enenHarmony(a.en, b.en);
+          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'en-en' });
+        }
+        // 中英跨文化
+        if (a.cn && b.en) {
+          var p = window.PairHarmony.cnenCrossHarmony(a.cn, b.en);
+          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
+        }
+        if (a.en && b.cn) {
+          var p = window.PairHarmony.cnenCrossHarmony(b.cn, a.en);
+          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
+        }
+      }
+    }
+
+    return pairs;
+  }
+
   // ============ 收集全部輸入 ============
   function collectInputs() {
     // 讀取自訂標籤
@@ -504,63 +558,14 @@
       results.push({ person: persons[i], result: r, birthday: bday });
     }
 
-    // 生成所有配對
-    var pairs = [];
-    for (var i = 0; i < results.length; i++) {
-      for (var j = i + 1; j < results.length; j++) {
-        var a = results[i].result;
-        var b = results[j].result;
-        var labelA = results[i].person.label;
-        var labelB = results[j].person.label;
-        var bdA = results[i].birthday;
-        var bdB = results[j].birthday;
-
-        // 中中和盤
-        if (a.cn && b.cn) {
-          var p = window.PairHarmony.cncnHarmony(a.cn, b.cn);
-          if (p) {
-            // 血型配對
-            var bA = results[i].person.blood, bB = results[j].person.blood;
-            if (bA && bB) {
-              var bc = bloodCompatibility(bA, bB);
-              if (bc) { p.dimensions.push({ label: '🩸 血型配對', score: bc.score, max: 100, detail: bc.detail }); }
-            }
-            // 加入生肖配對
-            if (bdA && bdB && a.zodiac && b.zodiac && a.zodiac.zodiac && b.zodiac.zodiac) {
-              var zc = window.ZodiacBazi.zodiacCompatibility(a.zodiac.zodiac, b.zodiac.zodiac);
-              if (zc) {
-                p.dimensions.push({ label: '🐉 生肖配對', score: zc.score, max: 100, detail: zc.detail });
-                if (p.reading && p.reading.summary) p.reading.summary += '\n\n【生肖加成】' + zc.detail;
-              }
-            }
-            pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-cn' });
-          }
-        }
-        // 英英和盤
-        if (a.en && b.en) {
-          var p = window.PairHarmony.enenHarmony(a.en, b.en);
-          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'en-en' });
-        }
-        // 中英跨文化
-        if (a.cn && b.en) {
-          var p = window.PairHarmony.cnenCrossHarmony(a.cn, b.en);
-          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
-        }
-        if (a.en && b.cn) {
-          var p = window.PairHarmony.cnenCrossHarmony(b.cn, a.en);
-          if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
-        }
-      }
-    }
-
-    currentData = { results: results, pairs: pairs };
+    currentData = { results: results, pairs: buildPairs(results) };
     // 顯示PK區
     var pkSection = document.getElementById('namePkSection');
     if (pkSection) pkSection.classList.remove('hidden');
 
     renderAll();
     // 2人直接看配對，3人以上看成員
-    switchTab(results.length === 2 && pairs.length > 0 ? 'matrix' : 'members');
+    switchTab(results.length === 2 && currentData.pairs.length > 0 ? 'matrix' : 'members');
     showResults();
   }
 
@@ -596,11 +601,11 @@
   function bloodCompatibility(b1, b2) {
     if (!b1 || !b2) return null;
     var c = BLOOD_COMPAT[b1.toUpperCase()];
-    if (!c) return { score: 50, detail: '未知血型配對' };
-    if (c.best.indexOf(b2) >= 0) return { score: 90, detail: b1+'與'+b2+'型高度相容，溝通順暢，適合長期合作與親密關係。' };
-    if (c.ok.indexOf(b2) >= 0) return { score: 65, detail: b1+'與'+b2+'型相容度尚可，一般相處沒問題，特別場合多加注意即可。' };
-    if (c.bad.indexOf(b2) >= 0) return { score: 30, detail: b1+'與'+b2+'型傳統上較不相容，需要更多耐心與理解。' };
-    return { score: 50, detail: '血型配對中等' };
+    if (!c) return { score: 50, detail: LL('未知血型配對', 'Unknown blood type pairing') };
+    if (c.best.indexOf(b2) >= 0) return { score: 90, detail: LL(b1+'與'+b2+'型高度相容，溝通順暢，適合長期合作與親密關係。', 'Types ' + b1 + ' and ' + b2 + ' are highly compatible: communication flows easily, suited to long-term partnership and close relationships.') };
+    if (c.ok.indexOf(b2) >= 0) return { score: 65, detail: LL(b1+'與'+b2+'型相容度尚可，一般相處沒問題，特別場合多加注意即可。', 'Types ' + b1 + ' and ' + b2 + ' are reasonably compatible: fine day to day, just take a little extra care on special occasions.') };
+    if (c.bad.indexOf(b2) >= 0) return { score: 30, detail: LL(b1+'與'+b2+'型傳統上較不相容，需要更多耐心與理解。', 'Types ' + b1 + ' and ' + b2 + ' are traditionally less compatible and need more patience and understanding.') };
+    return { score: 50, detail: LL('血型配對中等', 'An average blood type pairing') };
   }
 
   /** 讀取某人的生日欄位；有填出生時間時組成「YYYY-MM-DD HH:MM」 */
@@ -916,7 +921,10 @@
     if (window.AiReading && keepAi !== true) window.AiReading.reset();
     if (window.I18N) window.I18N.apply(window.I18N.getLang());
   }
-  function rerenderLang() { renderAll(true); }
+  function rerenderLang() {
+    if (currentData) currentData.pairs = buildPairs(currentData.results);
+    renderAll(true);
+  }
 
   // ============ 成員分析（摺疊） ============
   function renderMembers() {
@@ -1273,7 +1281,7 @@
   // ============ 配對矩陣 ============
   function renderMatrix() {
     if (!currentData || !currentData.pairs.length) {
-      matrixContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💫</div><div class="empty-state-text">需要至少兩位成員輸入姓名</div><div class="empty-state-hint">才能產出配對矩陣</div></div>';
+      matrixContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💫</div><div class="empty-state-text">' + LL('需要至少兩位成員輸入姓名', 'At least two members need a name') + '</div><div class="empty-state-hint">' + LL('才能產出配對矩陣', 'to build the pairing matrix') + '</div></div>';
       return;
     }
 
@@ -1289,11 +1297,11 @@
 
     // 表格
     var html = '<div style="overflow-x:auto;"><table class="matrix-table"><thead><tr><th></th>';
-    labels.forEach(function(l) { html += '<th>' + l + '</th>'; });
+    labels.forEach(function(l) { html += '<th>' + T(l) + '</th>'; });
     html += '</tr></thead><tbody>';
 
     for (var i = 0; i < n; i++) {
-      html += '<tr><th>' + labels[i] + '</th>';
+      html += '<tr><th>' + T(labels[i]) + '</th>';
       for (var j = 0; j < n; j++) {
         if (i === j) {
           html += '<td class="matrix-self">—</td>';
@@ -1304,10 +1312,10 @@
           if (entry) {
             var sc = entry.pair.score;
             var color = sc>=80?'var(--color-fortune-great)':sc>=60?'var(--color-fortune-good)':sc>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
-            html += '<td class="matrix-pair" title="'+entry.pair.mode+'">';
+            html += '<td class="matrix-pair" title="'+T(entry.pair.mode)+'" data-idx="'+currentData.pairs.indexOf(entry)+'">';
             html += '<span class="matrix-score-big" style="color:'+color+';">'+sc+'</span>';
-            html += '<span class="matrix-tier-sm" style="color:'+color+';">'+entry.pair.tier+'</span>';
-            html += '<span class="matrix-mode-sm">'+entry.pair.mode+'</span>';
+            html += '<span class="matrix-tier-sm" style="color:'+color+';">'+T(entry.pair.tier)+'</span>';
+            html += '<span class="matrix-mode-sm">'+T(entry.pair.mode)+'</span>';
             html += '</td>';
           } else {
             html += '<td class="matrix-self">N/A</td>';
@@ -1320,14 +1328,14 @@
 
     // 每組配對的詳細解讀（直接顯示）
     html += '<div style="margin-top:var(--space-xl);">';
-    html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-md);">📖 各組配對詳細解讀</h3>';
+    html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-md);">' + LL('📖 各組配對詳細解讀', '📖 Detailed Pair Readings') + '</h3>';
 
     currentData.pairs.forEach(function(entry) {
       var scColor = entry.pair.score>=80?'var(--color-fortune-great)':entry.pair.score>=60?'var(--color-fortune-good)':entry.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
       html += '<div class="fortune-detail" style="margin-bottom:var(--space-lg);cursor:pointer;" onclick="var e=arguments[0]||window.event;e.stopPropagation();">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">';
-      html += '<strong style="color:var(--color-gold-light);">' + entry.a + ' ↔ ' + entry.b + '</strong>';
-      html += '<span class="analysis-mode-badge ' + entry.pair.modeClass + '">' + entry.pair.mode + '</span>';
+      html += '<strong style="color:var(--color-gold-light);">' + T(entry.a) + ' ↔ ' + T(entry.b) + '</strong>';
+      html += '<span class="analysis-mode-badge ' + entry.pair.modeClass + '">' + T(entry.pair.mode) + '</span>';
       html += '</div>';
 
       // 迷你雷達圖
@@ -1339,7 +1347,7 @@
       html += '<div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-sm);">';
       html += '<span class="score-animate" style="font-family:var(--font-en);font-size:2rem;font-weight:900;color:' + scColor + ';">' + entry.pair.score + '</span>';
       html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">/100</span>';
-      html += '<span style="font-family:var(--font-heading);color:' + scColor + ';">' + entry.pair.tier + '</span>';
+      html += '<span style="font-family:var(--font-heading);color:' + scColor + ';">' + T(entry.pair.tier) + '</span>';
       html += '</div>';
 
       // 各維度分數條
@@ -1358,7 +1366,7 @@
       // 每個維度的詳細說明
       if (entry.pair.dimensions) {
         entry.pair.dimensions.forEach(function(d) {
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">' + d.label + '：' + d.score + '/' + d.max + '</summary>';
+          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">' + d.label + LL('：', ': ') + d.score + '/' + d.max + '</summary>';
           html += '<p style="color:var(--color-text-secondary);margin:4px 0 8px 16px;line-height:1.8;">' + d.detail + '</p></details>';
         });
       }
@@ -1371,8 +1379,8 @@
         if (rtips.length) {
           html += '<div style="margin:4px 0;">';
           rtips.forEach(function(t) {
-            var isGood = t.indexOf('保持') === 0;
-            html += '<p style="font-size:0.75rem;color:' + (isGood?'var(--color-fortune-good)':'var(--color-fortune-neutral)') + ';margin:1px 0;">' + (isGood?'✅ ':'🔧 ') + t + '</p>';
+            var isGood = t.good;
+            html += '<p style="font-size:0.75rem;color:' + (isGood?'var(--color-fortune-good)':'var(--color-fortune-neutral)') + ';margin:1px 0;">' + (isGood?'✅ ':'🔧 ') + t.text + '</p>';
           });
           html += '</div>';
         }
@@ -1391,23 +1399,16 @@
 
     matrixContent.innerHTML = html;
 
-    // 點擊矩陣儲存格查看詳情
+    // 點擊矩陣儲存格查看詳情：以配對索引指定（同一組人可能有多個配對，畫面上的標籤也可能已翻譯）
     matrixContent.querySelectorAll('.matrix-pair').forEach(function(td) {
-      td.addEventListener('click', function() {
-        var row = this.closest('tr');
-        var rowLabel = row ? row.querySelector('th').textContent : '';
-        var colIdx = Array.from(this.parentElement.children).indexOf(this);
-        var table = this.closest('table');
-        var colLabel = table ? table.querySelector('thead tr').children[colIdx].textContent : '';
-        openPairDetail(rowLabel, colLabel);
-      });
+      td.addEventListener('click', function() { openPairDetail(+this.dataset.idx); });
     });
   }
 
   // ============ 團隊報告 ============
   function renderTeam() {
     if (!currentData || !currentData.pairs.length) {
-      teamContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">需要至少兩位成員</div><div class="empty-state-hint">才能產出團隊命理報告</div></div>';
+      teamContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">' + LL('需要至少兩位成員', 'At least two members are needed') + '</div><div class="empty-state-hint">' + LL('才能產出團隊命理報告', 'to build the team report') + '</div></div>';
       return;
     }
 
@@ -1427,15 +1428,15 @@
 
     // 統計卡片
     html += '<div class="team-stats">';
-    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:'+avgColor+';">'+avg+'</div><div class="team-stat-label">團隊均分</div></div>';
-    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:var(--color-fortune-great);">'+maxScore+'</div><div class="team-stat-label">最佳配對</div></div>';
-    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:var(--color-fortune-bad);">'+minScore+'</div><div class="team-stat-label">最低配對</div></div>';
+    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:'+avgColor+';">'+avg+'</div><div class="team-stat-label">'+LL('團隊均分', 'Team average')+'</div></div>';
+    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:var(--color-fortune-great);">'+maxScore+'</div><div class="team-stat-label">'+LL('最佳配對', 'Best pair')+'</div></div>';
+    html += '<div class="team-stat-card"><div class="team-stat-value" style="color:var(--color-fortune-bad);">'+minScore+'</div><div class="team-stat-label">'+LL('最低配對', 'Lowest pair')+'</div></div>';
     html += '</div>';
 
     // 團隊評級
     html += '<div class="pair-summary" style="padding:var(--space-md);">';
-    html += '<div class="pair-tier" style="color:'+avgColor+';">團隊命理評級：' + tier + '</div>';
-    html += '<p style="color:var(--color-text-secondary);font-size:0.9rem;">共 ' + currentData.results.length + ' 位成員，' + pairs.length + ' 組配對分析</p>';
+    html += '<div class="pair-tier" style="color:'+avgColor+';">' + LL('團隊命理評級：' + tier, 'Team rating: ' + T(tier)) + '</div>';
+    html += '<p style="color:var(--color-text-secondary);font-size:0.9rem;">' + LL('共 ' + currentData.results.length + ' 位成員，' + pairs.length + ' 組配對分析', currentData.results.length + ' members, ' + pairs.length + ' pair analyses') + '</p>';
     html += '</div>';
 
     // 五行分佈
@@ -1454,25 +1455,25 @@
       elKeys.forEach(function(el) {
         var c = elements[el] || 0;
         var h = maxC > 0 ? Math.max(8, c/maxC*80) : 0;
-        html += '<div class="wuxing-bar-group"><span class="wuxing-bar-label">'+(elInfo[el]||el)+'</span><div class="wuxing-bar-track"><div class="wuxing-bar-fill '+el+'" style="height:'+h+'%;"></div></div><span class="wuxing-bar-value element-'+el+'">'+el+' ×'+c+'</span></div>';
+        html += '<div class="wuxing-bar-group"><span class="wuxing-bar-label">'+(elInfo[el]||el)+'</span><div class="wuxing-bar-track"><div class="wuxing-bar-fill '+el+'" style="height:'+h+'%;"></div></div><span class="wuxing-bar-value element-'+el+'">'+T(el)+' ×'+c+'</span></div>';
       });
       html += '</div>';
     }
 
     // 最佳/最差配對
     html += '<div class="team-best-worst">';
-    html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-sm);">🏆 最佳配對</h3>';
+    html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-sm);">' + LL('🏆 最佳配對', '🏆 Best Pairs') + '</h3>';
     best.forEach(function(p) {
       var sc = p.pair.score>=80?'var(--color-fortune-great)':p.pair.score>=60?'var(--color-fortune-good)':p.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
-      html += '<div class="team-pair-card" style="border-left-color:'+sc+';">';
-      html += '<div class="team-pair-info"><div class="team-pair-names">'+p.a+' ↔ '+p.b+'</div><div class="team-pair-detail">'+p.pair.mode+' — '+p.pair.tier+'</div></div>';
+      html += '<div class="team-pair-card" style="border-left-color:'+sc+';" data-idx="'+pairs.indexOf(p)+'">';
+      html += '<div class="team-pair-info"><div class="team-pair-names">'+T(p.a)+' ↔ '+T(p.b)+'</div><div class="team-pair-detail">'+T(p.pair.mode)+' — '+T(p.pair.tier)+'</div></div>';
       html += '<div class="team-pair-score" style="color:'+sc+';">'+p.pair.score+'</div></div>';
     });
-    html += '<h3 style="color:var(--color-text-secondary);margin:var(--space-md) 0 var(--space-sm);">⚠️ 需關注配對</h3>';
+    html += '<h3 style="color:var(--color-text-secondary);margin:var(--space-md) 0 var(--space-sm);">' + LL('⚠️ 需關注配對', '⚠️ Pairs Needing Attention') + '</h3>';
     worst.forEach(function(p) {
       var sc = p.pair.score>=80?'var(--color-fortune-great)':p.pair.score>=60?'var(--color-fortune-good)':p.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
-      html += '<div class="team-pair-card" style="border-left-color:'+sc+';">';
-      html += '<div class="team-pair-info"><div class="team-pair-names">'+p.a+' ↔ '+p.b+'</div><div class="team-pair-detail">'+p.pair.mode+' — '+p.pair.tier+'</div></div>';
+      html += '<div class="team-pair-card" style="border-left-color:'+sc+';" data-idx="'+pairs.indexOf(p)+'">';
+      html += '<div class="team-pair-info"><div class="team-pair-names">'+T(p.a)+' ↔ '+T(p.b)+'</div><div class="team-pair-detail">'+T(p.pair.mode)+' — '+T(p.pair.tier)+'</div></div>';
       html += '<div class="team-pair-score" style="color:'+sc+';">'+p.pair.score+'</div></div>';
     });
     html += '</div>';
@@ -1483,12 +1484,9 @@
     teamContent.innerHTML = html;
 
     // 點擊配對卡片
-    teamContent.querySelectorAll('.team-pair-card').forEach(function(card) {
+    teamContent.querySelectorAll('.team-pair-card[data-idx]').forEach(function(card) {
       card.style.cursor = 'pointer';
-      card.addEventListener('click', function() {
-        var names = this.querySelector('.team-pair-names').textContent.split('↔');
-        if (names.length === 2) openPairDetail(names[0].trim(), names[1].trim());
-      });
+      card.addEventListener('click', function() { openPairDetail(+this.dataset.idx); });
     });
   }
 
@@ -1565,49 +1563,49 @@
 
       // 標題
       html += '<div class="report-cert-header">';
-      html += '<div class="report-cert-title">姓名鑑定書</div>';
-      html += '<div class="report-cert-subtitle">' + report.generatedAt + ' 鑑定</div>';
+      html += '<div class="report-cert-title">' + LL('姓名鑑定書', 'Name Analysis Certificate') + '</div>';
+      html += '<div class="report-cert-subtitle">' + LL(report.generatedAt + ' 鑑定', 'Issued ' + report.generatedAt) + '</div>';
       html += '</div>';
 
       // 基本資料
       html += '<div class="report-section">';
-      html += '<div class="report-section-title">📋 基本資料</div>';
-      html += '<table class="report-table"><tr><th>姓名</th><th>綜合評級</th>';
-      if (report.bazi) html += '<th>八字年柱</th><th>生肖</th><th>日主</th>';
-      if (report.numerology) html += '<th>命運數</th>';
+      html += '<div class="report-section-title">' + LL('📋 基本資料', '📋 Basic Information') + '</div>';
+      html += '<table class="report-table"><tr><th>' + LL('姓名', 'Name') + '</th><th>' + LL('綜合評級', 'Overall') + '</th>';
+      if (report.bazi) html += '<th>' + LL('八字年柱', 'Year Pillar') + '</th><th>' + LL('生肖', 'Zodiac') + '</th><th>' + LL('日主', 'Day Master') + '</th>';
+      if (report.numerology) html += '<th>' + LL('命運數', 'Destiny') + '</th>';
       html += '</tr><tr>';
       html += '<td><strong style="font-size:1.2rem;">' + report.name + '</strong></td>';
       var lvlColor = report.overallLevel==='上等'?'var(--color-fortune-great)':report.overallLevel==='中上'?'var(--color-fortune-good)':'var(--color-fortune-neutral)';
-      html += '<td><strong style="color:'+lvlColor+';">' + report.overallLevel + '</strong></td>';
+      html += '<td><strong style="color:'+lvlColor+';">' + T(report.overallLevel) + '</strong></td>';
       if (report.bazi) {
-        html += '<td>' + report.bazi.year + '</td><td>' + report.bazi.zodiac + '</td><td class="element-' + report.bazi.dayMaster + '">' + report.bazi.dayMaster + '</td>';
+        html += '<td>' + G(report.bazi.year) + '</td><td>' + T(report.bazi.zodiac) + '</td><td class="element-' + report.bazi.dayMaster + '">' + T(report.bazi.dayMaster) + '</td>';
       }
       if (report.numerology) html += '<td>' + report.numerology.destiny + '</td>';
       html += '</tr></table></div>';
 
       // 五格剖象表
       html += '<div class="report-section">';
-      html += '<div class="report-section-title">📊 五格剖象</div>';
-      html += '<table class="report-table"><tr><th>格局</th><th>筆劃</th><th>五行</th><th>吉凶</th><th>數理解說</th><th>古籍參照</th></tr>';
+      html += '<div class="report-section-title">' + LL('📊 五格剖象', '📊 Five Grids') + '</div>';
+      html += '<table class="report-table"><tr><th>' + LL('格局', 'Grid') + '</th><th>' + LL('筆劃', 'Strokes') + '</th><th>' + LL('五行', 'Element') + '</th><th>' + LL('吉凶', 'Fortune') + '</th><th>' + LL('數理解說', 'Meaning') + '</th><th>' + LL('古籍參照', 'Classical Source') + '</th></tr>';
       report.gridDetails.forEach(function(g) {
         var fc = g.fortune==='大吉'?'fortune-great':g.fortune==='吉'?'fortune-good':g.fortune==='中吉'||g.fortune==='半吉'?'fortune-neutral':g.fortune==='凶'?'fortune-bad':'fortune-terrible';
-        html += '<tr><td><strong>' + g.name + '</strong></td><td>' + g.number + reducedNote(g.reducedFrom ? { reducedFrom: g.reducedFrom } : null) + '</td><td class="element-' + g.element + '">' + g.element + '</td><td><span class="wuge-fortune ' + fc + '">' + g.fortune + '</span></td><td style="text-align:left;font-size:0.8rem;">' + g.implication.substring(0,60) + '...</td><td class="quote-cell">' + (g.quote||'') + '</td></tr>';
+        html += '<tr><td><strong>' + T(g.name) + '</strong></td><td>' + g.number + reducedNote(g.reducedFrom ? { reducedFrom: g.reducedFrom } : null) + '</td><td class="element-' + g.element + '">' + T(g.element) + '</td><td><span class="wuge-fortune ' + fc + '">' + T(g.fortune) + '</span></td><td style="text-align:left;font-size:0.8rem;">' + clip(T(g.implication), LL(60, 140)) + '</td><td class="quote-cell">' + T(g.quote||'') + '</td></tr>';
       });
       html += '</table></div>';
 
       // 三才
       html += '<div class="report-section">';
-      html += '<div class="report-section-title">☯ 三才配置</div>';
-      html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">評級：<strong>' + report.sancai.level + '</strong></p>';
-      html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + report.sancai.description + '</p>';
-      if (report.sancai.quote) html += '<p class="quote-cell">📜 ' + report.sancai.quote + '</p>';
+      html += '<div class="report-section-title">' + LL('☯ 三才配置', '☯ Three Powers') + '</div>';
+      html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">' + LL('評級：', 'Rating: ') + '<strong>' + T(report.sancai.level) + '</strong></p>';
+      html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + T(report.sancai.description) + '</p>';
+      if (report.sancai.quote) html += '<p class="quote-cell">📜 ' + T(report.sancai.quote) + '</p>';
       html += '</div>';
 
       // 五行診斷
       html += '<div class="report-section">';
-      html += '<div class="report-section-title">🌟 五行診斷</div>';
-      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">名字五格各有五行屬性，分佈越均衡越好。以下分析你名字中每個五行出現的次數與佔比：</p>';
-      html += '<div style="text-align:center;margin-bottom:12px;">平衡度：<strong style="font-size:1.2rem;color:' + balanceColor + ';">' + diag.balanceScore + '%</strong>（' + diag.balanceLevel + '）</div>';
+      html += '<div class="report-section-title">' + LL('🌟 五行診斷', '🌟 Five Elements Diagnosis') + '</div>';
+      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:8px;">' + LL('名字五格各有五行屬性，分佈越均衡越好。以下分析你名字中每個五行出現的次數與佔比：', 'Each of the five grids has an element, and the more evenly they are spread the better. Here is how often each element appears in your name:') + '</p>';
+      html += '<div style="text-align:center;margin-bottom:12px;">' + LL('平衡度：', 'Balance: ') + '<strong style="font-size:1.2rem;color:' + balanceColor + ';">' + diag.balanceScore + '%</strong>' + LL('（' + diag.balanceLevel + '）', ' (' + T(diag.balanceLevel) + ')') + '</div>';
       html += '<div class="wuxing-ring">';
       var elInfo = { '木':{icon:'🌳',color:'var(--color-wuxing-wood)'}, '火':{icon:'🔥',color:'var(--color-wuxing-fire)'}, '土':{icon:'⛰️',color:'var(--color-wuxing-earth)'}, '金':{icon:'⚔️',color:'var(--color-wuxing-metal)'}, '水':{icon:'💧',color:'var(--color-wuxing-water)'} };
       Object.keys(diag.diagnosis).forEach(function(el) {
@@ -1616,23 +1614,24 @@
         var bg = d.level==='過強'?'rgba(255,215,0,0.08)':d.level==='缺失'?'rgba(158,158,158,0.08)':'rgba(0,0,0,0.05)';
         html += '<div class="wuxing-ring-item">';
         html += '<div class="wuxing-ring-circle" style="border-color:'+info.color+';background:'+bg+';">' + info.icon + '</div>';
-        html += '<div class="wuxing-ring-label element-' + el + '">' + el + '</div>';
-        html += '<div class="wuxing-ring-level">' + d.count + '次 (' + d.pct + '%)</div>';
-        html += '<div class="wuxing-ring-level">' + d.level + '</div>';
+        html += '<div class="wuxing-ring-label element-' + el + '">' + T(el) + '</div>';
+        html += '<div class="wuxing-ring-level">' + LL(d.count + '次', d.count + '×') + ' (' + d.pct + '%)</div>';
+        html += '<div class="wuxing-ring-level">' + T(d.level) + '</div>';
         html += '</div>';
       });
       html += '</div>';
 
       // 等級說明
       html += '<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;font-size:0.7rem;color:var(--color-text-muted);margin-top:8px;">';
-      html += '<span>🟢 適中=五行均衡</span><span>🟡 偏弱=稍嫌不足</span><span>🔴 過強=太過旺盛</span><span>⚫ 缺失=完全沒有</span>';
+      html += LL('<span>🟢 適中=五行均衡</span><span>🟡 偏弱=稍嫌不足</span><span>🔴 過強=太過旺盛</span><span>⚫ 缺失=完全沒有</span>',
+        '<span>🟢 Balanced = just right</span><span>🟡 Weak = a little short</span><span>🔴 Excessive = too strong</span><span>⚫ Missing = absent</span>');
       html += '</div>';
 
       if (diag.issues.length && isProMode) {
-        html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ ' + diag.issues.join('；') + '</p>';
+        html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ ' + diag.issues.join(LL('；', ' ')) + '</p>';
       }
       if (diag.strengths.length && isProMode) {
-        html += '<p style="font-size:0.8rem;color:var(--color-fortune-good);margin-top:4px;">✅ ' + diag.strengths.join('；') + '</p>';
+        html += '<p style="font-size:0.8rem;color:var(--color-fortune-good);margin-top:4px;">✅ ' + diag.strengths.join(LL('；', ' ')) + '</p>';
       }
       html += '</div>';
 
@@ -1642,16 +1641,16 @@
         if (compare) {
           var cScore = compare.score >= 85 ? 'var(--color-fortune-great)' : compare.score >= 65 ? 'var(--color-fortune-good)' : compare.score >= 45 ? 'var(--color-fortune-neutral)' : 'var(--color-fortune-bad)';
           html += '<div class="report-section">';
-          html += '<div class="report-section-title">🔗 八字 × 姓名比對</div>';
-          html += '<div style="text-align:center;margin-bottom:8px;">互補度：<strong style="font-size:1.2rem;color:' + cScore + ';">' + compare.score + '%</strong>（' + compare.level + '）</div>';
+          html += '<div class="report-section-title">' + LL('🔗 八字 × 姓名比對', '🔗 BaZi × Name') + '</div>';
+          html += '<div style="text-align:center;margin-bottom:8px;">' + LL('互補度：', 'Complementarity: ') + '<strong style="font-size:1.2rem;color:' + cScore + ';">' + compare.score + '%</strong>' + LL('（' + compare.level + '）', ' (' + T(compare.level) + ')') + '</div>';
           html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);line-height:1.8;">' + compare.reading + '</p>';
           html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:0.75rem;">';
           var elKeys = ['木','火','土','金','水'];
           elKeys.forEach(function(el) {
-            html += '<span style="padding:2px 8px;background:rgba(0,0,0,0.1);border-radius:8px;">' + el + ' 命盤:' + compare.baziElements[el] + ' 名字:' + compare.nameElements[el] + '</span>';
+            html += '<span style="padding:2px 8px;background:rgba(0,0,0,0.1);border-radius:8px;">' + LL(el + ' 命盤:' + compare.baziElements[el] + ' 名字:' + compare.nameElements[el], T(el) + ' — chart: ' + compare.baziElements[el] + ', name: ' + compare.nameElements[el]) + '</span>';
           });
           html += '</div>';
-          if (compare.baziMissing.length) html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);margin-top:4px;">⚠️ 命盤缺：' + compare.baziMissing.join('、') + '</p>';
+          if (compare.baziMissing.length) html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);margin-top:4px;">⚠️ ' + LL('命盤缺：', 'Missing from chart: ') + elList(compare.baziMissing) + '</p>';
           html += '</div>';
         }
       }
@@ -1661,20 +1660,20 @@
         var dayuns = window.ZodiacBazi.getDaYun(r.zodiac.bazi, r.gender);
         var liunian = window.ZodiacBazi.getLiuNian(r.zodiac.bazi.dayMaster);
         html += '<div class="report-section">';
-        html += '<div class="report-section-title">📅 大運流年</div>';
+        html += '<div class="report-section-title">' + LL('📅 大運流年', '📅 Luck Cycles') + '</div>';
         if (dayuns) {
-          html += '<p style="font-size:0.75rem;color:var(--color-text-muted);">十年大運（' + (dayuns.forward ? '順排' : '逆排') + '，' + dayuns.startText + '）：</p>';
+          html += '<p style="font-size:0.75rem;color:var(--color-text-muted);">' + LL('十年大運（' + (dayuns.forward ? '順排' : '逆排') + '，' + dayuns.startText + '）：', 'Ten-year luck cycles (' + (dayuns.forward ? 'forward' : 'reverse') + ', ' + dayuns.startText + '):') + '</p>';
           html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
           dayuns.forEach(function(dy) {
-            html += '<span style="font-size:0.7rem;padding:3px 8px;background:rgba(0,0,0,0.1);border-radius:10px;">' + dy.name + ' <span class="element-' + dy.tgEle + '">' + dy.tgEle + '</span> ' + dy.ages + (dy.startYear ? '（' + dy.startYear + '）' : '') + '</span>';
+            html += '<span style="font-size:0.7rem;padding:3px 8px;background:rgba(0,0,0,0.1);border-radius:10px;">' + G(dy.name) + ' <span class="element-' + dy.tgEle + '">' + T(dy.tgEle) + '</span> ' + dy.ages + (dy.startYear ? LL('（' + dy.startYear + '）', ' (' + dy.startYear + ')') : '') + '</span>';
           });
           html += '</div>';
         } else {
-          html += '<p style="font-size:0.75rem;color:var(--color-text-muted);">大運的順逆由性別決定，填入性別即可排出。</p>';
+          html += '<p style="font-size:0.75rem;color:var(--color-text-muted);">' + LL('大運的順逆由性別決定，填入性別即可排出。', 'The direction of the luck cycles depends on gender — add a gender to see them.') + '</p>';
         }
         if (liunian) {
-          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">📌 ' + liunian.year + '流年：' + liunian.pillar + '（' + liunian.zodiac + '年）— <strong>' + liunian.shiShen + '</strong></p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + liunian.tip + '</p>';
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">📌 ' + LL(liunian.year + '流年：' + liunian.pillar + '（' + liunian.zodiac + '年）', liunian.year + ': ' + G(liunian.pillar) + ' (Year of the ' + T(liunian.zodiac) + ')') + ' — <strong>' + T(liunian.shiShen) + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + T(liunian.tip) + '</p>';
         }
         html += '</div>';
       }
@@ -1682,16 +1681,16 @@
       // 喜用神（專業模式才有）；日主強弱由八字扶抑法判定，與寶寶取名共用同一套
       if (isProMode && report.xiYong) {
         var xy = report.xiYong;
-        var elems = function(list) { return list.map(function(e) { return '<strong class="element-' + e + '">' + e + '</strong>'; }).join('、'); };
+        var elems = function(list) { return list.map(function(e) { return '<strong class="element-' + e + '">' + T(e) + '</strong>'; }).join(LL('、', ', ')); };
         html += '<div class="report-section">';
-        html += '<div class="report-section-title">🔮 喜用神分析</div>';
-        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">日主：<strong class="element-' + xy.dayMaster + '">' + xy.dayMaster + '</strong>' +
-          (xy.dayMasterTG ? '（' + xy.dayMasterTG + '）' : '') + (xy.strength ? '　命格：<strong>' + xy.strength + '</strong>' : '') + '</p>';
-        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">用神：<strong class="element-' + xy.yong + '">' + xy.yong + '</strong>　喜神：<strong class="element-' + xy.xi + '">' + xy.xi + '</strong></p>';
-        if (xy.unfavorable && xy.unfavorable.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">忌神：' + elems(xy.unfavorable) + '</p>';
-        if (xy.missing && xy.missing.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">八字缺：' + xy.missing.join('、') + '</p>';
+        html += '<div class="report-section-title">' + LL('🔮 喜用神分析', '🔮 Favourable Elements') + '</div>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">' + LL('日主：', 'Day Master: ') + '<strong class="element-' + xy.dayMaster + '">' + T(xy.dayMaster) + '</strong>' +
+          (xy.dayMasterTG ? LL('（' + xy.dayMasterTG + '）', ' (' + T(xy.dayMasterTG) + ')') : '') + (xy.strength ? LL('　命格：', ' · Chart: ') + '<strong>' + T(xy.strength) + '</strong>' : '') + '</p>';
+        html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">' + LL('用神：', 'Useful: ') + '<strong class="element-' + xy.yong + '">' + T(xy.yong) + '</strong>' + LL('　喜神：', ' · Favourable: ') + '<strong class="element-' + xy.xi + '">' + T(xy.xi) + '</strong></p>';
+        if (xy.unfavorable && xy.unfavorable.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">' + LL('忌神：', 'Unfavourable: ') + elems(xy.unfavorable) + '</p>';
+        if (xy.missing && xy.missing.length) html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);">' + LL('八字缺：', 'Missing from chart: ') + elList(xy.missing) + '</p>';
         html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + xy.analysis + '</p>';
-        if (xy.quote) html += '<p class="quote-cell">📜 ' + xy.quote + '</p>';
+        if (xy.quote) html += '<p class="quote-cell">📜 ' + T(xy.quote) + '</p>';
         html += '</div>';
       }
 
@@ -1700,13 +1699,13 @@
         var face = window.Professional.faceReading(r.cn.grids.ren.element);
         if (face) {
           html += '<div class="report-section">';
-          html += '<div class="report-section-title">👁️ 面相特質</div>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">依人格五行推演的理想面相特徵：</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">額頭：' + face.forehead + '</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">眼睛：' + face.eyes + '</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">鼻子：' + face.nose + '　嘴巴：' + face.mouth + '</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">整體：' + face.best + '</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">髮型穿搭：' + face.style + '</p>';
+          html += '<div class="report-section-title">' + LL('👁️ 面相特質', '👁️ Face Reading') + '</div>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('依人格五行推演的理想面相特徵：', 'Ideal facial features derived from your Person Grid element:') + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('額頭：', 'Forehead: ') + T(face.forehead) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('眼睛：', 'Eyes: ') + T(face.eyes) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('鼻子：', 'Nose: ') + T(face.nose) + LL('　嘴巴：', ' · Mouth: ') + T(face.mouth) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('整體：', 'Overall: ') + T(face.best) + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('髮型穿搭：', 'Hair and style: ') + T(face.style) + '</p>';
           html += '</div>';
         }
       }
@@ -1718,43 +1717,43 @@
         var fs = window.Professional.fengshuiAdvice(r.cn.grids.ren.element, fsEl);
         if (fs) {
           html += '<div class="report-section">';
-          html += '<div class="report-section-title">🏠 風水方位建議</div>';
+          html += '<div class="report-section-title">' + LL('🏠 風水方位建議', '🏠 Feng Shui Directions') + '</div>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' +
-            (report.xiYong ? '依命格用神屬' + fsEl : '人格屬' + fsEl) + '，居家/辦公建議：</p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🚪 大門朝向：<strong>' + fs.door + '</strong></p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🛏️ 床頭方向：<strong>' + fs.bed + '</strong></p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🪑 辦公座位：<strong>' + fs.desk + '</strong></p>';
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">🎨 裝飾建議：<strong>' + fs.decor + '</strong></p>';
-          html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);">⚠️ 避免：' + fs.avoid + '</p>';
+            LL((report.xiYong ? '依命格用神屬' + fsEl : '人格屬' + fsEl) + '，居家/辦公建議：', (report.xiYong ? 'Your chart\'s useful element is ' : 'Your Person Grid is ') + T(fsEl) + '. For home and office:') + '</p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('🚪 大門朝向：', '🚪 Front door faces: ') + '<strong>' + T(fs.door) + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('🛏️ 床頭方向：', '🛏️ Head of the bed: ') + '<strong>' + T(fs.bed) + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('🪑 辦公座位：', '🪑 Desk: ') + '<strong>' + T(fs.desk) + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('🎨 裝飾建議：', '🎨 Decor: ') + '<strong>' + T(fs.decor) + '</strong></p>';
+          html += '<p style="font-size:0.75rem;color:var(--color-fortune-neutral);">' + LL('⚠️ 避免：', '⚠️ Avoid: ') + T(fs.avoid) + '</p>';
           html += '</div>';
         }
         // 行業建議：與風水同一個五行依據
         var career = window.Professional.careerSuggestions(fsEl);
         html += '<div class="report-section">';
-        html += '<div class="report-section-title">💼 行業建議</div>';
-        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + (report.xiYong ? '用神' : '人格') + '屬<span class="element-' + career.element + '">' + career.element + '</span>，較能發揮的領域：<strong>' + career.suggestion + '</strong></p>';
+        html += '<div class="report-section-title">' + LL('💼 行業建議', '💼 Career Fields') + '</div>';
+        html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL((report.xiYong ? '用神' : '人格') + '屬', (report.xiYong ? 'Useful element' : 'Person Grid') + ': ') + '<span class="element-' + career.element + '">' + T(career.element) + '</span>' + LL('，較能發揮的領域：', '. Fields where you can shine: ') + '<strong>' + T(career.suggestion) + '</strong></p>';
         html += '</div>';
       }
 
       // 改名建議（專業模式）
       if (isProMode && report.xiYong && report.elementDiagnosis) {
         html += '<div class="report-section">';
-        html += '<div class="report-section-title">✏️ 命名建議</div>';
+        html += '<div class="report-section-title">' + LL('✏️ 命名建議', '✏️ Naming Suggestions') + '</div>';
         var elemChars = {
           '木': '林、森、桐、楠、柏、楷、楨、榮、樺、樹、木、禾、竹、柳、栩、桓、桂、桃、梅、梓',
           '火': '炎、煒、煜、燁、熹、照、煥、輝、炫、烜、明、昌、旭、昊、昕、晟、昭、晉、晞、暄',
-          '土': '坤、坦、坪、培、基、堂、堅、聖、城、垣、均、圭、垚、堉、墩、壁、壘、圭、垚',
-          '金': '金、鈞、銘、鋒、銳、鎧、錦、鈴、釗、錡、鋼、銀、銓、銳、鋒、銘、鈞、鋼、錦',
+          '土': '坤、坦、坪、培、基、堂、堅、聖、城、垣、均、圭、垚、堉、墩、壁、壘',
+          '金': '金、鈞、銘、鋒、銳、鎧、錦、鈴、釗、錡、鋼、銀、銓',
           '水': '水、泉、浩、涵、淳、清、澤、鴻、源、海、江、河、沛、泳、淵、瀚、濬、瀾、泓'
         };
         var charLine = function(el) {
-          return '<p style="font-size:0.8rem;margin:4px 0;"><span class="element-' + el + '">' + el + '：</span>' + (elemChars[el] || '') + '</p>';
+          return '<p style="font-size:0.8rem;margin:4px 0;"><span class="element-' + el + '">' + T(el) + LL('：', ': ') + '</span>' + (elemChars[el] || '') + '</p>';
         };
         // 主要建議看命格（喜用神），不是看名字自己缺什麼
         var need = report.xiYong.nameMissing || [];
-        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">依命格宜補<strong>' + report.xiYong.favorable.join('、') +
-          '</strong>（用神' + report.xiYong.yong + '、喜神' + report.xiYong.xi + '）：</p>';
-        if (need.length === 0) html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">✅ 名字已帶喜用五行，無須再補。</p>';
+        html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + LL('依命格宜補<strong>' + report.xiYong.favorable.join('、') +
+          '</strong>（用神' + report.xiYong.yong + '、喜神' + report.xiYong.xi + '）：', 'Your chart calls for <strong>' + elList(report.xiYong.favorable) + '</strong> (useful: ' + T(report.xiYong.yong) + ', favourable: ' + T(report.xiYong.xi) + '). Characters to consider:') + '</p>';
+        if (need.length === 0) html += '<p style="font-size:0.85rem;color:var(--color-fortune-good);">' + LL('✅ 名字已帶喜用五行，無須再補。', '✅ Your name already carries the favourable elements — nothing to add.') + '</p>';
         need.forEach(function(el) { html += charLine(el); });
         // 次要：名字本身的五行偏枯（排除已列過的）
         var diag = report.elementDiagnosis;
@@ -1763,7 +1762,7 @@
           if ((diag.diagnosis[el].level === '缺失' || diag.diagnosis[el].level === '偏弱') && need.indexOf(el) < 0) extra.push(el);
         });
         if (extra.length) {
-          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:8px;">名字本身偏弱或從缺的五行（次要）：<strong>' + extra.join('、') + '</strong></p>';
+          html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:8px;">' + LL('名字本身偏弱或從缺的五行（次要）：', 'Elements weak or missing in the name itself (secondary): ') + '<strong>' + elList(extra) + '</strong></p>';
           extra.forEach(function(el) { html += charLine(el); });
         }
         html += '</div>';
@@ -1772,10 +1771,10 @@
       // 改名對比（專業模式）
       if (isProMode) {
         html += '<div class="report-section rename-compare" data-idx="' + idx + '">';
-        html += '<div class="report-section-title">🔄 改名對比</div>';
+        html += '<div class="report-section-title">' + LL('🔄 改名對比', '🔄 Compare a New Name') + '</div>';
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
-        html += '<input type="text" class="form-input rename-input" placeholder="輸入想改的新名字（含姓）" maxlength="6" style="flex:1;min-width:10em;">';
-        html += '<button type="button" class="btn-download-img rename-btn">比較</button>';
+        html += '<input type="text" class="form-input rename-input" placeholder="' + LL('輸入想改的新名字（含姓）', 'New Chinese name, including surname') + '" maxlength="6" style="flex:1;min-width:10em;">';
+        html += '<button type="button" class="btn-download-img rename-btn">' + LL('比較', 'Compare') + '</button>';
         html += '</div><div class="rename-result"></div></div>';
       }
 
@@ -1785,7 +1784,7 @@
         if (hex) {
           var hexReading = window.DeepReadings.getHexagramDeepReading(hex, r.cn);
           html += '<div class="report-section">';
-          html += '<div class="report-section-title">🔮 易經卦象 ' + hex.hexUnicode + '</div>';
+          html += '<div class="report-section-title">' + LL('🔮 易經卦象 ', '🔮 I Ching Hexagram ') + hex.hexUnicode + '</div>';
           html += '<p style="font-size:0.9rem;color:var(--color-text-secondary);line-height:2;white-space:pre-line;">' + hexReading + '</p>';
           html += '</div>';
         }
@@ -1793,7 +1792,7 @@
 
       // 綜合評語
       html += '<div class="report-overall">';
-      html += '<div class="report-overall-badge" style="color:' + lvlColor + ';border:2px solid ' + lvlColor + ';">' + report.overallLevel + '</div>';
+      html += '<div class="report-overall-badge" style="color:' + lvlColor + ';border:2px solid ' + lvlColor + ';">' + T(report.overallLevel) + '</div>';
       html += '<p style="font-size:0.95rem;color:var(--color-text-secondary);margin-top:12px;line-height:2;">' + report.overallSummary + '</p>';
       html += '</div>';
 
@@ -1804,7 +1803,7 @@
       html += '</div>';
 
       // 印章
-      html += '<div class="report-cert-stamp">姓名和盤<br>命理鑑定</div>';
+      html += '<div class="report-cert-stamp">' + LL('姓名和盤<br>命理鑑定', 'Name<br>Harmony') + '</div>';
 
       html += '</div>';
     });
@@ -1838,7 +1837,7 @@
         var report = window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac);
         var text = window.Professional.reportToText(report);
         copyText(text);
-        toast('專業報告已複製！（可貼到文件或訊息）');
+        toast(LL('專業報告已複製！（可貼到文件或訊息）', 'Report copied! Paste it into a document or message.'));
       });
     });
 
@@ -1851,7 +1850,7 @@
         var card = this.closest('.report-certificate');
         var text = card ? reportCardToSpeech(card)
           : window.Professional.reportToText(window.Professional.generateReport(item.person, item.result.cn, item.result.en, item.result.zodiac));
-        speakText(text, '正在朗讀' + item.person.label + '的鑑定書...', this);
+        speakText(text, LL('正在朗讀' + item.person.label + '的鑑定書...', 'Reading ' + T(item.person.label) + '\'s report aloud...'), this);
       });
     });
   }
@@ -1863,27 +1862,32 @@
     return '<small class="wuge-reduced" title="' + LL('81 數循環：超過 81 減 80 查表', '81-number cycle: numbers above 81 wrap around by subtracting 80') + '" style="font-size:0.65em;color:var(--color-text-muted);margin-left:2px;">' + LL('（取 ' + r + '）', ' (as ' + r + ')') + '</small>';
   }
 
+  /** 干支（英文模式用拼音）、五行清單、依語言截斷 */
+  function G(s) { return window.L10N ? window.L10N.ganzhi(s) : s; }
+  function elList(list) { return list.map(T).join(LL('、', ', ')); }
+  function clip(s, n) { s = String(s || ''); return s.length > n ? s.substring(0, n) + '...' : s; }
   function escHtml(s) { return String(s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   function renderRenameCompare(cmp) {
     var muted = 'font-size:0.8rem;color:var(--color-text-muted);margin-top:6px;';
-    if (!cmp) return '<p style="' + muted + '">請輸入含姓氏的中文名字</p>';
+    if (!cmp) return '<p style="' + muted + '">' + LL('請輸入含姓氏的中文名字', 'Enter a Chinese name including the surname') + '</p>';
     if (cmp.error) return '<p style="' + muted + '">⚠️ ' + escHtml(cmp.error) + '</p>';
     var good = cmp.improvement > 0;
-    var html = '<p style="font-size:0.85rem;margin-top:8px;">' + escHtml(cmp.oldName) + ' → <strong>' + escHtml(cmp.newName) + '</strong>：'
+    var html = '<p style="font-size:0.85rem;margin-top:8px;">' + escHtml(cmp.oldName) + ' → <strong>' + escHtml(cmp.newName) + '</strong>' + LL('：', ': ')
       + '<strong style="color:' + (good ? 'var(--color-fortune-good)' : cmp.improvement < 0 ? 'var(--color-fortune-bad)' : 'var(--color-text-secondary)') + ';">' + cmp.verdict + '</strong>'
-      + '（吉數 ' + cmp.oldGood + '→' + cmp.newGood + '、凶數 ' + cmp.oldBad + '→' + cmp.newBad + '）</p>';
+      + LL('（吉數 ' + cmp.oldGood + '→' + cmp.newGood + '、凶數 ' + cmp.oldBad + '→' + cmp.newBad + '）', ' (auspicious ' + cmp.oldGood + '→' + cmp.newGood + ', inauspicious ' + cmp.oldBad + '→' + cmp.newBad + ')') + '</p>';
     html += '<table class="rename-table" style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:4px;"><tbody>';
     cmp.gridChanges.forEach(function(g) {
-      html += '<tr style="' + (g.changed ? '' : 'color:var(--color-text-muted);') + '"><td style="padding:2px 6px;">' + g.name + '</td>'
-        + '<td style="padding:2px 6px;">' + g.old.num + ' <span class="element-' + g.old.ele + '">' + g.old.ele + '</span> ' + g.old.glory + '</td>'
+      html += '<tr style="' + (g.changed ? '' : 'color:var(--color-text-muted);') + '"><td style="padding:2px 6px;">' + T(g.name) + '</td>'
+        + '<td style="padding:2px 6px;">' + g.old.num + ' <span class="element-' + g.old.ele + '">' + T(g.old.ele) + '</span> ' + T(g.old.glory) + '</td>'
         + '<td style="padding:2px 6px;">→</td>'
-        + '<td style="padding:2px 6px;">' + g.new.num + ' <span class="element-' + g.new.ele + '">' + g.new.ele + '</span> <strong>' + g.new.glory + '</strong></td></tr>';
+        + '<td style="padding:2px 6px;">' + g.new.num + ' <span class="element-' + g.new.ele + '">' + T(g.new.ele) + '</span> <strong>' + T(g.new.glory) + '</strong></td></tr>';
     });
     html += '</tbody></table>';
     if (cmp.favorable) {
-      var fmt = function(h) { return h.length ? '已補' + h.join('、') : '未補'; };
-      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">☯️ 命格喜用' + cmp.favorable.join('、') + '：原名' + fmt(cmp.oldHits) + '，新名' + fmt(cmp.newHits) + '</p>';
+      var fmt = function(h) { return h.length ? LL('已補' + h.join('、'), 'adds ' + elList(h)) : LL('未補', 'adds none'); };
+      html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:6px;">☯️ ' + LL('命格喜用' + cmp.favorable.join('、') + '：原名' + fmt(cmp.oldHits) + '，新名' + fmt(cmp.newHits),
+        'Favourable elements ' + elList(cmp.favorable) + ': the current name ' + fmt(cmp.oldHits) + ', the new name ' + fmt(cmp.newHits)) + '</p>';
     }
     return html;
   }
@@ -1902,27 +1906,31 @@
       if (!r.cn) return;
       var basis = luckyElementFor(item), el = basis.el;
       html += '<div class="card" style="margin-bottom:var(--space-lg);">';
-      html += '<h2 class="card-title"><span class="title-icon">💎</span>' + item.person.label + ' 開運指南</h2>';
+      html += '<h2 class="card-title"><span class="title-icon">💎</span>' + LL(item.person.label + ' 開運指南', 'Lucky Guide for ' + T(item.person.label)) + '</h2>';
       html += '<p class="lucky-basis" style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:12px;">'
         + (basis.byXiYong
-          ? '依八字命格（' + basis.xiYong.strength + '）用神屬<strong class="element-' + el + '">' + el + '</strong>，喜' + basis.xiYong.xi + '、忌' + basis.xiYong.unfavorable.join('、') + '，以下是專屬的開運建議：'
-          : '人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是依姓名的開運建議（填入生日即可改依八字用神推算）：')
+          ? LL('依八字命格（' + basis.xiYong.strength + '）用神屬<strong class="element-' + el + '">' + el + '</strong>，喜' + basis.xiYong.xi + '、忌' + basis.xiYong.unfavorable.join('、') + '，以下是專屬的開運建議：',
+            'Based on your BaZi chart (' + T(basis.xiYong.strength) + '), your useful element is <strong class="element-' + el + '">' + T(el) + '</strong>, with ' + T(basis.xiYong.xi) + ' favourable and ' + elList(basis.xiYong.unfavorable) + ' unfavourable. Here are your personal suggestions:')
+          : LL('人格屬<strong class="element-' + el + '">' + el + '</strong>，以下是依姓名的開運建議（填入生日即可改依八字用神推算）：',
+            'Your Person Grid is <strong class="element-' + el + '">' + T(el) + '</strong>. These suggestions are based on your name (add a birthday to base them on your BaZi useful element instead):'))
         + '</p>';
       html += window.LuckyItems.generateGuide(el);
       var ld = luckyDaysFor(item);
       if (ld) {
         html += '<div style="margin-top:12px;padding:10px 12px;background:rgba(212,168,67,0.06);border-radius:8px;font-size:0.8rem;color:var(--color-text-secondary);line-height:1.7;">';
-        html += '<strong style="color:var(--color-gold-primary);">📅 近期吉日</strong>（喜用' + ld.favorable.join('、') + (ld.unfavorable.length ? '、避忌神' + ld.unfavorable.join('、') : '') + '，不沖生肖與日支）<br>';
+        html += '<strong style="color:var(--color-gold-primary);">' + LL('📅 近期吉日', '📅 Upcoming Lucky Days') + '</strong>'
+          + LL('（喜用' + ld.favorable.join('、') + (ld.unfavorable.length ? '、避忌神' + ld.unfavorable.join('、') : '') + '，不沖生肖與日支）',
+            ' (favouring ' + elList(ld.favorable) + (ld.unfavorable.length ? ', avoiding ' + elList(ld.unfavorable) : '') + ', and not clashing with your zodiac or day branch)') + '<br>';
         html += ld.list.length
-          ? ld.list.slice(0, 6).map(function(e) { return '<span style="white-space:nowrap;">' + e.m + '/' + e.d + ' ' + e.ganzhi + (e.level === '大吉' ? ' <strong style="color:var(--color-gold-light);">大吉</strong>' : ' 吉') + '</span>'; }).join('、')
-            + '<br><span style="font-size:0.72rem;color:var(--color-text-muted);">未來 90 天共 ' + ld.list.length + ' 個吉日，可匯出到手機或電腦行事曆，當天早上 8 點提醒</span>'
-          : '未來 90 天沒有符合條件的吉日';
+          ? ld.list.slice(0, 6).map(function(e) { return '<span style="white-space:nowrap;">' + e.m + '/' + e.d + ' ' + G(e.ganzhi) + (e.level === '大吉' ? ' <strong style="color:var(--color-gold-light);">' + T('大吉') + '</strong>' : ' ' + T('吉')) + '</span>'; }).join(LL('、', ', '))
+            + '<br><span style="font-size:0.72rem;color:var(--color-text-muted);">' + LL('未來 90 天共 ' + ld.list.length + ' 個吉日，可匯出到手機或電腦行事曆，當天早上 8 點提醒', ld.list.length + ' lucky days in the next 90 days. Export them to your phone or computer calendar for an 8 a.m. reminder on the day.') + '</span>'
+          : LL('未來 90 天沒有符合條件的吉日', 'No matching lucky days in the next 90 days');
         html += '</div>';
       } else {
-        html += '<p style="margin-top:10px;font-size:0.75rem;color:var(--color-text-muted);">填入生日即可推算個人吉日並匯出行事曆提醒</p>';
+        html += '<p style="margin-top:10px;font-size:0.75rem;color:var(--color-text-muted);">' + LL('填入生日即可推算個人吉日並匯出行事曆提醒', 'Add a birthday to find your personal lucky days and export calendar reminders') + '</p>';
       }
       html += '<div class="report-actions"><button class="btn-download-img speak-guide-btn" data-idx="' + idx + '" data-i18n="speakGuideBtn">🔊 朗讀開運指南</button>'
-        + (ld && ld.list.length ? '<button class="btn-download-img ics-btn" data-idx="' + idx + '">📅 匯出吉日提醒（.ics）</button>' : '') + '</div>';
+        + (ld && ld.list.length ? '<button class="btn-download-img ics-btn" data-idx="' + idx + '">' + LL('📅 匯出吉日提醒（.ics）', '📅 Export Lucky Days (.ics)') + '</button>' : '') + '</div>';
       html += '</div>';
     });
     luckyContent.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">💎</div><div class="empty-state-text" data-i18n="emptyNeedCnLucky">請輸入中文姓名後分析</div></div>';
@@ -1940,7 +1948,7 @@
         a.download = name + '-吉日.ics';
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
-        toast('📅 已下載 ' + ld.list.length + ' 個吉日，開啟檔案即可加入行事曆');
+        toast(LL('📅 已下載 ' + ld.list.length + ' 個吉日，開啟檔案即可加入行事曆', '📅 Downloaded ' + ld.list.length + ' lucky days — open the file to add them to your calendar'));
       });
     });
 
@@ -1950,7 +1958,7 @@
         var idx = parseInt(this.dataset.idx);
         var item = currentData.results[idx];
         if (!item || !item.result.cn) return;
-        speakText(window.LuckyItems.guideToText(luckyElementFor(item).el), '正在朗讀' + item.person.label + '的開運指南...', this);
+        speakText(window.LuckyItems.guideToText(luckyElementFor(item).el), LL('正在朗讀' + item.person.label + '的開運指南...', 'Reading ' + T(item.person.label) + '\'s lucky guide aloud...'), this);
       });
     });
   }
@@ -1962,13 +1970,13 @@
     if (!historyPanelContent) return;
     var hist = loadHistory();
     if (!hist.length) {
-      historyPanelContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">尚無歷史記錄</div><div class="empty-state-hint">分析和盤後到下方點「💾 儲存記錄」即可保存，之後可在此頁籤查看</div></div>';
+      historyPanelContent.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">' + LL('尚無歷史記錄', 'No saved records yet') + '</div><div class="empty-state-hint">' + LL('分析和盤後到下方點「💾 儲存記錄」即可保存，之後可在此頁籤查看', 'After an analysis, click "💾 Save Record" below to keep it — it will show up in this tab') + '</div></div>';
       return;
     }
 
     var html = '';
     hist.forEach(function(entry, idx) {
-      var time = entry.time ? new Date(entry.time).toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      var time = entry.time ? new Date(entry.time).toLocaleString(LL('zh-TW', 'en-US'),{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       var members = (entry.persons||[]).map(function(p){return (p.cn||'')+(p.cn&&p.en?' / ':'')+(p.en||'');}).filter(function(s){return s;}).join('、');
       var avg = (entry.pairs||[]).length ? Math.round(entry.pairs.reduce(function(a,b){return a+b.score;},0)/entry.pairs.length) : 0;
       var sc = avg>=80?'var(--color-fortune-great)':avg>=60?'var(--color-fortune-good)':avg>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
@@ -1976,7 +1984,7 @@
       html += '<div style="background:var(--color-bg-mid);border:1px solid rgba(212,168,67,0.15);border-radius:8px;padding:12px;margin-bottom:8px;">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
       html += '<span style="font-size:0.8rem;color:var(--color-text-muted);">' + time + '</span>';
-      html += '<span style="font-family:var(--font-en);font-size:1.2rem;font-weight:700;color:' + sc + ';">' + avg + '分</span>';
+      html += '<span style="font-family:var(--font-en);font-size:1.2rem;font-weight:700;color:' + sc + ';">' + avg + LL('分', '') + '</span>';
       html += '</div>';
       html += '<div style="font-size:0.9rem;color:var(--color-gold-light);margin-bottom:8px;">' + members + '</div>';
 
@@ -1985,26 +1993,26 @@
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
         entry.pairs.forEach(function(p) {
           var c = p.score>=80?'var(--color-fortune-great)':p.score>=60?'var(--color-fortune-good)':p.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
-          html += '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(0,0,0,0.15);border-radius:10px;">' + p.a + '↔' + p.b + ' <strong style="color:'+c+';">' + p.score + '</strong> ' + (p.mode||'') + '</span>';
+          html += '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(0,0,0,0.15);border-radius:10px;">' + T(p.a) + '↔' + T(p.b) + ' <strong style="color:'+c+';">' + p.score + '</strong> ' + T(p.mode||'') + '</span>';
         });
         html += '</div>';
       }
 
       // 載入按鈕
-      html += '<button class="btn-download-img" style="margin-top:8px;font-size:0.75rem;" data-load-idx="' + idx + '">📥 載入此記錄重新分析</button>';
+      html += '<button class="btn-download-img" style="margin-top:8px;font-size:0.75rem;" data-load-idx="' + idx + '">' + LL('📥 載入此記錄重新分析', '📥 Load and re-analyze') + '</button>';
       html += '</div>';
     });
 
     // 客戶檔案區
     var profiles = loadProfiles();
     if (profiles.length) {
-      html += '<h3 style="color:var(--color-gold-primary);margin:1rem 0 8px;padding-top:1rem;border-top:1px solid rgba(212,168,67,0.15);">💼 客戶檔案</h3>';
+      html += '<h3 style="color:var(--color-gold-primary);margin:1rem 0 8px;padding-top:1rem;border-top:1px solid rgba(212,168,67,0.15);">' + LL('💼 客戶檔案', '💼 Client Profiles') + '</h3>';
       profiles.forEach(function(p, i) {
         var members = (p.persons||[]).map(function(ps){return (ps.cn||'')+(ps.cn&&ps.en?' / ':'')+(ps.en||'');}).filter(function(s){return s;}).join('、');
         var avg = (p.pairs||[]).length ? Math.round(p.pairs.reduce(function(a,b){return a+b.score;},0)/p.pairs.length) : 0;
         html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid rgba(212,168,67,0.1);">';
-        html += '<span style="flex:1;font-size:0.85rem;"><strong style="color:var(--color-gold-light);">' + (p.name||'未命名') + '</strong><br><span style="font-size:0.7rem;color:var(--color-text-secondary);">' + members + '</span></span>';
-        html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">' + avg + '分</span>';
+        html += '<span style="flex:1;font-size:0.85rem;"><strong style="color:var(--color-gold-light);">' + (p.name||LL('未命名', 'Untitled')) + '</strong><br><span style="font-size:0.7rem;color:var(--color-text-secondary);">' + members + '</span></span>';
+        html += '<span style="font-size:0.8rem;color:var(--color-text-secondary);">' + avg + LL('分', '') + '</span>';
         html += '<button class="btn-download-img" style="font-size:0.7rem;padding:4px 8px;" data-load-profile="'+i+'">📥</button>';
         html += '<button class="btn-download-img" style="font-size:0.7rem;padding:4px 8px;background:rgba(244,67,54,0.1);border-color:rgba(244,67,54,0.3);" data-del-profile="'+i+'">🗑️</button>';
         html += '</div>';
@@ -2021,7 +2029,7 @@
         if (!p || !p.persons) return;
         fillForm(p.persons);
         handleAnalyze();
-        toast('已載入：' + (p.name||''));
+        toast(LL('已載入：', 'Loaded: ') + (p.name||''));
       });
     });
     // 刪除按鈕
@@ -2031,11 +2039,11 @@
         var idx = parseInt(this.dataset.delProfile);
         var profiles = loadProfiles();
         var name = profiles[idx] ? profiles[idx].name : '';
-        if (confirm('刪除「' + name + '」？')) {
+        if (confirm(LL('刪除「' + name + '」？', 'Delete "' + name + '"?'))) {
           profiles.splice(idx, 1);
           localStorage.setItem('name-harmony-profiles', JSON.stringify(profiles));
           renderHistoryPanel();
-          toast('已刪除');
+          toast(LL('已刪除', 'Deleted'));
         }
       });
     });
@@ -2049,7 +2057,7 @@
         fillForm(entry.persons);
         handleAnalyze();
         switchTab('members');
-        toast('已載入並重新分析！');
+        toast(LL('已載入並重新分析！', 'Loaded and re-analyzed!'));
       });
     });
   }
@@ -2301,7 +2309,7 @@
     var allElements = ['木','火','土','金','水'];
     var missing = allElements.filter(function(el) { return !presentElements[el]; });
     if (missing.length > 0) {
-      html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ 團隊缺少 ' + missing.join('、') + ' 屬性，可考慮招募具備這些特質的成員來補足。</p>';
+      html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);margin-top:8px;">⚠️ ' + LL('團隊缺少 ' + missing.join('、') + ' 屬性，可考慮招募具備這些特質的成員來補足。', 'The team has no ' + elList(missing) + ' members — consider bringing in people with those qualities.') + '</p>';
     }
 
     html += '</div>';
@@ -2368,16 +2376,16 @@
     // 五行環：每個五行合成一句「木 1次 (20%) 偏弱」
     box.querySelectorAll('.wuxing-ring-item').forEach(function(it) {
       var p = document.createElement('p');
-      p.textContent = [].slice.call(it.querySelectorAll('.wuxing-ring-label, .wuxing-ring-level')).map(function(el) { return el.textContent.trim(); }).join(' ') + '。';
+      p.textContent = [].slice.call(it.querySelectorAll('.wuxing-ring-label, .wuxing-ring-level')).map(function(el) { return el.textContent.trim(); }).join(' ') + LL('。', '.');
       it.parentNode.replaceChild(p, it);
     });
     box.querySelectorAll('table').forEach(function(t) {
       var rows = [].slice.call(t.rows).map(function(tr) { return [].slice.call(tr.cells).map(function(c) { return c.textContent.trim(); }); });
       var head = t.rows[0] && t.rows[0].querySelector('th') ? rows.shift() : null;
       var spoken = rows.map(function(cells) {
-        return cells.map(function(v, i) { return head && head[i] ? head[i] + ' ' + v : v; }).join('，');
-      }).join('。');
-      var p = document.createElement('p'); p.textContent = spoken + '。';
+        return cells.map(function(v, i) { return head && head[i] ? head[i] + ' ' + v : v; }).join(LL('，', ', '));
+      }).join(LL('。', '. '));
+      var p = document.createElement('p'); p.textContent = spoken + LL('。', '.');
       t.parentNode.replaceChild(p, t);
     });
     // innerText 需要元素已排版：暫時放到畫面外
@@ -2413,10 +2421,16 @@
       line = line.replace(/\s{2,}/g, ' ').replace(/^[\s，、]+/, '').trim();
       if (!line) return;
       // 句末標點後的右引號、右括號跟著前一句，不單獨成段
-      (line.match(/[^。！？；]+[。！？；]*[」』）)]*/g) || []).forEach(function(s) {
+      // 英文模式另以 . ! ? ; 斷句，過長時在空白處切開，不切斷單字
+      var en = window.L10N && window.L10N.en();
+      (line.match(en ? /[^.!?;。！？；]+[.!?;。！？；]*["')」』）]*/g : /[^。！？；]+[。！？；]*[」』）)]*/g) || []).forEach(function(s) {
         s = s.replace(/^[\s，、。]+/, '');
         s = s.trim();
-        while (s.length > 120) { chunks.push(s.slice(0, 120)); s = s.slice(120); }
+        while (s.length > 120) {
+          var cut = en ? s.lastIndexOf(' ', 120) : -1;
+          if (cut < 40) cut = 120;
+          chunks.push(s.slice(0, cut)); s = s.slice(cut).trim();
+        }
         if (s) chunks.push(s);
       });
     });
@@ -2426,7 +2440,7 @@
     var mine = btn || {};
     chunks.forEach(function(s, i) {
       var u = new SpeechSynthesisUtterance(s);
-      u.lang = 'zh-TW'; u.rate = 0.9;
+      u.lang = LL('zh-TW', 'en-US'); u.rate = 0.9;
       if (i === chunks.length - 1) u.onend = function() { if (ttsActiveBtn === mine) ttsReset(); };
       synth.speak(u);
     });
@@ -2620,26 +2634,21 @@
   }
 
   // ============ 配對詳情彈窗 ============
-  function openPairDetail(aLabel, bLabel) {
+  /** @param idx currentData.pairs 的索引（矩陣格子顯示該組最高分的配對，卡片則是各自的配對） */
+  function openPairDetail(idx) {
     if (!currentData) return;
-    var key = aLabel + '|' + bLabel;
-    var rev = bLabel + '|' + aLabel;
-    var entry = null;
-    currentData.pairs.forEach(function(p) {
-      var k = p.a + '|' + p.b;
-      if (k === key || k === rev) entry = p;
-    });
+    var entry = currentData.pairs[idx];
     if (!entry) return;
 
     var p = entry.pair;
     var sc = p.score >= 80 ? 'var(--color-fortune-great)' : p.score >= 60 ? 'var(--color-fortune-good)' : p.score >= 40 ? 'var(--color-fortune-neutral)' : 'var(--color-fortune-bad)';
 
-    modalTitle.innerHTML = '<span class="title-icon">💫</span>' + entry.a + ' ↔ ' + entry.b;
+    modalTitle.innerHTML = '<span class="title-icon">💫</span>' + T(entry.a) + ' ↔ ' + T(entry.b);
 
-    var html = '<span class="analysis-mode-badge '+p.modeClass+'" style="margin-bottom:1rem;">'+p.mode+'</span>';
+    var html = '<span class="analysis-mode-badge '+p.modeClass+'" style="margin-bottom:1rem;">'+T(p.mode)+'</span>';
     html += '<div style="text-align:center;margin:1rem 0;">';
     html += '<div class="pair-score-ring" style="border-color:'+sc+';box-shadow:0 0 30px '+sc+'33;margin:0 auto;"><span class="pair-score-value" style="color:'+sc+';">'+p.score+'</span><span class="pair-score-label">/100</span></div>';
-    html += '<div class="pair-tier" style="color:'+sc+';">'+p.tier+'</div>';
+    html += '<div class="pair-tier" style="color:'+sc+';">'+T(p.tier)+'</div>';
     html += '<p style="color:var(--color-text-secondary);font-size:0.9rem;">'+p.tierDesc+'</p></div>';
 
     if (p.dimensions && p.dimensions.length) {
@@ -2658,7 +2667,7 @@
     // 豐富解讀
     if (p.reading && p.reading.summary) {
       html += '<div class="harmony-advice" style="margin-top:var(--space-lg);">';
-      html += '<h3>📖 詳細解讀</h3>';
+      html += '<h3>' + LL('📖 詳細解讀', '📖 Detailed Reading') + '</h3>';
       html += '<p style="font-size:0.9rem;line-height:2;white-space:pre-line;">' + p.reading.summary + '</p>';
       html += '</div>';
     }

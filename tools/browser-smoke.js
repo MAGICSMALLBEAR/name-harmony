@@ -329,6 +329,25 @@
     rename.querySelector('.rename-btn').click();
     out.renameUnknown = rename.querySelector('.rename-result').innerText.trim();
 
+    // 英文模式：分析後才切語言，配對解說要重新產生；矩陣、團隊、開運指南不該剩中文
+    // （鑑定書只剩使用者的名字、建議用字與易經段落）；點矩陣格子要開到同一組最高分的配對
+    {
+      const zhOf = s => (s.match(/[一-鿿]/g) || []).length;
+      $('langToggle').click();
+      await wait(() => window.L10N.isLoaded() && zhOf($('matrixContent').innerText) === 0, 8000);
+      const cell = document.querySelector('#matrixContent .matrix-pair');
+      cell.click();
+      const opened = (document.querySelector('#modalBody .pair-score-value') || {}).textContent;
+      $('modalClose').click();
+      const reportZh = $('reportContent').innerText.replace(/【卦象解讀】[\\s\\S]*?(?=Excellent|Above Average|Average|Below Average|Poor)/g, '')
+        .replace(/陳小明|林大維/g, '').replace(/(Wood|Fire|Earth|Metal|Water): [一-鿿、]+/g, '');
+      out.englishTabs = ['matrixContent', 'teamContent', 'luckyContent'].map(id => id + ':' + zhOf($(id).innerText)).join(' ')
+        + ' report:' + zhOf(reportZh) + ' click:' + (opened === cell.querySelector('.matrix-score-big').textContent ? 'same' : opened)
+        + (zhOf(reportZh) ? '\\n' + [...new Set(reportZh.match(/[^\\n]*[一-鿿][^\\n]*/g))].map(s => s.slice(0, 120)).join('\\n') : '');
+      $('langToggle').click();
+      await wait(() => /人格配對/.test($('matrixContent').innerText), 8000);
+    }
+
     // 生日靈數：1990-05-15 → 生命靈數 3、高峰 11/7/9/6；名字不同也一樣
     document.querySelector('.tab-btn[data-tab="members"]').click();
     await wait(() => document.querySelector('.birth-numerology'));
@@ -417,6 +436,7 @@
     career: /^用神屬[木火土金水]，較能發揮的領域：/,
     rename: /陳小明 → 陳大維：.+（吉數 \d→\d、凶數 \d→\d）.*天格.*總格.*命格喜用[木火土金水]、[木火土金水]：原名(已補|未補).*新名(已補|未補)/,
     renameUnknown: /「龘」不在筆劃庫，無法比較/,
+    englishTabs: /^matrixContent:0 teamContent:0 luckyContent:0 report:0 click:same$/,
     lifePath: /^both:3$/,
     kabbalah: /^22\/10 paths$/,
     deepseek: /^privacy Bearer sk-ds-fake deepseek-v4-pro usage system system\/user\/assistant\/user DeepSeek h4 cost stopped stop,stop,aborted \| claude-key-empty no-log$/,

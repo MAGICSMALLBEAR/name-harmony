@@ -3,6 +3,11 @@
  */
 window.ZodiacBazi = (function() {
 
+  // 英文模式（js/l10n.js）：T 查字典、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  function list(a) { return a.map(T).join(L('、', ', ')); }
+
   var TIAN_GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   var TIAN_GAN_ELE = ['木','木','火','火','土','土','金','金','水','水'];
   var DI_ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -225,34 +230,34 @@ window.ZodiacBazi = (function() {
     var score = Math.max(0, Math.min(100, 60 + goodPts - badPts));
 
     var reading = '';
-    reading += '日主五行為' + dm + '（' + bazi.dayMasterTG + '）。';
+    reading += L('日主五行為' + dm + '（' + bazi.dayMasterTG + '）。', 'Your Day Master is ' + T(dm) + ' (' + T(bazi.dayMasterTG) + '). ');
 
     if (baziMissing.length > 0) {
-      reading += '命盤中缺少' + baziMissing.join('、') + '，';
+      reading += L('命盤中缺少' + baziMissing.join('、') + '，', 'Your chart lacks ' + list(baziMissing) + ', ');
       if (nameHelps.length > 0) {
-        reading += '而名字中' + nameHelps.join('、') + '較強，正好補足命盤缺口，姓名與八字互補良好。';
+        reading += L('而名字中' + nameHelps.join('、') + '較強，正好補足命盤缺口，姓名與八字互補良好。', 'and your name is strong in ' + list(nameHelps) + ', filling the gap nicely — name and chart complement each other well. ');
       } else {
-        reading += '名字中也未補足，建議可考慮在名字中加入' + baziMissing[0] + '屬性的字來平衡。';
+        reading += L('名字中也未補足，建議可考慮在名字中加入' + baziMissing[0] + '屬性的字來平衡。', 'and your name does not make up for it either; consider adding a character of the ' + T(baziMissing[0]) + ' element for balance. ');
       }
     } else {
-      reading += '命盤五行齊全，先天條件佳。';
+      reading += L('命盤五行齊全，先天條件佳。', 'Your chart has all five elements — a good starting point. ');
     }
 
     if (baziStrong.length > 0) {
-      reading += '命盤中' + baziStrong.join('、') + '過旺，';
+      reading += L('命盤中' + baziStrong.join('、') + '過旺，', 'Your chart has too much ' + list(baziStrong) + ', ');
       if (nameWorsens.length > 0) {
-        reading += '名字中' + nameWorsens.join('、') + '也偏強，可能加重五行失衡。';
+        reading += L('名字中' + nameWorsens.join('、') + '也偏強，可能加重五行失衡。', 'and your name is also strong in ' + list(nameWorsens) + ', which may worsen the imbalance. ');
       } else {
-        reading += '名字中尚無明顯加重，保持觀察即可。';
+        reading += L('名字中尚無明顯加重，保持觀察即可。', 'but your name does not noticeably add to it, so just keep an eye on it. ');
       }
     }
 
     if (score >= 85) {
-      reading += ' 總體而言，這個名字與你的八字命盤高度互補，是相當合適的選擇。';
+      reading += L(' 總體而言，這個名字與你的八字命盤高度互補，是相當合適的選擇。', 'Overall, this name complements your BaZi chart very well — a fitting choice.');
     } else if (score >= 65) {
-      reading += ' 總體而言，名字與八字命盤有一定互補，部分細節可以再微調。';
+      reading += L(' 總體而言，名字與八字命盤有一定互補，部分細節可以再微調。', 'Overall, the name complements your chart to a fair degree; some details could be fine-tuned.');
     } else {
-      reading += ' 名字與命盤的互補度偏低，建議參考五行分析調整名字。';
+      reading += L(' 名字與命盤的互補度偏低，建議參考五行分析調整名字。', 'The name complements your chart poorly; consider adjusting it based on the Five Elements analysis.');
     }
 
     return {
@@ -296,11 +301,12 @@ window.ZodiacBazi = (function() {
   };
   function zodiacCompatibility(z1,z2){
     if(!z1||!z2)return null;
-    var c=ZODIAC_COMPAT[z1];if(!c)return{score:50,detail:z1+'與'+z2+'—未知'};
-    if(c.best.indexOf(z2)>=0)return{score:95,detail:z1+z2+'是傳統六合/三合生肖，極為契合！天生默契，適合長期合作或伴侶關係。'};
-    if(c.good.indexOf(z2)>=0)return{score:75,detail:z1+z2+'生肖相容，相處融洽，能建立良好關係。'};
-    if(c.bad.indexOf(z2)>=0)return{score:30,detail:z1+z2+'傳統相沖，需更多包容理解。'};
-    return{score:60,detail:z1+z2+'中等配對，關係取決於後天經營。'};
+    var c=ZODIAC_COMPAT[z1];if(!c)return{score:50,detail:L(z1+'與'+z2+'—未知', T(z1)+' and '+T(z2)+' — unknown')};
+    var both=T(z1)+' and '+T(z2);
+    if(c.best.indexOf(z2)>=0)return{score:95,detail:L(z1+z2+'是傳統六合/三合生肖，極為契合！天生默契，適合長期合作或伴侶關係。', both+' are a traditional Six Harmony / Three Harmony match — an excellent fit! A natural rapport, well suited to a long-term partnership.')};
+    if(c.good.indexOf(z2)>=0)return{score:75,detail:L(z1+z2+'生肖相容，相處融洽，能建立良好關係。', both+' are compatible signs: you get along well and can build a good relationship.')};
+    if(c.bad.indexOf(z2)>=0)return{score:30,detail:L(z1+z2+'傳統相沖，需更多包容理解。', both+' traditionally clash and need more tolerance and understanding.')};
+    return{score:60,detail:L(z1+z2+'中等配對，關係取決於後天經營。', both+' are an average match; the relationship depends on the effort you put in.')};
   }
   function zodiacElement(z){var i=ZODIAC.indexOf(z);return i>=0?DI_ZHI_ELE[i]:null;}
 
@@ -349,12 +355,13 @@ window.ZodiacBazi = (function() {
         tgEle: TIAN_GAN_ELE[tgIdx], dzEle: DI_ZHI_ELE[dzIdx],
         startAge: age,
         startYear: bazi.birthYear ? bazi.birthYear + age : null,
-        ages: age + '-' + (age + 9) + '歲',
+        ages: L(age + '-' + (age + 9) + '歲', 'age ' + age + '–' + (age + 9)),
         shiShen: calcShiShen(bazi.dayMaster, TIAN_GAN_ELE[tgIdx])
       });
     }
     daYuns.forward = forward;
-    daYuns.startText = startYears + '歲' + (startMonths ? startMonths + '個月' : '') + '起運';
+    daYuns.startText = L(startYears + '歲' + (startMonths ? startMonths + '個月' : '') + '起運',
+      'starting at age ' + startYears + (startMonths ? ' and ' + startMonths + ' month' + (startMonths > 1 ? 's' : '') : ''));
     return daYuns;
   }
 

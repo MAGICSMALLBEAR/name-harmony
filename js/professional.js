@@ -4,6 +4,11 @@
  */
 window.Professional = (function() {
 
+  // 英文模式（js/l10n.js）：T 查字典（古籍斷語、面相、風水、行業…在 l10n/report.js）、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  function list(a) { return a.map(T).join(L('、', ', ')); }
+
   // ============ 古籍斷語庫 ============
   var CLASSICAL_QUOTES = {
     天格: {
@@ -76,13 +81,20 @@ window.Professional = (function() {
     var nameMissing = base.favorable.filter(function(e) { return !elementCount[e]; });
 
     var pct = Math.round(base.ratio * 100);
-    var analysis = '日主' + base.dayMaster + '（' + base.dayMasterTG + '）生於' + base.monthBranch + '月，' +
+    var analysis = L('日主' + base.dayMaster + '（' + base.dayMasterTG + '）生於' + base.monthBranch + '月，' +
       (base.deLing ? '得令' : '失令') + '；同黨（比劫、印）佔 ' + pct + '%，屬' + base.strength + '。' +
       (base.hasHour ? '' : '未填出生時辰，時柱未納入，強弱為概估。') +
       '用神取' + base.yong + '、喜神取' + base.xi + '。' +
       (nameMissing.length
         ? '名字五格' + (nameHits.length ? '已補' + nameHits.join('、') + '，但未見' + nameMissing.join('、') : '未見' + nameMissing.join('、')) + '，建議以該五行的字補強。'
-        : '名字五格已見' + nameHits.join('、') + '，與命格相輔。');
+        : '名字五格已見' + nameHits.join('、') + '，與命格相輔。'),
+      'Day Master ' + T(base.dayMaster) + ' (' + T(base.dayMasterTG) + ') born in the ' + T(base.monthBranch) + ' month is ' +
+      (base.deLing ? 'in season' : 'out of season') + '; allies (Companion/Rob Wealth and Resource) make up ' + pct + '%, so the chart is ' + T(base.strength) + '. ' +
+      (base.hasHour ? '' : 'No birth hour was given, so the Hour Pillar is left out and the strength is an estimate. ') +
+      'Useful element: ' + T(base.yong) + '; favourable element: ' + T(base.xi) + '. ' +
+      (nameMissing.length
+        ? 'The five grids of your name ' + (nameHits.length ? 'already add ' + list(nameHits) + ' but lack ' + list(nameMissing) : 'lack ' + list(nameMissing)) + ' — consider characters of ' + (nameMissing.length > 1 ? 'those elements.' : 'that element.')
+        : 'The five grids of your name already include ' + list(nameHits) + ', supporting your chart.'));
 
     return {
       // 主要欄位（沿用既有欄位名，吉日／幸運色依 xiShen 計算）
@@ -127,19 +139,20 @@ window.Professional = (function() {
 
       if (cnt >= total * 0.5) {
         level = '過強';
-        advice = el + '氣過盛（佔' + pct + '%），宜用' + ({'木':'金','火':'水','土':'木','金':'火','水':'土'})[el] + '來剋制平衡。';
+        advice = L(el + '氣過盛（佔' + pct + '%），宜用' + ({'木':'金','火':'水','土':'木','金':'火','水':'土'})[el] + '來剋制平衡。',
+          'Too much ' + T(el) + ' (' + pct + '%) — balance it with ' + T(({'木':'金','火':'水','土':'木','金':'火','水':'土'})[el]) + '.');
         issues.push(advice);
       } else if (cnt === 0) {
         level = '缺失';
-        advice = el + '完全缺失，建議補充' + el + '屬性的字來平衡五行。';
+        advice = L(el + '完全缺失，建議補充' + el + '屬性的字來平衡五行。', T(el) + ' is missing entirely — add a character of the ' + T(el) + ' element to restore balance.');
         issues.push(advice);
       } else if (cnt <= 1 && total >= 4) {
         level = '偏弱';
-        advice = el + '氣偏弱，可適度補充。';
+        advice = L(el + '氣偏弱，可適度補充。', T(el) + ' is a little weak and could use some support.');
         issues.push(advice);
       } else {
         level = '適中';
-        strengths.push(el + '氣均衡，為命格加分。');
+        strengths.push(L(el + '氣均衡，為命格加分。', T(el) + ' is well balanced, a plus for your chart.'));
       }
 
       diagnosis[el] = { count: cnt, pct: pct, level: level, advice: advice };
@@ -214,10 +227,10 @@ window.Professional = (function() {
     else overallLevel = '中下';
 
     var overallSummary = '';
-    if (overallLevel === '上等') overallSummary = '此姓名五格配置優秀，多為吉數，三才和諧，五行均衡。為上等之名，建議終身使用。';
-    else if (overallLevel === '中上') overallSummary = '此姓名整體配置良好，雖有小瑕但不掩大瑜。部分格局稍弱但可透過後天努力補足。';
-    else if (overallLevel === '中等') overallSummary = '此姓名配置中庸，吉凶參半。建議在使用上多加注意弱項，並透過個人修養補強。';
-    else overallSummary = '此姓名存在較多凶數或五行失衡，建議諮詢專業命理師，考慮改名或取字號補足。';
+    if (overallLevel === '上等') overallSummary = L('此姓名五格配置優秀，多為吉數，三才和諧，五行均衡。為上等之名，建議終身使用。', 'An excellent configuration: mostly auspicious numbers, harmonious Three Powers and balanced elements. A first-rate name worth keeping for life.');
+    else if (overallLevel === '中上') overallSummary = L('此姓名整體配置良好，雖有小瑕但不掩大瑜。部分格局稍弱但可透過後天努力補足。', 'A good configuration overall — minor flaws do not outweigh its strengths. Some grids are a little weak, but effort can make up for them.');
+    else if (overallLevel === '中等') overallSummary = L('此姓名配置中庸，吉凶參半。建議在使用上多加注意弱項，並透過個人修養補強。', 'A middling configuration with mixed fortunes. Pay attention to the weak spots and strengthen them through personal growth.');
+    else overallSummary = L('此姓名存在較多凶數或五行失衡，建議諮詢專業命理師，考慮改名或取字號補足。', 'This name has several inauspicious numbers or an element imbalance. Consider consulting a professional and changing the name or adopting a courtesy name to compensate.');
 
     // 靈數
     var numerInfo = null;
@@ -239,7 +252,7 @@ window.Professional = (function() {
       xiYong: xiYong,
       bazi: baziInfo,
       numerology: numerInfo,
-      generatedAt: new Date().toLocaleString('zh-TW')
+      generatedAt: new Date().toLocaleString(L('zh-TW', 'en-US'))
     };
   }
 
@@ -247,63 +260,64 @@ window.Professional = (function() {
   function reportToText(report) {
     if (!report) return '';
     var lines = [];
+    var sep = L('：', ': ');
     lines.push('╔══════════════════════════════╗');
-    lines.push('║    姓 名 鑑 定 報 告 書     ║');
+    lines.push(L('║    姓 名 鑑 定 報 告 書     ║', '║      NAME ANALYSIS REPORT    ║'));
     lines.push('╚══════════════════════════════╝');
     lines.push('');
-    lines.push('【基本資料】');
-    lines.push('  鑑定姓名：' + report.name);
-    lines.push('  鑑定日期：' + report.generatedAt);
-    lines.push('  綜合評級：' + report.overallLevel);
+    lines.push(L('【基本資料】', '[Basic Information]'));
+    lines.push('  ' + L('鑑定姓名', 'Name') + sep + report.name);
+    lines.push('  ' + L('鑑定日期', 'Date') + sep + report.generatedAt);
+    lines.push('  ' + L('綜合評級', 'Overall rating') + sep + T(report.overallLevel));
     if (report.bazi) {
-      lines.push('  八字年柱：' + report.bazi.year + '（生肖' + report.bazi.zodiac + '）');
-      lines.push('  日主五行：' + report.bazi.dayMaster);
+      lines.push('  ' + L('八字年柱：' + report.bazi.year + '（生肖' + report.bazi.zodiac + '）', 'Year Pillar: ' + (window.L10N ? window.L10N.ganzhi(report.bazi.year) : report.bazi.year) + ' (' + T(report.bazi.zodiac) + ')'));
+      lines.push('  ' + L('日主五行', 'Day Master') + sep + T(report.bazi.dayMaster));
     }
     lines.push('');
-    lines.push('【五格剖象】');
+    lines.push(L('【五格剖象】', '[Five Grids]'));
     report.gridDetails.forEach(function(g) {
-      lines.push('  ' + g.name + '：' + g.number + '劃（屬' + g.element + '）— ' + g.fortune);
-      lines.push('    ' + g.implication);
-      if (g.quote) lines.push('    📜 ' + g.quote);
+      lines.push('  ' + L(g.name + '：' + g.number + '劃（屬' + g.element + '）— ' + g.fortune, T(g.name) + ': ' + g.number + ' strokes (' + T(g.element) + ') — ' + T(g.fortune)));
+      lines.push('    ' + T(g.implication));
+      if (g.quote) lines.push('    📜 ' + T(g.quote));
     });
     lines.push('');
-    lines.push('【三才配置】');
-    lines.push('  評級：' + report.sancai.level);
-    lines.push('  說明：' + report.sancai.description);
-    if (report.sancai.quote) lines.push('  📜 ' + report.sancai.quote);
+    lines.push(L('【三才配置】', '[Three Powers]'));
+    lines.push('  ' + L('評級', 'Rating') + sep + T(report.sancai.level));
+    lines.push('  ' + L('說明', 'Notes') + sep + T(report.sancai.description));
+    if (report.sancai.quote) lines.push('  📜 ' + T(report.sancai.quote));
     lines.push('');
-    lines.push('【五行診斷】');
+    lines.push(L('【五行診斷】', '[Five Elements Diagnosis]'));
     var diag = report.elementDiagnosis;
-    lines.push('  平衡度：' + diag.balanceScore + '%（' + diag.balanceLevel + '）');
+    lines.push('  ' + L('平衡度', 'Balance') + sep + diag.balanceScore + '%' + L('（' + diag.balanceLevel + '）', ' (' + T(diag.balanceLevel) + ')'));
     Object.keys(diag.diagnosis).forEach(function(el) {
       var d = diag.diagnosis[el];
-      lines.push('  ' + el + '：' + d.count + '次（' + d.pct + '%）— ' + d.level);
+      lines.push('  ' + L(el + '：' + d.count + '次（' + d.pct + '%）— ' + d.level, T(el) + ': ' + d.count + '× (' + d.pct + '%) — ' + T(d.level)));
     });
     if (diag.issues.length) {
-      lines.push('  ⚠️ 待改善：');
+      lines.push('  ' + L('⚠️ 待改善：', '⚠️ To improve:'));
       diag.issues.forEach(function(i) { lines.push('    - ' + i); });
     }
     if (diag.strengths.length) {
-      lines.push('  ✅ 優勢：');
+      lines.push('  ' + L('✅ 優勢：', '✅ Strengths:'));
       diag.strengths.forEach(function(s) { lines.push('    - ' + s); });
     }
     lines.push('');
     if (report.xiYong) {
       var xy = report.xiYong;
-      lines.push('【喜用神】');
-      lines.push('  日主：' + xy.dayMaster + (xy.dayMasterTG ? '（' + xy.dayMasterTG + '）' : '') + '　' + (xy.strength || ''));
-      lines.push('  用神：' + xy.yong + '　喜神：' + xy.xi);
-      if (xy.unfavorable && xy.unfavorable.length) lines.push('  忌神：' + xy.unfavorable.join('、'));
-      if (xy.missing && xy.missing.length) lines.push('  八字缺：' + xy.missing.join('、'));
-      lines.push('  分析：' + xy.analysis);
+      lines.push(L('【喜用神】', '[Favourable Elements]'));
+      lines.push('  ' + L('日主', 'Day Master') + sep + T(xy.dayMaster) + (xy.dayMasterTG ? L('（' + xy.dayMasterTG + '）', ' (' + T(xy.dayMasterTG) + ')') : '') + L('　', ', ') + T(xy.strength || ''));
+      lines.push('  ' + L('用神', 'Useful') + sep + T(xy.yong) + L('　', ' · ') + L('喜神', 'Favourable') + sep + T(xy.xi));
+      if (xy.unfavorable && xy.unfavorable.length) lines.push('  ' + L('忌神', 'Unfavourable') + sep + list(xy.unfavorable));
+      if (xy.missing && xy.missing.length) lines.push('  ' + L('八字缺', 'Missing from chart') + sep + list(xy.missing));
+      lines.push('  ' + L('分析', 'Analysis') + sep + xy.analysis);
       lines.push('');
     }
-    lines.push('【綜合評語】');
+    lines.push(L('【綜合評語】', '[Summary]'));
     lines.push('  ' + report.overallSummary);
     lines.push('');
     lines.push('═══════════════════════════════');
-    lines.push('  以上分析僅供參考，請勿過度迷信');
-    lines.push('  姓名和盤 · 專業命理分析');
+    lines.push(L('  以上分析僅供參考，請勿過度迷信', '  For reference only — please do not take it too seriously'));
+    lines.push(L('  姓名和盤 · 專業命理分析', '  Name Harmony · Professional Analysis'));
 
     return lines.join('\n');
   }
@@ -322,10 +336,10 @@ window.Professional = (function() {
     var CN = window.ChineseNumerology;
     var oR = typeof oldName === 'string' ? CN.analyze(oldName, manualStrokes) : oldName;
     var nR = CN.analyze(newName, manualStrokes);
-    if (!oR || oR.error) return { error: (oR && oR.error) || '原名無法分析' };
-    if (!nR || nR.error) return { error: (nR && nR.error) || '新名字無法分析' };
+    if (!oR || oR.error) return { error: (oR && oR.error) || L('原名無法分析', 'The original name could not be analyzed') };
+    if (!nR || nR.error) return { error: (nR && nR.error) || L('新名字無法分析', 'The new name could not be analyzed') };
     // 筆劃庫沒有的字會以 0 劃計算，五格全錯，不能拿來比
-    if (nR.hasUnknown) return { error: '「' + nR.unknownChars.join('、') + '」不在筆劃庫，無法比較', unknownChars: nR.unknownChars };
+    if (nR.hasUnknown) return { error: L('「' + nR.unknownChars.join('、') + '」不在筆劃庫，無法比較', '「' + nR.unknownChars.join('、') + '」 is not in the stroke database, so the names cannot be compared'), unknownChars: nR.unknownChars };
     oldName = typeof oldName === 'string' ? oldName : oR.parsed.surname + oR.parsed.givenName;
     var oG = (oR.fortuneCounts['大吉']||0)+(oR.fortuneCounts['吉']||0)+(oR.fortuneCounts['中吉']||0);
     var oB = (oR.fortuneCounts['凶']||0)+(oR.fortuneCounts['大凶']||0);
@@ -347,7 +361,7 @@ window.Professional = (function() {
     };
     return {
       oldName:oldName, newName:newName, oldGood:oG, oldBad:oB, newGood:nG, newBad:nB,
-      improvement:imp, verdict:imp>=3?'大幅改善':imp>=1?'明顯改善':imp>0?'略有改善':imp===0?'吉凶數相同':'效果不佳',
+      improvement:imp, verdict:T(imp>=3?'大幅改善':imp>=1?'明顯改善':imp>0?'略有改善':imp===0?'吉凶數相同':'效果不佳'),
       gridChanges:changes,
       favorable: favorable || null,
       oldHits: favorable ? hits(oR) : null,

@@ -126,16 +126,18 @@ window.SmartInsights = (function() {
   }
 
   // ========== 關係改善指南 ==========
+  /** @return [{ text, good }]：good 為強項（保持），否則為待加強 */
   function relationshipTips(pairResult) {
     if (!pairResult || !pairResult.dimensions) return [];
     var tips = [];
     pairResult.dimensions.forEach(function(d) {
       var pct = d.score / d.max;
-      var label = d.label.replace(/[🎭🎯🏠🌐🔢🩸🐉]/g,'');
-      if (pct < 0.5) tips.push(L('加強' + label + '：得分偏低，建議多溝通磨合', 'Work on ' + T(label.trim()) + ': a low score — talk more and adjust to each other'));
-      if (pct >= 0.8) tips.push(L('保持' + label + '：這是你們的強項，繼續維持', 'Keep up ' + T(label.trim()) + ': this is a strength — keep it going'));
+      // 標籤是「表情符號 + 空白 + 名稱」；表情符號多為兩個 UTF-16 單元，不能用字元類別逐一去掉
+      var label = d.label.replace(/^\S+\s+/, '');
+      if (pct < 0.5) tips.push({ good: false, text: L('加強' + label + '：得分偏低，建議多溝通磨合', 'Work on ' + label + ': a low score — talk more and adjust to each other') });
+      if (pct >= 0.8) tips.push({ good: true, text: L('保持' + label + '：這是你們的強項，繼續維持', 'Keep up ' + label + ': this is a strength — keep it going') });
     });
-    if (!tips.length) tips.push(L('各方面均衡發展，持續保持良好互動', 'Balanced across the board — keep up the good interaction'));
+    if (!tips.length) tips.push({ good: true, text: L('各方面均衡發展，持續保持良好互動', 'Balanced across the board — keep up the good interaction') });
     return tips;
   }
 

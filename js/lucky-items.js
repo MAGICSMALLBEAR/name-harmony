@@ -3,6 +3,12 @@
  */
 window.LuckyItems = (function() {
 
+  // 英文模式（js/l10n.js）：T 查字典（品項在 l10n/report.js）、L 組合句子
+  function T(x) { return window.L10N ? window.L10N.t(x) : x; }
+  function L(zh, en) { return window.L10N ? window.L10N.L(zh, en) : zh; }
+  /** 水晶名稱：命名空間 lucky（卡片上要首字大寫，一般字典的寶石名是句中用的小寫） */
+  function C(x) { return window.L10N ? window.L10N.tn('lucky', x) : x; }
+
   var ELEMENT_ITEMS = {
     '木': {
       crystal: [
@@ -82,43 +88,43 @@ window.LuckyItems = (function() {
     var html = '';
 
     // 水晶推薦
-    html += '<div class="report-section"><div class="report-section-title">💎 開運水晶</div>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('💎 開運水晶', '💎 Lucky Crystals') + '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
     items.crystal.forEach(function(c) {
       html += '<div style="padding:8px;background:var(--color-bg-mid);border-radius:8px;text-align:center;">';
       html += '<div style="font-size:1.5rem;">' + c.emoji + '</div>';
-      html += '<div style="font-weight:600;color:var(--color-gold-light);font-size:0.85rem;">' + c.n + '</div>';
-      html += '<div style="font-size:0.7rem;color:var(--color-text-secondary);">' + c.e + '</div>';
+      html += '<div style="font-weight:600;color:var(--color-gold-light);font-size:0.85rem;">' + C(c.n) + '</div>';
+      html += '<div style="font-size:0.7rem;color:var(--color-text-secondary);">' + T(c.e) + '</div>';
       html += '</div>';
     });
     html += '</div></div>';
 
     // 色彩能量
-    html += '<div class="report-section"><div class="report-section-title">🎨 色彩能量</div>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">🟢 主色調：<strong>' + items.color.main + '</strong></p>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">✨ 點綴色：<strong>' + items.color.accent + '</strong></p>';
-    html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);">⚠️ 避免：' + items.color.avoid + '</p>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('🎨 色彩能量', '🎨 Colour Energy') + '</div>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + L('🟢 主色調：', '🟢 Main colours: ') + '<strong>' + T(items.color.main) + '</strong></p>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + L('✨ 點綴色：', '✨ Accents: ') + '<strong>' + T(items.color.accent) + '</strong></p>';
+    html += '<p style="font-size:0.8rem;color:var(--color-fortune-neutral);">' + L('⚠️ 避免：', '⚠️ Avoid: ') + T(items.color.avoid) + '</p>';
     html += '</div>';
 
     // 香氛
-    html += '<div class="report-section"><div class="report-section-title">🕯️ 開運香氛</div>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + items.aroma.name + '</strong></p>';
-    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">功效：' + items.aroma.effect + '</p>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('🕯️ 開運香氛', '🕯️ Lucky Scents') + '</div>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + T(items.aroma.name) + '</strong></p>';
+    html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + L('功效：', 'Effect: ') + T(items.aroma.effect) + '</p>';
     html += '</div>';
 
     // 穿搭
-    html += '<div class="report-section"><div class="report-section-title">👗 穿搭建議</div>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + items.style + '</p>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('👗 穿搭建議', '👗 Style') + '</div>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + T(items.style) + '</p>';
     html += '</div>';
 
     // 飲食
-    html += '<div class="report-section"><div class="report-section-title">🍽️ 開運飲食</div>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + items.diet + '</p>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('🍽️ 開運飲食', '🍽️ Lucky Foods') + '</div>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + T(items.diet) + '</p>';
     html += '</div>';
 
     // 能量景點
-    html += '<div class="report-section"><div class="report-section-title">📍 能量景點</div>';
-    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + items.powerSpot + '</p>';
+    html += '<div class="report-section"><div class="report-section-title">' + L('📍 能量景點', '📍 Power Spots') + '</div>';
+    html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);">' + T(items.powerSpot) + '</p>';
     html += '</div>';
 
     return html;
@@ -128,14 +134,15 @@ window.LuckyItems = (function() {
   function guideToText(element) {
     var items = getRecommendations(element);
     var lines = [];
-    lines.push('開運指南 — 屬' + (element || '木'));
+    lines.push(L('開運指南 — 屬' + (element || '木'), 'Lucky Guide — ' + T(element || '木')));
     lines.push('');
-    lines.push('開運水晶：' + items.crystal.map(function(c) { return c.n; }).join('、'));
-    lines.push('主色調：' + items.color.main + '，點綴色：' + items.color.accent + '，避免：' + items.color.avoid);
-    lines.push('開運香氛：' + items.aroma.name + '，功效：' + items.aroma.effect);
-    lines.push('穿搭建議：' + items.style);
-    lines.push('開運飲食：' + items.diet);
-    lines.push('能量景點：' + items.powerSpot);
+    lines.push(L('開運水晶：', 'Lucky crystals: ') + items.crystal.map(function(c) { return C(c.n); }).join(L('、', ', ')));
+    lines.push(L('主色調：' + items.color.main + '，點綴色：' + items.color.accent + '，避免：' + items.color.avoid,
+      'Main colours: ' + T(items.color.main) + '. Accents: ' + T(items.color.accent) + '. Avoid: ' + T(items.color.avoid) + '.'));
+    lines.push(L('開運香氛：' + items.aroma.name + '，功效：' + items.aroma.effect, 'Lucky scents: ' + T(items.aroma.name) + '. Effect: ' + T(items.aroma.effect) + '.'));
+    lines.push(L('穿搭建議：', 'Style: ') + T(items.style));
+    lines.push(L('開運飲食：', 'Lucky foods: ') + T(items.diet));
+    lines.push(L('能量景點：', 'Power spots: ') + T(items.powerSpot));
     return lines.join('\n');
   }
 
