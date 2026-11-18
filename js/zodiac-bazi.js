@@ -160,7 +160,7 @@ window.ZodiacBazi = (function() {
     var dm = dp.tgEle;
     pillars.forEach(function(p) {
       if (p.isDayMaster) { p.shiShen = '日主'; return; }
-      p.shiShen = calcShiShen(dm, p.tgEle);
+      p.shiShen = calcShiShen(dp.tg, p.tg);
     });
 
     return {
@@ -176,20 +176,15 @@ window.ZodiacBazi = (function() {
   }
 
   /** 十神計算 */
-  function calcShiShen(dayEle, otherEle) {
-    var rels = {
-      '木木':'比肩','火火':'比肩','土土':'比肩','金金':'比肩','水水':'比肩',
-      '木火':'食神','火土':'食神','土金':'食神','金水':'食神','水木':'食神',
-      '木土':'正財','火金':'正財','土水':'正財','金木':'正財','水火':'正財',
-      '木金':'正官','火水':'正官','土木':'正官','金火':'正官','水土':'正官',
-      '木水':'正印','火木':'正印','土火':'正印','金土':'正印','水金':'正印'
-    };
-    var key = otherEle + dayEle;
-    if (rels[key]) return rels[key];
-    // 反向：剋日主
-    var rev = dayEle + otherEle;
-    var revRels = { '木金':'七殺','火水':'七殺','土木':'七殺','金火':'七殺','水土':'七殺', '木火':'傷官','火土':'傷官','土金':'傷官','金水':'傷官','水木':'傷官', '木土':'偏財','火金':'偏財','土水':'偏財','金木':'偏財','水火':'偏財', '木水':'偏印','火木':'偏印','土火':'偏印','金土':'偏印','水金':'偏印' };
-    return revRels[rev] || '?';
+  function calcShiShen(dayStem, otherStem) {
+    var d = TIAN_GAN.indexOf(dayStem), o = TIAN_GAN.indexOf(otherStem);
+    // 五行不足以分辨正偏與比劫；缺少天干時不猜測。
+    if (d < 0 || o < 0) return '?';
+    var relation = (Math.floor(o / 2) - Math.floor(d / 2) + 5) % 5;
+    return [
+      ['比肩', '劫財'], ['食神', '傷官'], ['偏財', '正財'],
+      ['七殺', '正官'], ['偏印', '正印']
+    ][relation][d % 2 === o % 2 ? 0 : 1];
   }
 
   // ========== 姓名 vs 八字比對 ==========
@@ -356,7 +351,7 @@ window.ZodiacBazi = (function() {
         startAge: age,
         startYear: bazi.birthYear ? bazi.birthYear + age : null,
         ages: L(age + '-' + (age + 9) + '歲', 'age ' + age + '–' + (age + 9)),
-        shiShen: calcShiShen(bazi.dayMaster, TIAN_GAN_ELE[tgIdx])
+        shiShen: calcShiShen(bazi.dayMasterTG, TIAN_GAN[tgIdx])
       });
     }
     daYuns.forward = forward;
@@ -365,12 +360,13 @@ window.ZodiacBazi = (function() {
     return daYuns;
   }
 
-  function getLiuNian(dayMaster, currentYear) {
+  function getLiuNian(dayMasterStem, currentYear) {
     if (!currentYear) currentYear = new Date().getFullYear();
     var yp = yearPillar(currentYear);
-    var sn = calcShiShen(dayMaster, yp.tgEle);
+    var sn = calcShiShen(dayMasterStem, yp.tg);
     var tips = {
       '比肩':'適合建立自信與獨立性，朋友與同輩會是重要支持。',
+      '劫財':'重視合作分工與資源界線，事先說清楚共同支出與責任。',
       '食神':'創意與表達之年，適合發展興趣、享受生活。',
       '正財':'財運穩定之年，努力工作會有合理回報。',
       '正官':'事業發展之年，可能獲得升遷或承擔更多責任。',
@@ -451,7 +447,7 @@ window.ZodiacBazi = (function() {
   return {
     yearPillar:yearPillar, monthPillar:monthPillar, dayPillar:dayPillar, hourPillar:hourPillar,
     fullBazi:fullBazi, fullAnalysis:fullAnalysis,
-    xiYongShen:xiYongShen,
+    xiYongShen:xiYongShen, calcShiShen:calcShiShen,
     jieMoment:jieMoment, solarYearMonth:solarYearMonth,
     getZodiac:getZodiac, getYearPillar:getYearPillar, getDayMaster:getDayMaster,
     getStarSign:getStarSign, getShiChen:getShiChen,

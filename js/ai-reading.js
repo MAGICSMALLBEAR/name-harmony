@@ -64,13 +64,13 @@ window.AiReading = (function() {
   }
 
   var SYSTEM = [
-    '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才）、靈數、八字、易經、塔羅、紫微斗數、西洋占星、生肖星座血型、開運建議，以及多人之間的配對。',
+    '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才、音韻與粵／台／客多語檢查）、靈數、八字（含格局／調候／從格／合化檢核）、易經、塔羅、紫微斗數（含十二宮宮干飛化、自化與運限疊飛）、西洋占星（含本命、交點／MC、行運與組合盤）、生肖星座血型、開運建議，以及多人之間的配對。',
     '你的工作是把這些系統的結果整合成一份讀得懂、用得上的解讀：',
-    '1. 找出多個系統共同指向的特質與課題，說明是哪幾個系統、依據是什麼（引用結果中的具體數字或星曜，例如「人格 23 劃」「紫微命宮天機」）。',
-    '2. 指出系統之間互相矛盾的地方，並說明可能的理解方式，不要硬湊成一致。',
-    '3. 有多位成員時，說明彼此的互動模式與相處建議。',
-    '4. 給出具體、可行的建議。',
-    '原則：只根據提供的結果解讀，不要自行重新排盤或編造結果中沒有的星曜、數字；結果不足時直接說明缺什麼（例如沒有出生時間就沒有時柱與紫微命宮）。',
+    '1. 找出多個系統共同指向的特質與課題，說明是哪幾個系統、依據是什麼（引用結果中的具體數字、格局或星曜，例如「人格 23 劃」「紫微命宮天機」「命宮化忌入夫妻宮」）。',
+    '2. 指出系統之間互相矛盾的地方，並說明可能的理解方式，不要硬湊成一致（例如八字調候與扶抑喜用衝突、從格或合化條件未足時要照實說明「條件未足／僅為候選」）。',
+    '3. 有多位成員時，結合雙向八字、占星組合盤與紫微宮干飛化交互，說明彼此的互動模式與相處建議。',
+    '4. 給出具體、可行的建議；多語音韻僅依結果中已收錄的讀音與諧音討論，標示「未收錄」的字不要自行猜測方言發音。',
+    '原則：只根據提供的結果解讀，不要自行重新排盤或編造結果中沒有的星曜、數字與讀音；結果不足時直接說明缺什麼（例如沒有出生時間就沒有時柱、紫微命宮、占星組合上升與月亮）。',
     '命理是文化傳統與自我反思的工具，不是科學預測；避免宿命論與恐嚇式說法，不做醫療、法律、投資的判斷。',
     '格式：使用 Markdown 的標題（##、###）、條列與粗體，不要使用表格。語氣溫和、直接，避免空泛的套話。'
   ].join('\n');
@@ -240,7 +240,7 @@ window.AiReading = (function() {
   function panelToText(el) {
     var box = el.cloneNode(true);
     box.querySelectorAll('details').forEach(function(d) { d.open = true; });
-    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .rename-compare, .action-bar').forEach(function(n) { n.remove(); });
+    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .rename-compare, .action-bar, .phonetics-custom-box, .dialect-custom-details, .zw-fly-pills, .zw-pair-controls, .astro-wheel-controls, .astro-transit-controls, .zw-scope-controls').forEach(function(n) { n.remove(); });
     box.querySelectorAll('.hidden').forEach(function(n) { n.classList.remove('hidden'); });
     box.querySelectorAll('table').forEach(function(tb) {
       var rows = [].slice.call(tb.rows).map(function(tr) { return [].slice.call(tr.cells).map(function(c) { return c.textContent.replace(/\s+/g, ' ').trim(); }); });

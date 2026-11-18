@@ -2718,3 +2718,67 @@ body {
 .tool-prefs-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 0.9rem; color: var(--color-gold-primary); }
 .tool-prefs-head .tool-meta { font-size: 0.75rem; }
 .tool-prefs .tool-note { margin-bottom: 0; }
+/* 本機備份：保留原生檔案輸入的鍵盤操作。 */
+.backup-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+.backup-file { max-width:100%; font:inherit; }
+#backupStatus, #backupPreview { margin-top:12px; font-size:.85rem; line-height:1.8; overflow-wrap:anywhere; }
+#backupPreviewText { white-space:pre-line; }
+.mode-chart { background:rgba(90,130,190,.16); color:var(--color-gold-light); }
+.pair-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:16px; }
+.pair-filters label { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.pair-filters select { width:auto; min-width:140px; }
+.mini-radar { float:right; margin-left:12px; }
+@media (max-width:480px) {
+  .pair-filters label { width:100%; justify-content:space-between; }
+  .pair-filters select { width:auto; max-width:70%; }
+  .mini-radar { float:none; clear:both; margin:0 auto 12px; }
+}
+
+/* === 進階八字判讀 === */
+.bazi-adv-box { margin-top: 8px; padding: 10px 12px; background: rgba(212,168,67,0.05); border: 1px solid rgba(212,168,67,0.2); border-radius: var(--radius-md); font-size: 0.78rem; }
+.bazi-adv-sec { margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(212,168,67,0.2); }
+.bazi-adv-sec:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.bazi-adv-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--color-gold-light); font-weight: 700; }
+.bazi-badge { font-size: 0.68rem; padding: 1px 8px; border-radius: 999px; font-weight: 600; border: 1px solid rgba(212,168,67,0.35); color: var(--color-gold-primary); }
+.bazi-badge.is-candidate { border-color: var(--color-fortune-good); color: var(--color-fortune-good); background: rgba(76,175,80,0.1); }
+.bazi-badge.is-blocked { border-color: var(--color-text-muted); color: var(--color-text-muted); }
+.bazi-badge.is-partial { border-color: var(--color-fortune-neutral); color: var(--color-fortune-neutral); background: rgba(255,152,0,0.1); }
+.bazi-checks { list-style: none; padding: 0; margin: 4px 0; }
+.bazi-checks li { margin: 2px 0; color: var(--color-text-secondary); line-height: 1.55; }
+.bazi-checks li.is-pass { color: var(--color-text-primary); }
+.bazi-adv-note { font-size: 0.7rem; color: var(--color-text-muted); margin: 4px 0 0; line-height: 1.55; }
+.bazi-hidden-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; margin-top: 4px; }
+.bazi-hidden-card { padding: 5px 8px; background: var(--color-bg-mid); border-radius: var(--radius-sm); border: 1px solid rgba(212,168,67,0.14); font-size: 0.72rem; line-height: 1.5; }
+
+/* === 紫微飛化與路徑圖 === */
+.zw-fly-box { margin-top: 10px; padding: 10px 12px; background: rgba(212,168,67,0.05); border: 1px solid rgba(212,168,67,0.22); border-radius: var(--radius-md); }
+.zw-fly-pills { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 8px; }
+.zw-fly-btn, .zw-pair-dir-btn, .zw-pair-src-btn {
+  font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(212,168,67,0.35); background: transparent; color: var(--color-text-secondary);
+}
+.zw-fly-btn.active, .zw-pair-dir-btn.active, .zw-pair-src-btn.active {
+  background: var(--color-gold-primary); color: var(--color-bg-deep); border-color: var(--color-gold-primary); font-weight: 700;
+}
+.zw-fly-svg, .zw-pair-svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 6px auto; }
+.zw-fly-readout { margin-top: 6px; padding: 8px 10px; background: var(--color-bg-mid); border-radius: var(--radius-sm); font-size: 0.75rem; line-height: 1.65; }
+.zw-fly-table-wrap { overflow-x: auto; margin-top: 6px; }
+.zw-fly-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; min-width: 420px; }
+.zw-fly-table th, .zw-fly-table td { padding: 4px 6px; border: 1px solid rgba(212,168,67,0.16); text-align: left; }
+.zw-fly-table th { color: var(--color-gold-primary); background: rgba(212,168,67,0.08); }
+.zw-pair-fly-box { margin-top: 10px; padding: 10px; background: rgba(212,168,67,0.05); border: 1px solid rgba(212,168,67,0.2); border-radius: var(--radius-md); }
+.zw-pair-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+
+/* === 占星組合盤圖形與宮位表 === */
+.astro-comp-box { margin-top: 10px; padding: 10px; background: rgba(212,168,67,0.05); border: 1px solid rgba(212,168,67,0.22); border-radius: var(--radius-md); font-size: 0.76rem; }
+.astro-wheel-svg { display: block; width: 100%; max-width: 460px; height: auto; margin: 8px auto; }
+.astro-comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin-top: 8px; }
+.astro-comp-cell { padding: 5px 8px; background: var(--color-bg-mid); border-radius: var(--radius-sm); border: 1px solid rgba(212,168,67,0.14); line-height: 1.5; }
+
+/* === 讀音自訂與多語音韻 === */
+.phonetics-custom-box { margin: 6px 0; padding: 8px 10px; background: rgba(212,168,67,0.05); border: 1px dashed rgba(212,168,67,0.28); border-radius: var(--radius-sm); }
+.phonetics-custom-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.phonetics-char-ctrl { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; background: var(--color-bg-mid); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(212,168,67,0.2); }
+.phonetics-char-ctrl select, .phonetics-char-ctrl input { font-size: 0.72rem; padding: 2px 5px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid rgba(212,168,67,0.35); border-radius: 4px; }
+.phonetics-dialect-box { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(212,168,67,0.22); }
+.dialect-card { margin: 4px 0; padding: 6px 8px; background: rgba(212,168,67,0.04); border-radius: var(--radius-sm); border-left: 2px solid var(--color-gold-dark); font-size: 0.75rem; line-height: 1.6; }

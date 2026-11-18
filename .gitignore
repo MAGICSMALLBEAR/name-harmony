@@ -2,11 +2,13 @@ node_modules/
 .DS_Store
 *.log
 
-# 本機測試產物
+# 本機測試產物與編輯器設定
 .edge-test-profile/
+.vscode/
 ui-manual-stroke-test.js
 
 # 產生器的來源資料（自行下載，產物 fonts/ 與 js/data/ 已進版控）
 tools/unihan/
 tools/ssa/
 tools/fonts-src/
+tools/dialect-cache/

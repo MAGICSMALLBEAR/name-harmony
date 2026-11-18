@@ -75,11 +75,109 @@ window.Phonetics = (function() {
     return base.replace(/^zh/, 'z').replace(/^ch/, 'c').replace(/^sh/, 's').replace(/eng$/, 'en').replace(/ing$/, 'in');
   }
 
-  function pinyinOf(chars, surnameLen) {
+  // 常見姓氏與人名多音字候選（[拼音, 常見詞義]）
+  var POLYPHONES = {
+    '樂': [['le4','快樂'], ['yue4','音樂']],
+    '長': [['chang2','長短'], ['zhang3','成長／尊長']],
+    '行': [['xing2','行走／品行'], ['hang2','行業／排行']],
+    '重': [['zhong4','重要／穩重'], ['chong2','重複']],
+    '朝': [['chao2','朝廷／朝向'], ['zhao1','朝氣／今朝']],
+    '盛': [['sheng4','茂盛'], ['cheng2','盛裝']],
+    '華': [['hua2','光華／中華'], ['hua4','華山（姓）']],
+    '單': [['dan1','單純'], ['shan4','單姓'], ['chan2','單于']],
+    '解': [['jie3','理解'], ['xie4','解姓']],
+    '查': [['cha2','查察'], ['zha1','查姓']],
+    '曾': [['zeng1','曾姓'], ['ceng2','曾經']],
+    '任': [['ren2','任姓'], ['ren4','信任／擔當']],
+    '區': [['qu1','區域'], ['ou1','區姓']],
+    '仇': [['chou2','仇恨'], ['qiu2','仇姓']],
+    '朴': [['pu3','簡朴'], ['piao2','朴姓']],
+    '柏': [['bo2','松柏'], ['bai3','柏樹']],
+    '乾': [['qian2','乾坤'], ['gan1','乾燥']],
+    '傳': [['chuan2','傳承'], ['zhuan4','傳記']],
+    '好': [['hao3','美好'], ['hao4','喜好']],
+    '少': [['shao3','多少'], ['shao4','少年']],
+    '和': [['he2','和諧'], ['he4','應和'], ['huo2','和泥']],
+    '寧': [['ning2','安寧'], ['ning4','寧可']],
+    '奇': [['qi2','奇特'], ['ji1','奇偶']],
+    '調': [['tiao2','調和'], ['diao4','音調']],
+    '數': [['shu4','數字'], ['shu3','細數']],
+    '藏': [['cang2','典藏'], ['zang4','寶藏']],
+    '校': [['xiao4','學校'], ['jiao4','校對']],
+    '省': [['sheng3','省份／節省'], ['xing3','反省']],
+    '冠': [['guan1','衣冠／冠姓'], ['guan4','冠軍']],
+    '相': [['xiang1','相互'], ['xiang4','相貌／宰相']],
+    '將': [['jiang1','將來'], ['jiang4','將領']],
+    '參': [['can1','參與'], ['shen1','星宿／人參']],
+    '率': [['lv4','效率'], ['shuai4','率直／統率']],
+    '都': [['dou1','皆／全'], ['du1','都市']],
+    '度': [['du4','氣度'], ['duo2','揣度']],
+    '強': [['qiang2','剛強'], ['qiang3','勉強'], ['jiang4','倔強']],
+    '菲': [['fei1','芳菲'], ['fei3','菲薄']],
+    '蔓': [['man4','蔓延'], ['wan4','藤蔓']],
+    '茜': [['qian4','茜草'], ['xi1','音譯用字']],
+    '杉': [['shan1','杉木'], ['sha1','沙杉']],
+    '筠': [['yun2','竹筠'], ['jun1','音韻清雅讀']],
+    '蔚': [['wei4','蔚藍'], ['yu4','蔚姓／蔚縣']],
+    '蓋': [['gai4','蓋世'], ['ge3','蓋姓']],
+    '紀': [['ji4','紀律／紀姓'], ['ji3','紀姓（傳統）']],
+    '種': [['zhong3','種子'], ['zhong4','種植'], ['chong2','種姓']],
+    '燕': [['yan4','飛燕'], ['yan1','燕國／燕姓']],
+    '殷': [['yin1','殷實'], ['yan1','殷紅']],
+    '露': [['lu4','甘露'], ['lou4','顯露']],
+    '澄': [['cheng2','澄澈'], ['deng4','澄清（口語）']],
+    '賈': [['jia3','賈姓'], ['gu3','商賈']],
+    '繆': [['miu4','紕繆'], ['miao4','繆姓'], ['mou2','綢繆']],
+    '應': [['ying1','應該／應姓'], ['ying4','回應']],
+    '艾': [['ai4','艾草'], ['yi4','懲艾']],
+    '曲': [['qu3','樂曲'], ['qu1','曲直']],
+    '葛': [['ge3','葛姓'], ['ge2','諸葛']],
+    '萬': [['wan4','萬千'], ['mo4','萬俟']],
+    '於': [['yu2','於是'], ['wu1','於姓']],
+    '馮': [['feng2','馮姓'], ['ping2','憑依']],
+    '丁': [['ding1','園丁／丁姓'], ['zheng1','伐木聲']],
+    '沈': [['shen3','沈姓'], ['chen2','沉澱']],
+    '陸': [['lu4','陸地'], ['liu4','大寫六']],
+    '齊': [['qi2','整齊'], ['zhai1','齋戒']],
+    '俞': [['yu2','俞姓'], ['shu4','俞穴']],
+    '石': [['shi2','磐石'], ['dan4','容量單位']],
+    '葉': [['ye4','枝葉／葉姓'], ['she4','葉公']],
+    '許': [['xu3','期許／許姓'], ['hu3','伐木聲']],
+    '費': [['fei4','費心／費姓'], ['bi4','費邑']],
+    '湯': [['tang1','湯姓'], ['shang1','浩湯']],
+    '繁': [['fan2','繁榮'], ['po2','繁姓']],
+    '龐': [['pang2','龐大／龐姓'], ['long2','高大貌']],
+    '景': [['jing3','風景'], ['ying3','同影']],
+    '員': [['yuan2','成員'], ['yun4','員姓']],
+    '秘': [['mi4','秘密'], ['bi4','秘姓']],
+    '令': [['ling4','號令'], ['ling2','令狐']]
+  };
+
+  function sanitizePinyinMap(obj) {
+    var out = {};
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+    Object.keys(obj).slice(0, 100).forEach(function(k) {
+      if (!/^(?:\d+:)?[\u4e00-\u9fff]$/.test(k)) return;
+      var val = String(obj[k] || '').trim().toLowerCase();
+      if (splitPy(val)) out[k] = val;
+    });
+    return out;
+  }
+
+  function resolveCustomPy(customPinyin, c, idx) {
+    if (!customPinyin) return null;
+    var k1 = idx + ':' + c;
+    if (customPinyin[k1] && splitPy(customPinyin[k1])) return customPinyin[k1];
+    if (customPinyin[c] && splitPy(customPinyin[c])) return customPinyin[c];
+    return null;
+  }
+
+  function pinyinOf(chars, surnameLen, customPinyin) {
     var DB = window.PinyinDB;
     if (!DB) return null;
     return chars.map(function(c, i) {
-      var p = (i < surnameLen && DB.SURNAME[c]) || DB.CHAR[c];
+      var custom = resolveCustomPy(customPinyin, c, i);
+      var p = custom || (i < surnameLen && DB.SURNAME[c]) || DB.CHAR[c];
       return p ? splitPy(p) : null;
     });
   }
@@ -120,12 +218,14 @@ window.Phonetics = (function() {
     return hits.filter(function(h) { var k = h.text + h.word; if (seen[k]) return false; seen[k] = 1; return true; });
   }
 
-  /** 中文名檢查 */
-  function checkChinese(parsed) {
+  /** 中文名檢查（可傳入 customPinyin 指定多音字讀法） */
+  function checkChinese(parsed, customPinyin) {
     if (!parsed || !window.PinyinDB) return null;
     var chars = parsed.surnameChars.concat(parsed.givenNameChars);
     var sLen = parsed.surnameChars.length;
-    var sylls = pinyinOf(chars, sLen);
+    var cleanCustom = sanitizePinyinMap(customPinyin);
+    var sylls = pinyinOf(chars, sLen, cleanCustom);
+    var customApplied = chars.map(function(c, i) { return !!resolveCustomPy(cleanCustom, c, i); });
     var known = sylls.filter(Boolean).length;
     var notes = [], warns = [];
 
@@ -178,6 +278,9 @@ window.Phonetics = (function() {
     var severe = homos.filter(function(h) { return h.level >= 2; }).length;
     var grade = severe ? '需注意' : (homos.length || warns.length >= 2 || nicknames.length >= 2) ? '尚可' : '良好';
     return {
+      chars: chars,
+      sylls: sylls,
+      customApplied: customApplied,
       pinyin: sylls.map(function(s) { return s ? s.py : '?'; }).join(' '),
       toneText: toneText,
       notes: notes,
@@ -186,6 +289,133 @@ window.Phonetics = (function() {
       nicknames: nicknames,
       grade: grade
     };
+  }
+
+  // ---------- 多語音韻（粵語・台語・客語） ----------
+  var DIALECT_BAD = {
+    yue: [
+      ['sei2', '死', '不吉'], ['seoi1', '衰', '不吉'], ['syu1', '輸', '不吉'], ['kung4', '窮', '不吉'],
+      ['fai3', '廢', '貶義'], ['ban6', '笨', '貶義'], ['ceon2', '蠢', '貶義'], ['so4', '傻', '貶義'],
+      ['si2', '屎', '粗俗'], ['pei3', '屁', '粗俗'], ['gwai2', '鬼', '不吉'], ['zyu1', '豬', '貶義'],
+      ['gau2', '狗', '貶義'], ['cat6', '柒', '粗話'], ['gau1', '鳩', '粗話'], ['lan2', '撚', '粗話'],
+      ['ci1 sin3', '痴線', '貶義'], ['puk1 gaai1', '撲街', '粗話'], ['haam4 sap1', '咸濕', '貶義'],
+      ['zyu1 tau4', '豬頭', '貶義'], ['sai3 lo6', '細路', '貶義']
+    ],
+    tw: [
+      ['si2', '死', '不吉'], ['su1', '輸', '不吉'], ['sue1', '衰', '不吉'], ['tsham2', '慘', '不吉'],
+      ['sai2', '屎', '粗俗'], ['siau2', '瘋', '貶義'], ['gong7', '呆', '貶義'], ['pun7', '笨', '貶義'],
+      ['phua3', '破', '不吉'], ['tsau3', '臭', '貶義'], ['bai2', '醜', '貶義'], ['kau2', '狗', '貶義'],
+      ['tu1', '豬', '貶義'], ['ku1', '龜', '貶義'], ['khau3', '哭', '不吉'], ['kui2', '鬼', '不吉'],
+      ['a1 po5', '阿婆', '貶義'], ['ku1 kong1', '龜公', '粗俗'], ['ti1 ko1', '豬哥', '貶義'],
+      ['khau3 pe7', '哭爸', '粗話'], ['loh8 tshat4', '落漆', '貶義']
+    ],
+    hak: [
+      ['si3', '死／屎', '不吉'], ['su1', '輸', '不吉'], ['soi1', '衰', '不吉'], ['pho4', '破', '不吉'],
+      ['pun4', '笨', '貶義'], ['ngoi2', '呆', '貶義'], ['chhu4', '臭', '貶義'], ['kieu3', '狗', '貶義'],
+      ['chu1', '豬', '貶義'], ['kui3', '鬼', '不吉'], ['tien1', '癲', '貶義'], ['kui1', '龜', '貶義']
+    ]
+  };
+
+  function splitDialectPy(py) {
+    var m = /^([a-z]+)(\d)$/.exec(String(py || '').trim().toLowerCase());
+    if (!m) return null;
+    return { py: m[1] + m[2], base: m[1], tone: +m[2] };
+  }
+
+  function sanitizeDialectMap(obj) {
+    var out = {};
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+    Object.keys(obj).slice(0, 60).forEach(function(k) {
+      if (!/^(?:\d+:)?[\u4e00-\u9fff]$/.test(k)) return;
+      var val = String(obj[k] || '').trim().toLowerCase();
+      if (splitDialectPy(val)) out[k] = val;
+    });
+    return out;
+  }
+
+  function findDialectHomophones(sylls, chars, list) {
+    var hits = [], seen = {};
+    list.forEach(function(w) {
+      var parts = w[0].split(' ').map(splitDialectPy);
+      var n = parts.length;
+      for (var i = 0; i + n <= sylls.length; i++) {
+        var seg = sylls.slice(i, i + n);
+        if (seg.some(function(s) { return !s; })) continue;
+        var exactTone = seg.every(function(s, k) { return s.base === parts[k].base && s.tone === parts[k].tone; });
+        var sameBase = seg.every(function(s, k) { return s.base === parts[k].base; });
+        var level = exactTone ? 3 : sameBase ? 1 : 0;
+        if (level) {
+          var key = chars.slice(i, i + n).join('') + '|' + w[1];
+          if (!seen[key]) {
+            seen[key] = 1;
+            hits.push({ text: chars.slice(i, i + n).join(''), word: w[1], cat: w[2], level: level });
+          }
+        }
+      }
+    });
+    return hits.sort(function(a, b) { return b.level - a.level; });
+  }
+
+  /**
+   * 多語音韻檢查：粵語（Unihan 5,616 字）、台語（台羅基礎字表）、客語（四縣腔基礎字表）
+   * @param parsed ChineseNumerology.analyze().parsed
+   * @param customDialects 可選：{ yue?:{}, tw?:{}, hak?:{} }
+   */
+  function checkDialects(parsed, customDialects) {
+    var DB = window.DialectDB;
+    if (!parsed || !DB) return null;
+    var chars = parsed.surnameChars.concat(parsed.givenNameChars);
+    var specs = [
+      { key: 'yue', nameZh: '粵語（粵拼 Jyutping）', nameEn: 'Cantonese (Jyutping)', dict: DB.JYUTPING, starter: false,
+        entering: function(s) { return /[ptk]$/.test(s.base); } },
+      { key: 'tw', nameZh: '台語（台羅 Tâi-lô）', nameEn: 'Taiwanese Hokkien (Tâi-lô)', dict: DB.TAIWANESE, starter: true,
+        entering: function(s) { return s.tone === 4 || s.tone === 8 || /[ptkh]$/.test(s.base); } },
+      { key: 'hak', nameZh: '客語（四縣腔）', nameEn: 'Hakka (Sixian)', dict: DB.HAKKA, starter: true,
+        entering: function(s) { return s.tone === 5 || s.tone === 6 || /[ptk]$/.test(s.base); } }
+    ];
+
+    return specs.map(function(sp) {
+      var custom = sanitizeDialectMap(customDialects && customDialects[sp.key]);
+      var sylls = chars.map(function(c, i) {
+        var raw = custom[i + ':' + c] || custom[c] || (sp.dict && sp.dict[c]) || null;
+        return raw ? splitDialectPy(raw) : null;
+      });
+      var covered = sylls.filter(Boolean).length;
+      var readingText = chars.map(function(c, i) {
+        return c + (sylls[i] ? ' (' + sylls[i].py + ')' : L('（未收錄）', ' (unlisted)'));
+      }).join(' ');
+      var homophones = findDialectHomophones(sylls, chars, DIALECT_BAD[sp.key]);
+      var notes = [];
+      for (var i = 1; i < chars.length; i++) {
+        if (sylls[i - 1] && sylls[i] && chars[i] !== chars[i - 1] && sylls[i - 1].base === sylls[i].base) {
+          notes.push(L('「' + chars[i - 1] + chars[i] + '」同音節連讀（' + sylls[i].base + '）', '"' + chars[i - 1] + chars[i] + '" repeat syllable (' + sylls[i].base + ')'));
+        }
+      }
+      var enteringCount = sylls.filter(function(s) { return s && sp.entering(s); }).length;
+      if (covered === chars.length && enteringCount === chars.length) {
+        notes.push(L('全名為入聲字，發音短促收尾，可多唸幾次確認順口度', 'All characters end in entering (checked) tones — short and clipped; say aloud to check flow'));
+      } else if (sylls[sylls.length - 1] && sp.entering(sylls[sylls.length - 1])) {
+        notes.push(L('尾字屬入聲韻尾，叫起來收音較短促', 'Ends on an entering tone, giving a crisp, clipped ending'));
+      }
+      if (sp.starter && covered < chars.length) {
+        notes.push(L('基礎字表已收錄 ' + covered + '/' + chars.length + ' 字（逐步擴充中），未收錄字可手動補填讀音',
+          'Starter lexicon covers ' + covered + '/' + chars.length + ' characters (expanding progressively); unlisted characters can be entered manually'));
+      }
+      var severe = homophones.some(function(h) { return h.level >= 2; });
+      var grade = severe ? '需注意' : homophones.length ? '尚可' : (covered === chars.length ? '良好' : '部分收錄');
+      return {
+        key: sp.key,
+        label: L(sp.nameZh, sp.nameEn),
+        chars: chars,
+        sylls: sylls,
+        covered: covered,
+        total: chars.length,
+        readingText: readingText,
+        homophones: homophones,
+        notes: notes,
+        grade: grade
+      };
+    });
   }
 
   // ---------- 英文 ----------
@@ -263,5 +493,16 @@ window.Phonetics = (function() {
     return { name: key.charAt(0) + key.slice(1).toLowerCase(), syllables: syll, stressAt: primary, stress: stress, hard: hard, slang: slang, notes: notes, warns: warns, estimated: estimated, grade: grade };
   }
 
-  return { checkChinese: checkChinese, checkEnglish: checkEnglish, findHomophones: findHomophones, splitPy: splitPy, BAD_WORDS: BAD_WORDS };
+  return {
+    checkChinese: checkChinese,
+    checkDialects: checkDialects,
+    checkEnglish: checkEnglish,
+    findHomophones: findHomophones,
+    splitPy: splitPy,
+    splitDialectPy: splitDialectPy,
+    sanitizePinyinMap: sanitizePinyinMap,
+    sanitizeDialectMap: sanitizeDialectMap,
+    POLYPHONES: POLYPHONES,
+    BAD_WORDS: BAD_WORDS
+  };
 })();

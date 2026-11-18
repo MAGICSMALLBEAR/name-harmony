@@ -3,7 +3,7 @@
  * Cache-First 策略，支援離線使用
  */
 
-var CACHE_NAME = 'name-harmony-v48';
+var CACHE_NAME = 'name-harmony-v52';
 
 var ASSETS_TO_CACHE = [
   './',
@@ -25,6 +25,7 @@ var ASSETS_TO_CACHE = [
   './js/data/stroke-db.js',
   './js/data/s2t-map.js',
   './js/data/pinyin-db.js',
+  './js/data/dialect-db.js',
   './js/data/english-phonetics.js',
   './js/phonetics.js',
   './js/data/name-chars.js',
@@ -39,6 +40,7 @@ var ASSETS_TO_CACHE = [
   './js/data/english-names.js',
   './js/data/english-number-meanings.js',
   './js/zodiac-bazi.js',
+  './js/bazi-advanced.js',
   './js/name-generator.js',
   './js/share-card.js',
   './js/fun-extras.js',
@@ -51,6 +53,7 @@ var ASSETS_TO_CACHE = [
   './js/lunar.js',
   './js/ziwei.js',
   './js/ziwei-reading.js',
+  './js/ziwei-flying.js',
   './js/vendor/astronomy.browser.min.js',
   './js/astrology.js',
   './js/professional.js',
@@ -58,6 +61,8 @@ var ASSETS_TO_CACHE = [
   './js/english-numerology.js',
   './js/harmony.js',
   './js/pair-harmony.js',
+  './js/chart-harmony.js',
+  './js/data-backup.js',
   './js/i18n.js',
   './js/l10n.js',
   './js/l10n/core.js',

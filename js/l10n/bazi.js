@@ -9,6 +9,7 @@ L10N.add({
   '忠誠正直、有正義感': 'loyal, upright and principled', '寬厚真誠、心地善良': 'generous, sincere and kind-hearted',
 
   // 流年十神提示
+  '重視合作分工與資源界線，事先說清楚共同支出與責任。': 'Agree on shared expenses and responsibilities, with clear boundaries around resources and teamwork.',
   '適合建立自信與獨立性，朋友與同輩會是重要支持。': 'A year to build confidence and independence; friends and peers are an important support.',
   '創意與表達之年，適合發展興趣、享受生活。': 'A year of creativity and expression — develop your interests and enjoy life.',
   '財運穩定之年，努力工作會有合理回報。': 'A year of steady finances; hard work brings fair rewards.',

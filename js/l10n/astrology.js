@@ -46,13 +46,19 @@ L10N.add({
   '朋友、團體、理想與願景': 'friends, groups, ideals and vision',
   '隱藏的自我、靈性、退隱': 'the hidden self, spirituality and retreat',
 
-  // 相位
+  // 相位與虛點
+  '中天': 'Midheaven (MC)', '北交點': 'North Node', '南交點': 'South Node', '上升點': 'Ascendant (ASC)',
   '合相': 'Conjunction', '對分相': 'Opposition', '四分相': 'Square', '三合相': 'Trine', '六合相': 'Sextile',
+  '半六分相': 'Semi-sextile', '半四分相': 'Semi-square', '補八分相': 'Sesquiquadrate', '補十二分相': 'Quincunx',
   '兩星能量完全融合，特質疊加、效果加乘（吉凶依星曜本質而定）。': 'The two planets\' energies fully merge, their qualities stacking and amplifying (whether good or bad depends on the planets).',
   '兩極拉扯、彼此對立，需要學習整合並找到平衡點。': 'A tug-of-war between opposites; the task is to integrate them and find a balance.',
   '產生摩擦與張力，帶來壓力但也是成長與突破的契機。': 'Friction and tension that bring pressure, but also a chance to grow and break through.',
   '順暢自然的合作關係，兩股力量相輔相成、如虎添翼。': 'Smooth, natural cooperation; the two forces reinforce each other.',
   '和諧的助力，兩者能自然搭配、創造機會與資源。': 'Harmonious support; the two combine naturally to create opportunities and resources.',
+  '相鄰星座的細微互動，需要主動意識才能協調銜接。': 'A subtle link between adjacent signs that needs conscious adjustment.',
+  '輕微內在摩擦，常在細節或節奏不一致時浮現。': 'Mild internal friction that surfaces around details or mismatched pacing.',
+  '隱性張力與反覆調整，推動把潛在問題處理到位。': 'Background tension that prompts repeated adjustments until issues are resolved.',
+  '兩個星座性質互不相通，需要刻意轉彎與重新對焦。': 'An awkward link between unrelated signs requiring deliberate recalibration.',
 
   // 主導元素與名字
   '熱情行動派，名字若多火屬性則加倍旺盛，缺火則可補。': 'Passionate doer — a name rich in Fire doubles this energy; if Fire is missing, it can be added.',

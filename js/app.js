@@ -59,12 +59,36 @@
   var MAX_PERSONS = 5;
   // 使用者手動輸入的筆劃（字 → 筆劃）；筆劃庫沒收錄的字靠這個才分析得下去
   var manualStrokes = {};
+  // 自訂多音字／方言讀音覆蓋
+  var customPinyin = {};
+  var customDialects = {};
   // 吉數姓名推薦目前選擇的性別（'' 表示全部）
   var genGender = '';
+  var matrixSystem = 'all';
 
   // ============ 初始化 ============
   function init() {
     initPlaceSelects(document);
+    var relationshipMode = document.getElementById('relationshipMode');
+    try { relationshipMode.value = window.ChartHarmony.modeKey(localStorage.getItem('name-harmony-relationship')); } catch (e) {}
+    relationshipMode.addEventListener('change', function() {
+      try { localStorage.setItem('name-harmony-relationship', this.value); } catch (e) {}
+      if (currentData) { currentData.relationship = this.value; currentData.pairs = buildPairs(currentData.results); renderAll(); }
+    });
+    initBackupUI();
+    try { manualStrokes = window.DataBackup.strokes(JSON.parse(localStorage.getItem('name-harmony-strokes') || '{}')); } catch (e) {}
+    try {
+      if (window.Phonetics && window.Phonetics.sanitizePinyinMap) {
+        customPinyin = window.Phonetics.sanitizePinyinMap(JSON.parse(localStorage.getItem('name-harmony-pinyin') || '{}'));
+      }
+      var rawDia = JSON.parse(localStorage.getItem('name-harmony-dialects') || '{}');
+      if (window.Phonetics && window.Phonetics.sanitizeDialectMap && rawDia && typeof rawDia === 'object') {
+        ['yue','tw','hak'].forEach(function(k) {
+          var m = window.Phonetics.sanitizeDialectMap(rawDia[k]);
+          if (Object.keys(m).length) customDialects[k] = m;
+        });
+      }
+    } catch (e) {}
     // 紫微運限：切換年份時只重算該區塊
     document.addEventListener('change', function(e) {
       var cl = e.target.classList;
@@ -80,6 +104,140 @@
       }
       if (!cl.contains('zw-day')) daySel.innerHTML = zwDayOptions(year, monthSel.value, +daySel.value);
       box.querySelector('.zw-md-body').innerHTML = renderZiweiMonthDaily(zw, year, monthSel.value, +daySel.value);
+    });
+    // 紫微飛化互動 + 多音字／方言讀音自訂
+    document.addEventListener('change', function(e) {
+      var sel = e.target;
+      if (sel && sel.classList && sel.classList.contains('pinyin-select')) {
+        var box = sel.closest('.phonetics-detail');
+        var ctrl = sel.closest('.phonetics-char-ctrl');
+        var customWrap = ctrl ? ctrl.querySelector('.pinyin-custom-wrap') : null;
+        if (sel.value === '__custom__') {
+          if (customWrap) customWrap.classList.remove('hidden');
+          return;
+        }
+        var key = sel.dataset.pos + ':' + sel.dataset.char;
+        if (!sel.value) delete customPinyin[key];
+        else customPinyin[key] = sel.value;
+        try { localStorage.setItem('name-harmony-pinyin', JSON.stringify(customPinyin)); } catch (err) {}
+        rerenderPhoneticsBox(box);
+        return;
+      }
+      if (sel && sel.classList && (sel.classList.contains('astro-minor-toggle') || sel.classList.contains('astro-nodes-toggle'))) {
+        var abox = sel.closest('.astro-natal-box');
+        var aItem = abox ? astroCharts[+abox.dataset.astro] : null;
+        if (aItem) {
+          var showMinor = !!(abox.querySelector('.astro-minor-toggle') && abox.querySelector('.astro-minor-toggle').checked);
+          var showNodes = !abox.querySelector('.astro-nodes-toggle') || abox.querySelector('.astro-nodes-toggle').checked;
+          abox.querySelector('.astro-wheel-wrap').innerHTML = window.Astrology.renderWheelSVG(aItem.chart, { title: LL('本命星盤', 'Natal Chart'), showNodes: showNodes, showMinor: showMinor });
+          var minorEl = abox.querySelector('.astro-minor-list');
+          if (minorEl) minorEl.classList.toggle('hidden', !showMinor);
+        }
+        return;
+      }
+      if (sel && sel.classList && sel.classList.contains('astro-transit-date')) {
+        var tbox = sel.closest('.astro-transit-box');
+        var tItem = tbox ? astroCharts[+tbox.dataset.astro] : null;
+        if (tItem && sel.value) {
+          var parts = sel.value.split('-');
+          if (parts.length === 3) {
+            tbox.querySelector('.astro-transit-body').innerHTML = renderAstroTransits(tItem.chart, +parts[0], +parts[1], +parts[2], tItem.place);
+          }
+        }
+        return;
+      }
+      if (sel && sel.classList && sel.classList.contains('astro-comp-minor-toggle')) {
+        var cbox = sel.closest('.astro-comp-box');
+        var comp = cbox ? compCharts[+cbox.dataset.comp] : null;
+        if (comp) {
+          var cMinor = !!sel.checked;
+          cbox.querySelector('.astro-comp-wheel-wrap').innerHTML = window.Astrology.renderWheelSVG(comp, { title: LL('占星組合盤', 'Composite Chart'), isComposite: true, showMinor: cMinor });
+          var cMinorList = cbox.querySelector('.astro-comp-minor-list');
+          if (cMinorList) cMinorList.classList.toggle('hidden', !cMinor);
+        }
+      }
+    });
+    document.addEventListener('click', function(e) {
+      var cell = e.target.closest && e.target.closest('.zw-fly-cell, .zw-fly-btn, .zw-scope-btn');
+      if (cell) {
+        var box = cell.closest('.zw-fly-box');
+        var item = box ? zwFlyCharts[+box.dataset.zwf] : null;
+        if (!item) return;
+        if (cell.classList.contains('zw-scope-btn')) {
+          box.dataset.scope = cell.dataset.scope || 'natal';
+          box.querySelectorAll('.zw-scope-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.scope === box.dataset.scope); });
+        }
+        var scope = box.dataset.scope || 'natal';
+        var hYear = currentLunarYear();
+        var horoBox = box.closest('details') && box.closest('details').parentNode ? box.closest('details').parentNode.querySelector('.zw-year') : null;
+        if (horoBox) hYear = +horoBox.value || hYear;
+        var hFly = (scope !== 'natal' && item.chart.gender && window.ZiweiFlying.horoscopeAnalyze)
+          ? window.ZiweiFlying.horoscopeAnalyze(item.chart, window.Ziwei.getHoroscope(item.chart, hYear)) : null;
+        var palaceName = cell.dataset.palace;
+        if (!palaceName) {
+          if (scope === 'decadal' && hFly && hFly.decadalMap) {
+            var dCur = window.Ziwei.getHoroscope(item.chart, hYear).decadal;
+            palaceName = dCur ? dCur.name : '命宮';
+          } else if (scope === 'yearly' && hFly) {
+            var yCur = window.Ziwei.getHoroscope(item.chart, hYear).yearlyMing;
+            palaceName = yCur ? yCur.name : '命宮';
+          } else {
+            palaceName = (box.querySelector('.zw-fly-btn.active') || {}).dataset ? box.querySelector('.zw-fly-btn.active').dataset.palace : '命宮';
+          }
+        }
+        var svgOpts = null;
+        if (scope === 'decadal' && hFly && hFly.decadalMap) svgOpts = { scopeNamesByPos: hFly.decadalMap };
+        else if (scope === 'yearly' && hFly && hFly.yearlyMap) svgOpts = { scopeNamesByPos: hFly.yearlyMap };
+        box.querySelectorAll('.zw-fly-pills .zw-fly-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.palace === palaceName); });
+        box.querySelector('.zw-fly-svg-wrap').innerHTML = window.ZiweiFlying.renderChartSVG(item.chart, item.flying, palaceName, svgOpts);
+        box.querySelector('.zw-fly-readout').innerHTML = renderZiweiFlyReadout(item.flying, palaceName, svgOpts);
+        return;
+      }
+      var pbtn = e.target.closest && e.target.closest('.zw-pair-dir-btn, .zw-pair-src-btn');
+      if (pbtn && currentData) {
+        var pbox = pbtn.closest('.zw-pair-fly-box');
+        var pair = pbox ? currentData.pairs[+pbox.dataset.pairIdx] : null;
+        if (!pair || !pair.pair || !pair.pair.flying) return;
+        if (pbtn.classList.contains('zw-pair-dir-btn')) pbox.dataset.dir = pbtn.dataset.dir;
+        if (pbtn.classList.contains('zw-pair-src-btn')) pbox.dataset.src = pbtn.dataset.src;
+        pbox.innerHTML = renderZiweiPairFlyingInner(pair.pair.flying, pbox.dataset.dir || 'AB', pbox.dataset.src || '');
+        return;
+      }
+      var pyBtn = e.target.closest && e.target.closest('.pinyin-apply-btn');
+      if (pyBtn) {
+        var ctrl = pyBtn.closest('.phonetics-char-ctrl');
+        var inp = ctrl ? ctrl.querySelector('.pinyin-custom-input') : null;
+        var val = inp ? inp.value.trim().toLowerCase() : '';
+        if (!val) {
+          delete customPinyin[pyBtn.dataset.pos + ':' + pyBtn.dataset.char];
+        } else if (window.Phonetics && window.Phonetics.splitPy(val)) {
+          customPinyin[pyBtn.dataset.pos + ':' + pyBtn.dataset.char] = val;
+        } else {
+          toast(LL('請輸入含聲調數字的拼音（例如 yue4、zhang3）', 'Enter pinyin with tone 1–5 (e.g. yue4, zhang3)'));
+          return;
+        }
+        try { localStorage.setItem('name-harmony-pinyin', JSON.stringify(customPinyin)); } catch (err) {}
+        rerenderPhoneticsBox(pyBtn.closest('.phonetics-detail'));
+        return;
+      }
+      var diaBtn = e.target.closest && e.target.closest('.dialect-apply-btn');
+      if (diaBtn) {
+        var dCtrl = diaBtn.closest('.dialect-custom-ctrl');
+        var dInp = dCtrl ? dCtrl.querySelector('.dialect-custom-input') : null;
+        var langKey = diaBtn.dataset.lang, ch = diaBtn.dataset.char, pos = diaBtn.dataset.pos;
+        var dVal = dInp ? dInp.value.trim().toLowerCase() : '';
+        if (!customDialects[langKey]) customDialects[langKey] = {};
+        if (!dVal) {
+          delete customDialects[langKey][pos + ':' + ch];
+        } else if (window.Phonetics && window.Phonetics.splitDialectPy(dVal)) {
+          customDialects[langKey][pos + ':' + ch] = dVal;
+        } else {
+          toast(LL('請輸入含聲調數字的拼音（例如 tan5、lim5、sei2）', 'Enter syllable with tone digit (e.g. tan5, lim5, sei2)'));
+          return;
+        }
+        try { localStorage.setItem('name-harmony-dialects', JSON.stringify(customDialects)); } catch (err) {}
+        rerenderPhoneticsBox(diaBtn.closest('.phonetics-detail'));
+      }
     });
     var tstToggle = document.getElementById('tstToggle');
     if (tstToggle) {
@@ -164,20 +322,21 @@
 
     var actionBar = document.getElementById('actionBar');
 
-    // QR/連結分享鍵
+    // QR/連結分享鍵（可還原成員與分析設定）
     var linkBtn = document.createElement('button');
     linkBtn.className = 'btn-action';
     linkBtn.innerHTML = '<span>🔗</span> <span data-i18n="linkBtn">連結</span>';
     linkBtn.addEventListener('click', function() {
       var text = buildShareText();
-      var url = 'https://magicsmallbear.github.io/name-harmony/';
+      var url = buildShareUrl();
       copyText(url + '\n\n' + text);
-      toast('網址+報告已複製！可貼到訊息分享');
+      toast(LL('已複製可還原分享連結與摘要！開啟連結即可帶入成員與設定', 'Copied restorable share link & summary!'));
     });
     actionBar.insertBefore(linkBtn, backBtn);
 
     // 客戶存檔
     var profileBtn = document.createElement('button');
+    profileBtn.id = 'profileSaveBtn';
     profileBtn.className = 'btn-action';
     profileBtn.innerHTML = '<span>💼</span> <span data-i18n="profileBtn">存檔</span>';
     profileBtn.addEventListener('click', saveProfile);
@@ -188,7 +347,8 @@
     qrBtn.className = 'btn-action';
     qrBtn.innerHTML = '<span>📱</span> <span data-i18n="qrBtn">QR</span>';
     qrBtn.addEventListener('click', function() {
-      var url = 'https://magicsmallbear.github.io/name-harmony/';
+      var url = buildShareUrl();
+      if (url.length > 1800) url = 'https://magicsmallbear.github.io/name-harmony/';
       var qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
       var win = window.open('', '_blank');
       if (win) { win.document.write('<title>QR Code - 姓名和盤</title><body style="background:#1A0A0A;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><img src="'+qrImg+'" style="border:3px solid #D4A843;border-radius:12px;"><p style="color:#D4A843;margin-top:16px;font-family:sans-serif;">姓名和盤</p></div></body>'); }
@@ -233,6 +393,12 @@
     // 套用目前語言到所有動態按鈕（含上方剛建立的）
     if (window.I18N) window.I18N.apply(window.I18N.getLang());
 
+    // 備份還原後，其他工具會在初始化時讀回偏好；這裡恢復尚未分析的表單。
+    try {
+      var restoredDraft = JSON.parse(localStorage.getItem('name-harmony-restored-draft') || 'null');
+      if (restoredDraft) { restoreEntry(restoredDraft); localStorage.removeItem('name-harmony-restored-draft'); }
+    } catch (e) { toast(LL('無法載入還原表單，已保留備份資料。', 'Could not load the restored form; your saved records are retained.')); }
+
     // Enter
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
@@ -262,7 +428,52 @@
     // 圖片下載按鈕
     addDownloadImgBtn();
 
-    showForm();
+    window.addEventListener('hashchange', tryRestoreFromShareHash);
+    if (!tryRestoreFromShareHash()) showForm();
+  }
+
+  function buildShareUrl() {
+    var base = (location.protocol === 'http:' || location.protocol === 'https:')
+      ? (location.origin + location.pathname)
+      : 'https://magicsmallbear.github.io/name-harmony/';
+    if (!window.DataBackup || !window.DataBackup.encodeShare) return base;
+    try {
+      var persons = currentData
+        ? currentData.results.map(function(x) { return savedPerson(x.person); })
+        : collectInputs().filter(function(p) { return p.cn || p.en; }).map(savedPerson);
+      if (!persons.length) return base;
+      var token = window.DataBackup.encodeShare({
+        persons: persons,
+        relationship: document.getElementById('relationshipMode').value,
+        tst: useTrueSolarTime(),
+        pro: isProMode,
+        manualStrokes: manualStrokes,
+        customPinyin: customPinyin,
+        customDialects: customDialects
+      });
+      return base + '#s=' + token;
+    } catch (e) {
+      return base;
+    }
+  }
+
+  function tryRestoreFromShareHash() {
+    var m = /^#s=([^&]+)/.exec(location.hash || '');
+    if (!m || !window.DataBackup || !window.DataBackup.decodeShare) return false;
+    try {
+      var shared = window.DataBackup.decodeShare(m[1]);
+      restoreEntry(shared);
+      proModeToggle.checked = !!shared.pro;
+      isProMode = !!shared.pro;
+      if (shared.customPinyin) customPinyin = Object.assign({}, shared.customPinyin);
+      if (shared.customDialects) customDialects = Object.assign({}, shared.customDialects);
+      handleAnalyze();
+      toast(LL('已載入分享連結中的成員與分析設定', 'Restored members and settings from share link'));
+      return true;
+    } catch (e) {
+      toast(LL('分享連結格式無效或已損毀', 'Invalid or corrupted share link'));
+      return false;
+    }
   }
 
   function spawnParticles() {
@@ -410,6 +621,14 @@
   // 配對解說依目前語言產生，換語言時重新產生（分析結果本身不變）
   function buildPairs(results) {
     var pairs = [];
+    var relationship = document.getElementById('relationshipMode').value;
+    var charts = results.map(function(item) {
+      var d = item.birthday;
+      if (!d) return {};
+      var place = d.place ? {name:d.place.name,lat:d.place.lat,lon:d.place.lon,tz:d.tzOffset} : null;
+      return { astro:window.Astrology.getChart(d.year,d.month,d.day,d.hour,d.minute,place),
+        ziwei:window.Ziwei.getZiweiChart(d.year,d.month,d.day,d.hour,item.result.gender) };
+    });
     for (var i = 0; i < results.length; i++) {
       for (var j = i + 1; j < results.length; j++) {
         var a = results[i].result;
@@ -422,6 +641,7 @@
         // 中中和盤
         if (a.cn && b.cn) {
           var p = window.PairHarmony.cncnHarmony(a.cn, b.cn);
+          p = window.ChartHarmony.namePair(p, 'cn-cn', relationship);
           if (p) {
             // 血型配對
             var bA = results[i].person.blood, bB = results[j].person.blood;
@@ -443,17 +663,28 @@
         // 英英和盤
         if (a.en && b.en) {
           var p = window.PairHarmony.enenHarmony(a.en, b.en);
+          p = window.ChartHarmony.namePair(p, 'en-en', relationship);
           if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'en-en' });
         }
         // 中英跨文化
         if (a.cn && b.en) {
           var p = window.PairHarmony.cnenCrossHarmony(a.cn, b.en);
+          p = window.ChartHarmony.namePair(p, 'cn-en', relationship);
           if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
         }
         if (a.en && b.cn) {
           var p = window.PairHarmony.cnenCrossHarmony(b.cn, a.en);
+          p = window.ChartHarmony.namePair(p, 'cn-en', relationship);
           if (p) pairs.push({ a: labelA, b: labelB, pair: p, type: 'cn-en' });
         }
+        if (a.zodiac && b.zodiac) {
+          var bp = window.ChartHarmony.baziPair(a.zodiac.bazi, b.zodiac.bazi, relationship);
+          if (bp) pairs.push({ a: labelA, b: labelB, pair: bp, type: 'bazi' });
+        }
+        var ap = window.ChartHarmony.astrologyPair(charts[i].astro,charts[j].astro,relationship);
+        if (ap) pairs.push({a:labelA,b:labelB,pair:ap,type:'astrology'});
+        var zp = window.ChartHarmony.ziweiPair(charts[i].ziwei,charts[j].ziwei,relationship);
+        if (zp) pairs.push({a:labelA,b:labelB,pair:zp,type:'ziwei'});
       }
     }
 
@@ -518,6 +749,10 @@
   function handleAnalyze() {
     formError.classList.add('hidden');
     zwCharts = [];
+    zwFlyCharts = [];
+    phoneticItems = [];
+    astroCharts = [];
+    compCharts = [];
     showLoading();
     try {
       doAnalyze();
@@ -558,7 +793,7 @@
       results.push({ person: persons[i], result: r, birthday: bday });
     }
 
-    currentData = { results: results, pairs: buildPairs(results) };
+    currentData = { results: results, relationship: document.getElementById('relationshipMode').value, pairs: buildPairs(results) };
     // 顯示PK區
     var pkSection = document.getElementById('namePkSection');
     if (pkSection) pkSection.classList.remove('hidden');
@@ -665,6 +900,224 @@
 
   // ============ 紫微：宮位表與運限 ============
   var zwCharts = []; // 供運限年份切換重新計算
+  var zwFlyCharts = []; // 供單人十二宮飛化路徑圖切換宮位
+  var phoneticItems = []; // 供多音字／方言讀音自訂即時重算
+  var astroCharts = []; // 供本命盤圖形與流年行運互動
+  var compCharts = []; // 供組合盤小相位切換
+
+  /** 進階八字判讀：調候、格局、從格、合化條件與判斷依據 */
+  function renderAdvancedBazi(bazi) {
+    if (!bazi || !window.AdvancedBazi) return '';
+    var adv = window.AdvancedBazi.analyze(bazi);
+    if (!adv) return '';
+    var badge = function(st) {
+      var cls = st === 'candidate' ? 'is-candidate' : st === 'blocked' ? 'is-blocked' : st === 'partial' ? 'is-partial' : '';
+      return '<span class="bazi-badge ' + cls + '">' + window.AdvancedBazi.status(st) + '</span>';
+    };
+    var checksHtml = function(list) {
+      return '<ul class="bazi-checks">' + list.map(function(c) {
+        return '<li class="' + (c.pass ? 'is-pass' : '') + '">' + (c.pass ? '✅ ' : '▫️ ') + c.text + '</li>';
+      }).join('') + '</ul>';
+    };
+    var covNote = adv.full
+      ? LL('四柱完整（4/4）', 'Full 4 pillars (4/4)')
+      : LL('缺時辰（' + adv.coverage + '/4 柱，暫不定格）', 'Missing hour (' + adv.coverage + '/4 pillars)');
+
+    var html = '<details class="bazi-advanced-detail" style="margin:6px 0;font-size:0.85rem;">';
+    html += '<summary style="color:var(--color-gold-primary);cursor:pointer;">🧭 ' + LL('進階八字判讀：', 'Advanced BaZi: ') + adv.pattern.name + ' · ' + covNote + '</summary>';
+    html += '<div class="bazi-adv-box">';
+
+    // 1. 地支藏干與十神
+    html += '<div class="bazi-adv-sec"><div class="bazi-adv-head">' + LL('📜 地支藏干與十神', '📜 Branch Hidden Stems & Ten Gods') + '</div>';
+    html += '<div class="bazi-hidden-grid">';
+    adv.hidden.forEach(function(row) {
+      html += '<div class="bazi-hidden-card"><strong>' + T(row.pillar) + ' ' + GZ(row.branch) + '</strong><br>' +
+        row.stems.map(function(s) {
+          return '<span class="element-' + s.element + '">' + GZ(s.stem) + '</span>(' + T(s.role) + ')';
+        }).join(' ') + '</div>';
+    });
+    html += '</div></div>';
+
+    // 2. 格局取用
+    html += '<div class="bazi-adv-sec"><div class="bazi-adv-head">' + LL('🏛️ 格局取用：', '🏛️ Pattern: ') + adv.pattern.name + badge(adv.pattern.status) + '</div>';
+    html += checksHtml(adv.pattern.evidence);
+    html += '<p class="bazi-adv-note">' + adv.pattern.note + '</p></div>';
+
+    // 3. 調候條件
+    html += '<div class="bazi-adv-sec"><div class="bazi-adv-head">' + LL('🌡️ 調候觀察：', '🌡️ Climate: ') + GZ(adv.climate.month) + LL('月（', ' month (') + adv.climate.tempLabel + ' / ' + adv.climate.dryLabel + ')' + badge(adv.climate.status) + '</div>';
+    if (adv.climate.needs.length) {
+      html += '<ul class="bazi-checks">';
+      adv.climate.needs.forEach(function(n) {
+        var pct = Math.round(n.share * 100);
+        var exp = n.exposed.length ? LL('透干於 ' + n.exposed.join('、'), 'exposed in ' + n.exposed.map(T).join(', ')) : LL('未透干', 'not exposed');
+        var rt = n.rooted.length ? LL('通根於 ' + n.rooted.join('、'), 'rooted in ' + n.rooted.map(T).join(', ')) : LL('無藏干根氣', 'no hidden root');
+        var rel = n.conflict ? LL('⚠️ 與扶抑喜用衝突', '⚠️ conflicts with strength-based elements')
+          : n.inStrengthFavourable ? LL('✅ 與扶抑喜用一致', '✅ aligns with strength-based elements') : LL('• 並列參考', '• shown alongside');
+        html += '<li class="is-pass"><strong class="element-' + n.element + '">' + T(n.element) + '</strong>（' + pct + '%｜' + exp + '｜' + rt + '）：' + n.reason + ' — ' + rel + '</li>';
+      });
+      html += '</ul>';
+    } else {
+      html += '<p style="margin:4px 0;color:var(--color-text-secondary);">' + LL('本節氣月寒暖燥濕相對中和，未見急迫寒燥調候需求，可依扶抑喜用與原局流通觀察。', 'This solar month is relatively temperate; no urgent seasonal climate adjustment is triggered beyond strength and flow.') + '</p>';
+    }
+    html += '<p class="bazi-adv-note">' + adv.climate.note + '</p></div>';
+
+    // 4. 從格檢核
+    html += '<div class="bazi-adv-sec"><div class="bazi-adv-head">' + LL('⚖️ 從格條件檢核', '⚖️ Following-Pattern Checks') + '</div>';
+    adv.following.rows.forEach(function(row) {
+      html += '<div style="margin:6px 0;"><div style="font-weight:600;color:var(--color-text-primary);">' + row.name + '（<span class="element-' + row.element + '">' + T(row.element) + '</span>） ' + badge(row.status) + '</div>';
+      html += checksHtml(row.checks) + '</div>';
+    });
+    html += '<p class="bazi-adv-note">' + adv.following.note + '</p></div>';
+
+    // 5. 合化條件
+    html += '<div class="bazi-adv-sec"><div class="bazi-adv-head">' + LL('🔗 合化條件檢核', '🔗 Combination & Transformation Checks') + '</div>';
+    if (adv.combinations.rows.length) {
+      adv.combinations.rows.forEach(function(row) {
+        var memText = row.members.map(function(idx) {
+          var p = bazi.pillars[idx];
+          return T(p.name) + ' ' + GZ(p.tg + p.dz);
+        }).join(' × ');
+        html += '<div style="margin:6px 0;"><div style="font-weight:600;color:var(--color-text-primary);">' + row.kind + '（' + memText + ' → <span class="element-' + row.target + '">' + T(row.target) + '</span>） ' + badge(row.status) + '</div>';
+        html += checksHtml(row.checks) + '</div>';
+      });
+    } else {
+      html += '<p style="margin:4px 0;color:var(--color-text-secondary);">' + LL('原局未見天干五合、地支六合、三合或三會組合。', 'No natal stem combinations, branch harmonies, three-harmony or seasonal groups observed.') + '</p>';
+    }
+    html += '<p class="bazi-adv-note">' + adv.combinations.note + '</p></div>';
+
+    html += '</div></details>';
+    return html;
+  }
+
+  function renderZiweiFlyReadout(fly, activePalaceName, opts) {
+    var active = fly.palaces.filter(function(p) { return p.name === activePalaceName; })[0] || fly.palaces[0];
+    var scopeMap = opts && opts.scopeNamesByPos ? opts.scopeNamesByPos : null;
+    var scopeTitle = scopeMap && scopeMap[active.pos] ? scopeMap[active.pos].full + ' · ' : '';
+    var html = '<div style="font-weight:700;color:var(--color-gold-light);margin-bottom:4px;">' +
+      scopeTitle + ZN(active.name) + '（' + GZ(active.ganzhi) + '）' + LL('飛化明細', ' Flying Details') + '</div>';
+    active.transforms.forEach(function(tr) {
+      var col = window.ZiweiFlying.TYPE_META[tr.type].color;
+      var extraScope = (scopeMap && tr.toPos != null && scopeMap[tr.toPos]) ? ' [' + scopeMap[tr.toPos].full + ']' : '';
+      html += '<p style="margin:2px 0;color:var(--color-text-secondary);"><strong style="color:' + col + ';">' + ZN(tr.type) + '</strong> ' + tr.desc + extraScope + '</p>';
+    });
+    return html;
+  }
+
+  function renderZiweiFlying(zw) {
+    if (!zw || zw.needHour || !window.ZiweiFlying) return '';
+    var fly = window.ZiweiFlying.analyze(zw);
+    if (!fly) return '';
+    var zwfIdx = zwFlyCharts.push({ chart: zw, flying: fly }) - 1;
+    var activeName = '命宮';
+    var selfCount = fly.centrifugal.length;
+    var html = '<details class="zw-flying-detail" style="margin-top:8px;">';
+    html += '<summary style="font-size:0.78rem;color:var(--color-gold-primary);cursor:pointer;">🕊️ ' +
+      LL('十二宮宮干飛化與自化（含飛化路徑圖' + (selfCount ? ' · 自化 ' + selfCount + ' 處' : '') + '）',
+         'Palace-Stem Flying & Self-Transformations (Path Diagram' + (selfCount ? ' · ' + selfCount + ' self' : '') + ')') + '</summary>';
+    html += '<div class="zw-fly-box" data-zwf="' + zwfIdx + '" data-scope="natal">';
+
+    if (zw.gender && window.ZiweiFlying.horoscopeAnalyze) {
+      html += '<div class="zw-scope-controls" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+        '<button type="button" class="zw-fly-btn zw-scope-btn active" data-scope="natal">' + LL('本命十二宮', 'Natal') + '</button>' +
+        '<button type="button" class="zw-fly-btn zw-scope-btn" data-scope="decadal">' + LL('大限疊飛', 'Decade Overlay') + '</button>' +
+        '<button type="button" class="zw-fly-btn zw-scope-btn" data-scope="yearly">' + LL('流年疊飛', 'Yearly Overlay') + '</button>' +
+        '</div>';
+    }
+
+    // 自化總覽（離心自化 & 對宮向心）
+    html += '<div style="font-size:0.74rem;margin-bottom:6px;"><strong style="color:var(--color-gold-light);">' + LL('⚡ 自化總覽：', '⚡ Self-Transformations: ') + '</strong>';
+    if (fly.centrifugal.length) {
+      html += fly.centrifugal.map(function(c) {
+        return '<span style="margin-right:8px;color:' + window.ZiweiFlying.TYPE_META[c.type].color + ';">' +
+          ZN(c.palace) + LL('自化' + c.type.charAt(1) + '（' + c.star + '）', ' self-' + ZN(c.type) + ' (' + ZN(c.star) + ')') + '</span>';
+      }).join('');
+    } else {
+      html += '<span style="color:var(--color-text-muted);">' + LL('本命十二宮未見離心自化', 'No centrifugal self-transformations') + '</span>';
+    }
+    if (fly.centripetal.length) {
+      html += '<br><span style="color:var(--color-text-secondary);"><strong>' + LL('對宮向心飛入：', 'Centripetal opposite inflows: ') + '</strong>' +
+        fly.centripetal.map(function(c) {
+          return ZN(c.fromPalace) + ' → ' + ZN(c.toPalace) + ' (' + ZN(c.star) + ' ' + ZN(c.type) + ')';
+        }).join(LL('；', '; ')) + '</span>';
+    }
+    html += '</div>';
+
+    // 飛化重點線索
+    if (fly.highlights.length) {
+      html += '<div style="font-size:0.73rem;margin-bottom:8px;padding:6px 8px;background:rgba(212,168,67,0.06);border-radius:6px;">';
+      fly.highlights.forEach(function(h) {
+        html += '<p style="margin:2px 0;color:var(--color-text-secondary);line-height:1.55;"><strong style="color:var(--color-gold-light);">' + h.title + LL('：', ': ') + '</strong>' + h.text + '</p>';
+      });
+      html += '</div>';
+    }
+
+    // 12 宮切換按鈕 + 互動式 SVG 路徑圖 + 明細
+    html += '<div class="zw-fly-pills">';
+    fly.palaces.forEach(function(p) {
+      html += '<button type="button" class="zw-fly-btn' + (p.name === activeName ? ' active' : '') + '" data-palace="' + p.name + '">' +
+        ZN(p.name) + ' ' + GZ(p.stem) + (p.selfList.length ? ' ⚡' : '') + '</button>';
+    });
+    html += '</div>';
+    html += '<div class="zw-fly-svg-wrap">' + window.ZiweiFlying.renderChartSVG(zw, fly, activeName) + '</div>';
+    html += '<div class="zw-fly-readout">' + renderZiweiFlyReadout(fly, activeName) + '</div>';
+
+    // 十二宮宮干四化總表
+    html += '<details style="margin-top:8px;"><summary style="font-size:0.74rem;color:var(--color-gold-primary);cursor:pointer;">📋 ' +
+      LL('十二宮宮干四化總表', 'Complete 12-Palace Flying Table') + '</summary>';
+    html += '<div class="zw-fly-table-wrap"><table class="zw-fly-table"><thead><tr><th>' + LL('宮位（干支）', 'Palace') + '</th>' +
+      window.ZiweiFlying.SIHUA_TYPES.map(function(t) { return '<th style="color:' + window.ZiweiFlying.TYPE_META[t].color + ';">' + ZN(t) + '</th>'; }).join('') +
+      '</tr></thead><tbody>';
+    fly.palaces.forEach(function(p) {
+      html += '<tr><td><strong>' + ZN(p.name) + '</strong> <span style="color:var(--color-text-muted);">' + GZ(p.ganzhi) + '</span></td>';
+      p.transforms.forEach(function(tr) {
+        var tag = tr.self ? LL('（自化）', ' (self)') : tr.opposite ? LL('（對宮）', ' (opp.)') : '';
+        html += '<td>' + ZN(tr.star) + ' → ' + ZN(tr.toName) + tag + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></details>';
+    html += '<p class="bazi-adv-note">' + fly.note + '</p>';
+    html += '</div></details>';
+    return html;
+  }
+
+  function renderZiweiPairFlyingInner(pairFlying, dir, srcFilter) {
+    dir = dir === 'BA' ? 'BA' : 'AB';
+    var rows = (dir === 'AB' ? pairFlying.aToB : pairFlying.bToA).filter(function(r) {
+      return !srcFilter || r.fromPalace === srcFilter;
+    });
+    var html = '<div class="zw-pair-controls">';
+    html += '<button type="button" class="zw-pair-dir-btn' + (dir === 'AB' ? ' active' : '') + '" data-dir="AB">' + LL('A 飛入 B 盤', 'A → B') + '</button>';
+    html += '<button type="button" class="zw-pair-dir-btn' + (dir === 'BA' ? ' active' : '') + '" data-dir="BA">' + LL('B 飛入 A 盤', 'B → A') + '</button>';
+    html += '<span style="font-size:0.7rem;color:var(--color-text-muted);margin-left:4px;">' + LL('發射宮：', 'Source:') + '</span>';
+    html += '<button type="button" class="zw-pair-src-btn' + (!srcFilter ? ' active' : '') + '" data-src="">' + LL('全部重點宮', 'All focus') + '</button>';
+    pairFlying.sourcePalaces.forEach(function(name) {
+      html += '<button type="button" class="zw-pair-src-btn' + (srcFilter === name ? ' active' : '') + '" data-src="' + name + '">' + ZN(name) + '</button>';
+    });
+    html += '</div>';
+    html += window.ZiweiFlying.renderPairSVG(pairFlying, dir, srcFilter);
+    if (pairFlying.insights.length) {
+      html += '<div style="font-size:0.74rem;margin:6px 0;">';
+      pairFlying.insights.forEach(function(ins) {
+        html += '<p style="margin:2px 0;color:var(--color-text-secondary);line-height:1.6;">• ' + ins.text + '</p>';
+      });
+      html += '</div>';
+    }
+    html += '<div style="font-size:0.72rem;line-height:1.65;color:var(--color-text-secondary);margin-top:4px;">';
+    rows.forEach(function(r) {
+      var col = window.ZiweiFlying.TYPE_META[r.type].color;
+      html += '<p style="margin:2px 0;"><strong style="color:' + col + ';">' + r.side + ' ' + ZN(r.fromPalace) + '(' + GZ(r.fromStem) + ') ' +
+        ZN(r.star) + ' ' + ZN(r.type) + ' → ' + ZN(r.toPalace) + '</strong>' + (r.note ? ' — ' + r.note : '') + '</p>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderZiweiPairFlying(pairFlying, pairIdx) {
+    if (!pairFlying || !window.ZiweiFlying) return '';
+    return '<div class="zw-pair-fly-box" data-pair-idx="' + pairIdx + '" data-dir="AB" data-src="">' +
+      renderZiweiPairFlyingInner(pairFlying, 'AB', '') + '</div>';
+  }
 
   function currentLunarYear() {
     var d = new Date();
@@ -672,16 +1125,133 @@
     return l ? l.year : d.getFullYear();
   }
 
-  /** 音韻與諧音：中文聲調、拗口、諧音、綽號；英文音節、重音、難發音、俚語 */
-  function renderPhonetics(cn, en) {
+  function rerenderPhoneticsBox(box) {
+    if (!box) return;
+    var idx = +box.dataset.phIdx;
+    var item = phoneticItems[idx];
+    if (!item) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = renderPhonetics(item.parsed, item.enName, idx, true);
+    if (wrap.firstElementChild) box.replaceWith(wrap.firstElementChild);
+  }
+
+  function renderCompositeChartBox(comp) {
+    if (!comp || !window.Astrology || !window.Astrology.renderWheelSVG) return '';
+    var cIdx = compCharts.push(comp) - 1;
+    var html = '<div class="astro-comp-box" data-comp="' + cIdx + '">';
+    html += '<p style="margin:0 0 4px;color:var(--color-gold-light);font-weight:700;">' +
+      LL('🌌 占星組合盤（', '🌌 Composite Chart (') + comp.houseSystem + ' · ' +
+      LL('主導元素 ', 'Dominant: ') + T(comp.dominantElement) + ')</p>';
+    if (comp.ascendant) {
+      html += '<p style="margin:2px 0;color:var(--color-text-secondary);">⬆️ ' +
+        LL('組合上升點：', 'Composite Ascendant: ') + T(comp.ascendant.sign.n) + ' ' + comp.ascendant.degree +
+        (comp.midheaven ? ' · MC ' + T(comp.midheaven.sign.n) + ' ' + comp.midheaven.degree : '') + '</p>';
+    } else if (comp.ascAmbiguous) {
+      html += '<p style="margin:2px 0;color:var(--color-fortune-neutral);">⚠️ ' +
+        LL('雙方上升點恰好相差 180°，組合上升有二義性，改採太陽宮位制', 'Ascendants are 180° apart (ambiguous midpoint); using Solar houses') + '</p>';
+    }
+    if (comp.nodes && comp.nodes.length) {
+      html += '<p style="margin:2px 0;font-size:0.72rem;color:var(--color-text-muted);">' +
+        comp.nodes.map(function(n) { return n.emoji + ' ' + T(n.name) + ': ' + T(n.sign.n) + ' ' + n.degree + ' (' + T(n.house.n.split(' ')[0]) + ')'; }).join(' · ') + '</p>';
+    }
+    html += '<div class="astro-wheel-controls" style="display:flex;gap:12px;flex-wrap:wrap;font-size:0.72rem;margin:4px 0;">' +
+      '<label><input type="checkbox" class="astro-comp-minor-toggle"> ' + LL('顯示小相位（30°/45°/135°/150°）', 'Show minor aspects (30°/45°/135°/150°)') + '</label></div>';
+    html += '<div class="astro-comp-wheel-wrap">' + window.Astrology.renderWheelSVG(comp, { title: LL('占星組合盤', 'Composite Chart'), isComposite: true }) + '</div>';
+    if (comp.aspects && comp.aspects.length) {
+      html += '<div style="margin-top:6px;"><strong style="color:var(--color-gold-primary);">📐 ' +
+        LL('組合盤主要相位（共 ' + comp.aspects.length + ' 組）', 'Composite Aspects (' + comp.aspects.length + ' total)') + '</strong>';
+      comp.aspects.slice(0, 8).forEach(function(a) {
+        var col = a.nature === '吉' ? 'var(--color-fortune-good)' : a.nature === '挑戰' ? 'var(--color-danger, #c0392b)' : 'var(--color-text-secondary)';
+        html += '<p style="margin:2px 0;color:' + col + ';">' + a.p1Emoji + T(a.p1) + ' × ' + a.p2Emoji + T(a.p2) + ' ' + T(a.type) +
+          ' (' + a.angle + ', ' + LL('容許度 ', 'orb ') + a.orb + '°)</p>';
+      });
+      html += '</div>';
+    }
+    if (comp.minorAspects && comp.minorAspects.length) {
+      html += '<div class="astro-comp-minor-list hidden" style="margin-top:6px;"><strong style="color:var(--color-text-secondary);">🔹 ' +
+        LL('組合盤小相位（共 ' + comp.minorAspects.length + ' 組）', 'Composite Minor Aspects (' + comp.minorAspects.length + ')') + '</strong>';
+      comp.minorAspects.slice(0, 8).forEach(function(a) {
+        html += '<p style="margin:2px 0;color:var(--color-text-muted);">' + a.p1Emoji + T(a.p1) + ' × ' + a.p2Emoji + T(a.p2) + ' ' + T(a.type) +
+          ' (' + a.angle + ', ' + LL('容許度 ', 'orb ') + a.orb + '°)</p>';
+      });
+      html += '</div>';
+    }
+    if (comp.houses && comp.houses.length) {
+      html += '<div style="margin-top:8px;"><strong style="color:var(--color-gold-primary);">🏛️ ' +
+        LL('組合盤十二宮位', 'Composite Twelve Houses') + '</strong>';
+      html += '<div class="astro-comp-grid">';
+      comp.houses.forEach(function(h) {
+        var pls = h.planets.length
+          ? h.planets.map(function(pl) { return pl.emoji + T(pl.name) + ' ' + pl.degree; }).join('<br>')
+          : '<span style="color:var(--color-text-muted);">—</span>';
+        html += '<div class="astro-comp-cell"><strong>' + T(h.name.split(' ')[0]) + '</strong> · ' + T(h.sign.n) + '<br>' + pls + '</div>';
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderAstroTransits(natal, y, m, d, place) {
+    if (!natal || !window.Astrology || !window.Astrology.getTransits) return '';
+    var tr = window.Astrology.getTransits(natal, y, m, d, place);
+    if (!tr) return '';
+    var html = '<p style="font-size:0.72rem;color:var(--color-text-muted);margin:4px 0;">' +
+      tr.planets.filter(function(p) { return ['太陽','火星','木星','土星','天王星','海王星','冥王星'].indexOf(p.name) >= 0; }).map(function(p) {
+        return p.emoji + T(p.name) + ' ' + T(p.sign.n) + ' (' + T(p.natalHouse.n.split(' ')[0]) + ')';
+      }).join(' · ') + '</p>';
+    if (tr.aspects.length) {
+      tr.aspects.slice(0, 8).forEach(function(a) {
+        var col = a.nature === '吉' ? 'var(--color-fortune-good)' : a.nature === '挑戰' ? 'var(--color-danger, #c0392b)' : 'var(--color-text-secondary)';
+        html += '<p style="font-size:0.72rem;color:' + col + ';margin:2px 0;line-height:1.55;">' + a.tEmoji + ' ' + a.desc + '</p>';
+      });
+    } else {
+      html += '<p style="font-size:0.72rem;color:var(--color-text-muted);">' + LL('此日期在容許度內未見主要行運相位', 'No major transit aspects within orbs on this date') + '</p>';
+    }
+    return html;
+  }
+
+  /** 音韻與諧音：中文聲調、多音字指定、台客粵多語檢查、拗口、諧音、綽號；英文音節、重音、難發音、俚語 */
+  function renderPhonetics(cnParsed, enName, phIdx, isOpen) {
+    var cn = cnParsed && window.Phonetics ? window.Phonetics.checkChinese(cnParsed, customPinyin) : null;
+    var dialects = cnParsed && window.Phonetics && window.Phonetics.checkDialects
+      ? window.Phonetics.checkDialects(cnParsed, customDialects) : null;
+    var en = enName && window.Phonetics ? window.Phonetics.checkEnglish(enName) : null;
     if (!cn && !en) return '';
-    var gradeColor = function(g) { return g === '良好' ? 'var(--color-fortune-good)' : g === '尚可' ? 'var(--color-fortune-neutral)' : 'var(--color-danger, #c0392b)'; };
+    if (phIdx == null) phIdx = phoneticItems.push({ parsed: cnParsed, enName: enName }) - 1;
+    var gradeColor = function(g) { return g === '良好' ? 'var(--color-fortune-good)' : g === '尚可' || g === '部分收錄' ? 'var(--color-fortune-neutral)' : 'var(--color-danger, #c0392b)'; };
     var p = function(text, color) { return '<p style="font-size:0.76rem;color:' + (color || 'var(--color-text-secondary)') + ';margin:2px 0;line-height:1.6;">' + text + '</p>'; };
     var summary = [cn ? LL('中文', 'Chinese ') + T(cn.grade) : '', en ? LL('英文', 'English ') + T(en.grade) : ''].filter(Boolean).join(LL('・', ' · '));
     var worst = [cn && cn.grade, en && en.grade].indexOf('需注意') >= 0 ? '需注意' : [cn && cn.grade, en && en.grade].indexOf('尚可') >= 0 ? '尚可' : '良好';
-    var html = '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🗣️ ' + LL('音韻與諧音：', 'Sound and homophones: ') + '<span style="color:' + gradeColor(worst) + ';">' + summary + '</span></summary>';
+    var html = '<details class="phonetics-detail" data-ph-idx="' + phIdx + '"' + (isOpen ? ' open' : '') + ' style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🗣️ ' + LL('音韻與諧音：', 'Sound and homophones: ') + '<span style="color:' + gradeColor(worst) + ';">' + summary + '</span></summary>';
     if (cn) {
-      html += p('<strong style="color:var(--color-gold-light);">' + LL('中文', 'Chinese') + '</strong> ' + T(cn.toneText));
+      html += p('<strong style="color:var(--color-gold-light);">' + LL('國語／華語', 'Mandarin') + '</strong> ' + T(cn.toneText));
+      // 多音字／讀音自訂區
+      var polyMap = (window.Phonetics && window.Phonetics.POLYPHONES) || {};
+      var DB = window.PinyinDB;
+      html += '<div class="phonetics-custom-box"><div style="font-size:0.74rem;color:var(--color-gold-primary);font-weight:700;">🎚️ ' +
+        LL('讀音自訂（多音字指定）', 'Custom pronunciation (polyphones)') + '</div><div class="phonetics-custom-row">';
+      cn.chars.forEach(function(ch, i) {
+        var sLen = cnParsed.surnameChars.length;
+        var defPy = DB ? ((i < sLen && DB.SURNAME[ch]) || DB.CHAR[ch] || '') : '';
+        var curCustom = customPinyin[i + ':' + ch] || customPinyin[ch] || '';
+        var opts = polyMap[ch] || [];
+        var isPreset = !curCustom || opts.some(function(o) { return o[0] === curCustom; });
+        html += '<div class="phonetics-char-ctrl"><strong>' + ch + '</strong>';
+        html += '<select class="pinyin-select" data-char="' + ch + '" data-pos="' + i + '" aria-label="' + LL(ch + ' 讀音', 'Reading for ' + ch) + '">';
+        html += '<option value=""' + (!curCustom ? ' selected' : '') + '>' + LL('預設', 'Default') + (defPy ? ' (' + defPy + ')' : '') + '</option>';
+        opts.forEach(function(o) {
+          html += '<option value="' + o[0] + '"' + (curCustom === o[0] ? ' selected' : '') + '>' + o[0] + ' (' + o[1] + ')</option>';
+        });
+        html += '<option value="__custom__"' + (!isPreset ? ' selected' : '') + '>' + LL('自訂…', 'Custom…') + '</option>';
+        html += '</select>';
+        html += '<span class="pinyin-custom-wrap' + (isPreset ? ' hidden' : '') + '">' +
+          '<input type="text" class="pinyin-custom-input" maxlength="8" size="6" value="' + (curCustom || defPy) + '" placeholder="yue4"> ' +
+          '<button type="button" class="pinyin-apply-btn" data-char="' + ch + '" data-pos="' + i + '">' + LL('套用', 'Apply') + '</button></span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+
       cn.homophones.forEach(function(h) {
         var how = h.level === 3 ? LL('同音', 'sounds the same as') : h.level === 2 ? LL('口音相近（zh/z、sh/s、ing/in 等不分時）', 'sounds close to (when zh/z, sh/s, ing/in are merged in speech)') : LL('音近（聲調不同）', 'sounds similar to (different tones)');
         html += p(LL('⚠️ 「' + h.text + '」與「' + h.word + '」' + how + '，屬' + h.cat + '聯想', '⚠️ "' + h.text + '" ' + how + ' "' + h.word + '" — a ' + T(h.cat) + ' association'), h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)');
@@ -689,7 +1259,33 @@
       cn.warns.forEach(function(t) { html += p('⚠️ ' + T(t), 'var(--color-fortune-neutral)'); });
       cn.nicknames.forEach(function(t) { html += p('🏷️ ' + LL('綽號風險：', 'Nickname risk: ') + T(t), 'var(--color-text-muted)'); });
       cn.notes.forEach(function(t) { html += p('・' + T(t)); });
-      if (!cn.homophones.length) html += p('✅ ' + LL('沒有發現常見的不雅諧音', 'No common unfortunate homophones found'), 'var(--color-fortune-good)');
+      if (!cn.homophones.length) html += p('✅ ' + LL('國語沒有發現常見的不雅諧音', 'No common unfortunate Mandarin homophones found'), 'var(--color-fortune-good)');
+
+      // 多語音韻檢查（粵語・台語・客語）
+      if (dialects && dialects.length) {
+        html += '<div class="phonetics-dialect-box"><div style="font-size:0.76rem;color:var(--color-gold-primary);font-weight:700;margin-bottom:4px;">🌏 ' +
+          LL('多語音韻檢查（粵語・台語・客語）', 'Multi-dialect Checks (Cantonese, Taiwanese, Hakka)') + '</div>';
+        dialects.forEach(function(d) {
+          html += '<div class="dialect-card"><div><strong>' + d.label + '</strong> <span style="color:' + gradeColor(d.grade) + ';">[' + T(d.grade) + ']</span></div>';
+          html += '<div style="color:var(--color-gold-light);">' + d.readingText + '</div>';
+          d.homophones.forEach(function(h) {
+            html += '<div style="color:' + (h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)') + ';">⚠️ ' +
+              LL('「' + h.text + '」在此語音近「' + h.word + '」（' + h.cat + '）', '"' + h.text + '" sounds like "' + h.word + '" (' + T(h.cat) + ')') + '</div>';
+          });
+          d.notes.forEach(function(n) { html += '<div style="color:var(--color-text-muted);">・' + n + '</div>'; });
+          // 若有未收錄字或想微調該語言讀音，提供自訂欄位
+          html += '<details class="dialect-custom-details" style="margin-top:3px;"><summary style="font-size:0.7rem;color:var(--color-text-muted);cursor:pointer;">' +
+            LL('自訂／補填' + d.label.split('（')[0] + '讀音', 'Customize ' + d.label.split(' ')[0] + ' readings') + '</summary><div class="phonetics-custom-row">';
+          d.chars.forEach(function(ch, i) {
+            var cur = (customDialects[d.key] && (customDialects[d.key][i + ':' + ch] || customDialects[d.key][ch])) || (d.sylls[i] ? d.sylls[i].py : '');
+            html += '<span class="phonetics-char-ctrl dialect-custom-ctrl"><strong>' + ch + '</strong>' +
+              '<input type="text" class="dialect-custom-input" maxlength="10" size="6" value="' + cur + '" placeholder="' + (d.key === 'yue' ? 'can4' : d.key === 'tw' ? 'tan5' : 'chin2') + '">' +
+              '<button type="button" class="dialect-apply-btn" data-lang="' + d.key + '" data-char="' + ch + '" data-pos="' + i + '">' + LL('套用', 'Apply') + '</button></span>';
+          });
+          html += '</div></details></div>';
+        });
+        html += '</div>';
+      }
     }
     if (en) {
       html += p('<strong style="color:var(--color-gold-light);">' + LL('英文 ', 'English ') + en.name + '</strong> ' + en.notes.map(T).join(LL('；', '; ')));
@@ -845,6 +1441,25 @@
     html += line(LL('將前', 'Jiangqian spirits'), shenText(h.yearly12.jiangqian));
     if (h.decadalSihua) html += zwSihuaTips(h.decadalSihua, LL('這十年', 'this decade'));
     html += zwSihuaTips(h.yearlySihua, LL('今年', 'this year'));
+    if (window.ZiweiFlying && window.ZiweiFlying.horoscopeAnalyze) {
+      var hFly = window.ZiweiFlying.horoscopeAnalyze(zw, h);
+      if (hFly) {
+        html += '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(212,168,67,0.2);">';
+        html += '<div style="font-size:0.75rem;color:var(--color-gold-primary);font-weight:700;">🕊️ ' + LL('運限飛化疊宮（大限／流年）', 'Decade & Yearly Flying Overlays') + '</div>';
+        hFly.insights.forEach(function(txt) {
+          html += '<p style="font-size:0.72rem;color:var(--color-fortune-neutral);margin:2px 0;line-height:1.55;">⚠️ ' + txt + '</p>';
+        });
+        if (hFly.decadalTransforms.length) {
+          html += '<p style="font-size:0.72rem;color:var(--color-text-secondary);margin:2px 0;line-height:1.55;"><strong style="color:var(--color-gold-light);">' +
+            LL('大限宮干飛化：', 'Decade Palace Flying: ') + '</strong>' + hFly.decadalTransforms.map(function(x) { return x.text; }).join('；') + '</p>';
+        }
+        if (hFly.yearlyMingTransforms.length) {
+          html += '<p style="font-size:0.72rem;color:var(--color-text-secondary);margin:2px 0;line-height:1.55;"><strong style="color:var(--color-gold-light);">' +
+            LL('流年命宮飛化：', 'Yearly Life Flying: ') + '</strong>' + hFly.yearlyMingTransforms.map(function(x) { return x.text; }).join('；') + '</p>';
+        }
+        html += '</div>';
+      }
+    }
     return html;
   }
 
@@ -1020,6 +1635,7 @@
         }
         html += '</table></div>';
         html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:2px 0;">☀ ' + LL('日主：', 'Day Master: ') + '<strong class="element-' + r.zodiac.bazi.dayMaster + '">' + T(r.zodiac.bazi.dayMaster) + '</strong>' + LL('（' + r.zodiac.bazi.dayMasterTG + '） — 代表你的核心本質', ' (' + GZ(r.zodiac.bazi.dayMasterTG) + ') — your core nature') + '</p>';
+        html += renderAdvancedBazi(r.zodiac.bazi);
       }
 
       if (r.zodiac.zodiacNature) {
@@ -1053,11 +1669,35 @@
         var astroPlace = bday.place ? { name: bday.place.name, lat: bday.place.lat, lon: bday.place.lon, tz: bday.tzOffset } : null;
         var astro = window.Astrology.getChart(bday.year, bday.month, bday.day, bday.hour, bday.minute, astroPlace);
         if (astro) {
+          var aIdx = astroCharts.push({ chart: astro, place: astroPlace }) - 1;
           var astroTitle = LL('太陽', 'Sun ') + T(astro.sunSign.n) + (astro.timeKnown ? LL(' · 月亮', ' · Moon ') + T(astro.moonSign.n) : '') + (astro.ascendant ? LL(' · 上升', ' · Rising ') + T(astro.ascendant.sign.n) : '');
-          html += '<details style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 ' + LL('占星盤：', 'Astrology chart: ') + astroTitle + '</summary>';
+          html += '<details class="astro-detail" style="margin:4px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌟 ' + LL('占星盤：', 'Astrology chart: ') + astroTitle + '</summary>';
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + T(astro.sunSign.desc) + '</p>';
-          if (astro.ascendant) html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">⬆️ ' + LL('上升', 'Rising ') + T(astro.ascendant.sign.n) + ' ' + astro.ascendant.degree + LL('：', ': ') + T(astro.ascendant.sign.desc) + '</p>';
+          if (astro.ascendant) {
+            html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">⬆️ ' + LL('上升', 'Rising ') + T(astro.ascendant.sign.n) + ' ' + astro.ascendant.degree +
+              (astro.midheaven ? ' · MC ' + T(astro.midheaven.sign.n) + ' ' + astro.midheaven.degree : '') +
+              LL('：', ': ') + T(astro.ascendant.sign.desc) + '</p>';
+          }
+          if (astro.nodes && astro.nodes.length) {
+            html += '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:2px 0;">' +
+              astro.nodes.map(function(n) { return n.emoji + ' ' + T(n.name) + ': ' + T(n.sign.n) + ' ' + n.degree + ' (' + T(n.house.n.split(' ')[0]) + ')'; }).join(' · ') + '</p>';
+          }
           html += '<p style="font-size:0.8rem;color:var(--color-text-secondary);">' + LL('主導元素：', 'Dominant element: ') + '<strong class="element-' + astro.dominantElement + '">' + T(astro.dominantElement) + '</strong> — ' + T(astro.nameAdvice) + '</p>';
+          // 本命圓盤圖與顯示控制
+          html += '<div class="astro-natal-box" data-astro="' + aIdx + '">';
+          html += '<div class="astro-wheel-controls" style="display:flex;gap:12px;flex-wrap:wrap;font-size:0.72rem;margin:6px 0 2px;">' +
+            '<label><input type="checkbox" class="astro-nodes-toggle" checked> ' + LL('顯示南北交點', 'Show Lunar Nodes') + '</label>' +
+            '<label><input type="checkbox" class="astro-minor-toggle"> ' + LL('顯示小相位（30°/45°/135°/150°）', 'Show minor aspects (30°/45°/135°/150°)') + '</label>' +
+            '</div>';
+          html += '<div class="astro-wheel-wrap">' + window.Astrology.renderWheelSVG(astro, { title: LL('本命星盤', 'Natal Chart'), showNodes: true, showMinor: false }) + '</div>';
+          if (astro.minorAspects && astro.minorAspects.length) {
+            html += '<div class="astro-minor-list hidden" style="margin:4px 0;"><div style="font-size:0.74rem;color:var(--color-text-secondary);">🔹 ' + LL('次要相位（共' + astro.minorAspects.length + '組）', 'Minor aspects (' + astro.minorAspects.length + ')') + '</div>';
+            astro.minorAspects.slice(0, 8).forEach(function(a) {
+              html += '<p style="font-size:0.7rem;color:var(--color-text-muted);margin:1px 0;">' + a.p1Emoji + T(a.p1) + ' × ' + a.p2Emoji + T(a.p2) + ' ' + T(a.type) + ' (' + a.angle + ', ' + LL('差 ', 'orb ') + a.orb + '°)</p>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
           html += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;font-size:0.72rem;color:var(--color-text-secondary);margin-top:6px;">';
           astro.planets.forEach(function(pl) {
             html += '<span>' + pl.emoji + ' ' + T(pl.name) + '</span>';
@@ -1076,6 +1716,16 @@
               html += '<p style="font-size:0.72rem;color:' + color + ';margin:2px 0;line-height:1.6;">' + a.p1Emoji + T(a.p1) + ' × ' + a.p2Emoji + T(a.p2) + ' ' + T(a.type) + LL('（' + a.angle + '，差 ' + a.orb + '°）— ', ' (' + a.angle + ', orb ' + a.orb + '°) — ') + (a.nature === '吉' ? LL('和諧', 'harmonious') : a.nature === '挑戰' ? LL('張力', 'tense') : LL('融合', 'blending')) + '</p>';
             });
           }
+          // 流年行運查詢
+          var nowD = new Date();
+          var todayIso = nowD.getFullYear() + '-' + pad2(nowD.getMonth() + 1) + '-' + pad2(nowD.getDate());
+          html += '<div class="astro-transit-box" data-astro="' + aIdx + '" style="margin-top:8px;padding:6px 8px;background:rgba(212,168,67,0.06);border-radius:6px;">';
+          html += '<div class="astro-transit-controls" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.75rem;color:var(--color-gold-primary);">' +
+            '<span>🪐 ' + LL('流年行運（Transit）', 'Transits') + '</span>' +
+            '<input type="date" class="form-input astro-transit-date" value="' + todayIso + '" style="width:auto;padding:2px 6px;font-size:0.72rem;" aria-label="' + LL('行運日期', 'Transit date') + '">' +
+            '</div>';
+          html += '<div class="astro-transit-body">' + renderAstroTransits(astro, nowD.getFullYear(), nowD.getMonth() + 1, nowD.getDate(), astroPlace) + '</div>';
+          html += '</div>';
           html += '</details>';
         }
       }
@@ -1130,6 +1780,7 @@
                 + (inText ? LL(s.star + s.type + '入' + s.palace.name + '：', ZN(s.star) + ' ' + ZN(s.type) + ' in the ' + ZN(s.palace.name) + ': ') + inText : s.reading) + '</p>';
             });
           }
+          html += renderZiweiFlying(zw);
           // 運限（大限、小限、流年）：可切換年份
           if (zw.gender) {
             var zwIdx = zwCharts.push(zw) - 1;
@@ -1216,7 +1867,7 @@
     // 音韻與諧音（只看名字，不需要生日）
     if (window.Phonetics && (r.cn || r.en)) {
       var enName = r.enReport ? r.enReport.name : (r.en ? r.en.name : '');
-      html += renderPhonetics(r.cn ? window.Phonetics.checkChinese(r.cn.parsed) : null, enName ? window.Phonetics.checkEnglish(enName) : null);
+      html += renderPhonetics(r.cn ? r.cn.parsed : null, enName || '');
     }
 
     if (r.enReport) {
@@ -1287,18 +1938,30 @@
       return;
     }
 
+    var filteredPairs = currentData.pairs.filter(function(p) { return matrixSystem === 'all' || p.type === matrixSystem; });
+    var systemNames = {all:LL('各系統最高分','Highest across systems'),'cn-cn':LL('中文姓名','Chinese names'),'en-en':LL('英文姓名','English names'),
+      'cn-en':LL('中英姓名','Chinese–English names'),bazi:LL('八字合盤','BaZi pairing'),astrology:LL('占星合盤','Astrology pairing'),ziwei:LL('紫微合盤','Zi Wei pairing')};
+    var controls = '<div class="pair-filters"><label for="matrixSystem">' + LL('配對系統','Pairing system') +
+      '<select id="matrixSystem" class="form-input">'+Object.keys(systemNames).map(function(k) {
+        return '<option value="'+k+'"'+(matrixSystem===k?' selected':'')+'>'+systemNames[k]+'</option>';
+      }).join('')+'</select></label><label for="resultRelationship">'+LL('關係類型','Relationship type')+
+      '<select id="resultRelationship" class="form-input">'+window.ChartHarmony.options(document.getElementById('relationshipMode').value).map(function(o) {
+        return '<option value="'+o.id+'"'+(o.selected?' selected':'')+'>'+o.label+'</option>';
+      }).join('')+'</select></label></div>';
+    controls += '<p style="font-size:.8rem;margin-bottom:12px;">'+LL('各系統分數採不同規則，請分別參考；「各系統最高分」只用於瀏覽。紫微合盤需要雙方出生時辰。',
+      'Systems use different scoring rules; read them separately. “Highest across systems” is a browsing aid. Zi Wei pairing needs both birth times.')+'</p>';
     var labels = currentData.results.map(function(r) { return r.person.label; });
     var n = labels.length;
 
     // 建立查表
     var pairMap = {};
-    currentData.pairs.forEach(function(p) {
+    filteredPairs.forEach(function(p) {
       var key = p.a + '|' + p.b;
       if (!pairMap[key] || pairMap[key].pair.score < p.pair.score) pairMap[key] = p;
     });
 
     // 表格
-    var html = '<div style="overflow-x:auto;"><table class="matrix-table"><thead><tr><th></th>';
+    var html = controls + '<div style="overflow-x:auto;"><table class="matrix-table"><thead><tr><th></th>';
     labels.forEach(function(l) { html += '<th>' + T(l) + '</th>'; });
     html += '</tr></thead><tbody>';
 
@@ -1332,7 +1995,8 @@
     html += '<div style="margin-top:var(--space-xl);">';
     html += '<h3 style="color:var(--color-gold-primary);margin-bottom:var(--space-md);">' + LL('📖 各組配對詳細解讀', '📖 Detailed Pair Readings') + '</h3>';
 
-    currentData.pairs.forEach(function(entry) {
+    if (!filteredPairs.length) html += '<p>'+LL('此系統尚無可比較的資料，請補齊雙方姓名、生日或出生時辰。','No comparable data for this system. Add the required names, birthdays or birth times.')+'</p>';
+    filteredPairs.forEach(function(entry) {
       var scColor = entry.pair.score>=80?'var(--color-fortune-great)':entry.pair.score>=60?'var(--color-fortune-good)':entry.pair.score>=40?'var(--color-fortune-neutral)':'var(--color-fortune-bad)';
       html += '<div class="fortune-detail" style="margin-bottom:var(--space-lg);cursor:pointer;" onclick="var e=arguments[0]||window.event;e.stopPropagation();">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">';
@@ -1372,6 +2036,16 @@
           html += '<p style="color:var(--color-text-secondary);margin:4px 0 8px 16px;line-height:1.8;">' + d.detail + '</p></details>';
         });
       }
+      if (entry.pair.flying) {
+        html += '<details style="margin:6px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🕊️ ' + LL('雙人紫微飛化路徑圖與交互解讀', 'Two-Person Zi Wei Flying Path Diagram & Interactions') + '</summary>';
+        html += renderZiweiPairFlying(entry.pair.flying, currentData.pairs.indexOf(entry));
+        html += '</details>';
+      }
+      if (entry.pair.compositeChart) {
+        html += '<details style="margin:6px 0;font-size:0.85rem;"><summary style="color:var(--color-gold-primary);cursor:pointer;">🌌 ' + LL('占星組合盤圖形、宮位與相位', 'Composite Chart Wheel, Houses & Aspects') + '</summary>';
+        html += renderCompositeChartBox(entry.pair.compositeChart);
+        html += '</details>';
+      }
 
       // 關係一句話
       if (window.SmartInsights) {
@@ -1400,6 +2074,10 @@
     html += '</div>';
 
     matrixContent.innerHTML = html;
+    document.getElementById('matrixSystem').addEventListener('change', function() { matrixSystem = this.value; renderMatrix(); });
+    document.getElementById('resultRelationship').addEventListener('change', function() {
+      var select = document.getElementById('relationshipMode'); select.value = this.value; select.dispatchEvent(new Event('change'));
+    });
 
     // 點擊矩陣儲存格查看詳情：以配對索引指定（同一組人可能有多個配對，畫面上的標籤也可能已翻譯）
     matrixContent.querySelectorAll('.matrix-pair').forEach(function(td) {
@@ -1429,6 +2107,8 @@
     var html = '';
 
     // 統計卡片
+    html += '<p style="font-size:.8rem;margin-bottom:12px;">' + LL('以下統計為各系統已產生配對分數的平均與排序，並非跨系統綜合評分；請在配對矩陣選擇單一系統查看依據。',
+      'These statistics average and rank the generated pairing scores. They are not an integrated score across systems; select an individual system in the matrix to inspect its basis.') + '</p>';
     html += '<div class="team-stats">';
     html += '<div class="team-stat-card"><div class="team-stat-value" style="color:'+avgColor+';">'+avg+'</div><div class="team-stat-label">'+LL('團隊均分', 'Team average')+'</div></div>';
     html += '<div class="team-stat-card"><div class="team-stat-value" style="color:var(--color-fortune-great);">'+maxScore+'</div><div class="team-stat-label">'+LL('最佳配對', 'Best pair')+'</div></div>';
@@ -1660,7 +2340,7 @@
       // 大運流年（專業模式+有八字）
       if (isProMode && r.zodiac && r.zodiac.bazi) {
         var dayuns = window.ZodiacBazi.getDaYun(r.zodiac.bazi, r.gender);
-        var liunian = window.ZodiacBazi.getLiuNian(r.zodiac.bazi.dayMaster);
+        var liunian = window.ZodiacBazi.getLiuNian(r.zodiac.bazi.dayMasterTG);
         html += '<div class="report-section">';
         html += '<div class="report-section-title">' + LL('📅 大運流年', '📅 Luck Cycles') + '</div>';
         if (dayuns) {
@@ -1694,6 +2374,26 @@
         html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);margin-top:8px;">' + xy.analysis + '</p>';
         if (xy.quote) html += '<p class="quote-cell">📜 ' + T(xy.quote) + '</p>';
         html += '</div>';
+      }
+
+      // 進階八字結構摘要（專業模式）
+      if (isProMode && r.zodiac && r.zodiac.bazi && window.AdvancedBazi) {
+        var advRep = window.AdvancedBazi.analyze(r.zodiac.bazi);
+        if (advRep) {
+          html += '<div class="report-section">';
+          html += '<div class="report-section-title">' + LL('🧭 進階八字結構摘要', '🧭 Advanced BaZi Structural Summary') + '</div>';
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + LL('格局取用：', 'Pattern: ') + '</strong>' + advRep.pattern.name + '（' + window.AdvancedBazi.status(advRep.pattern.status) + '）</p>';
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + LL('調候觀察：', 'Climate: ') + '</strong>' + GZ(advRep.climate.month) + LL('月 ', ' month ') + advRep.climate.tempLabel + '/' + advRep.climate.dryLabel +
+            (advRep.climate.needs.length ? ' — ' + advRep.climate.needs.map(function(n) { return T(n.element) + (n.conflict ? LL('（與扶抑衝突）', ' (conflicts with strength)') : ''); }).join(LL('、', ', ')) : '') + '</p>';
+          var passFollow = advRep.following.rows.filter(function(x) { return x.status === 'candidate'; });
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + LL('從格檢核：', 'Following patterns: ') + '</strong>' +
+            (passFollow.length ? passFollow.map(function(x) { return x.name; }).join(LL('、', ', ')) : LL('未達本站從格候選門檻（詳細依據見成員分析頁）', 'No following-pattern candidate met (see Members tab for full checklist)')) + '</p>';
+          var combText = advRep.combinations.rows.length
+            ? advRep.combinations.rows.map(function(c) { return c.kind + ' → ' + T(c.target) + ' (' + window.AdvancedBazi.status(c.status) + ')'; }).join(LL('；', '; '))
+            : LL('原局未見五合、六合、三合或三會', 'None observed');
+          html += '<p style="font-size:0.85rem;color:var(--color-text-secondary);"><strong>' + LL('合化條件：', 'Combinations: ') + '</strong>' + combText + '</p>';
+          html += '</div>';
+        }
       }
 
       // 面相特質
@@ -2029,7 +2729,7 @@
         var idx = parseInt(this.dataset.loadProfile);
         var p = loadProfiles()[idx];
         if (!p || !p.persons) return;
-        fillForm(p.persons);
+        restoreEntry(p);
         handleAnalyze();
         toast(LL('已載入：', 'Loaded: ') + (p.name||''));
       });
@@ -2056,7 +2756,7 @@
         var idx = parseInt(this.dataset.loadIdx);
         var entry = loadHistory()[idx];
         if (!entry || !entry.persons) return;
-        fillForm(entry.persons);
+        restoreEntry(entry);
         handleAnalyze();
         switchTab('members');
         toast(LL('已載入並重新分析！', 'Loaded and re-analyzed!'));
@@ -2098,11 +2798,11 @@
       var angle = (Math.PI * 2 / count) * i - Math.PI / 2;
       var lx = cx + (r + 20) * Math.cos(angle);
       var ly = cy + (r + 20) * Math.sin(angle);
-      var label = dimensions[i].label.replace(/[🎭🎯🏠🌐🔢🩸🐉🌿💖🎪📏]/g,'').substring(0,2);
+      var label = Array.from(dimensions[i].label.replace(/^\S+\s+/, '')).slice(0,2).join('');
       html += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)">' + label + '</text>';
     }
     html += '</svg>';
-    return '<div style="float:right;margin-left:12px;">' + html + '</div>';
+    return '<div class="mini-radar">' + html + '</div>';
   }
 
   // ============ 智能總結 ============
@@ -2465,7 +3165,57 @@
 
   // ============ 儲存 ============
   function savedPerson(p) {
-    return { cn: p.cn, en: p.en, blood: p.blood || '', birthday: p.birthday || '', gender: p.gender || '', place: p.place || '' };
+    return { cn: p.cn, en: p.en, label: p.label || '', blood: p.blood || '', birthday: p.birthday || '', gender: p.gender || '', place: p.place || '' };
+  }
+
+  function restoreEntry(entry) {
+    if (entry.relationship != null) document.getElementById('relationshipMode').value = window.ChartHarmony.modeKey(entry.relationship);
+    if (entry.tst != null) document.getElementById('tstToggle').checked = !!entry.tst;
+    if (entry.manualStrokes != null) manualStrokes = window.DataBackup.strokes(entry.manualStrokes);
+    fillForm(entry.persons || []);
+  }
+
+  function initBackupUI() {
+    var pending = null, readId = 0;
+    var byId = function(id) { return document.getElementById(id); };
+    var status = byId('backupStatus'), preview = byId('backupPreview'), file = byId('backupFile');
+    var cancel = function() { readId++; pending = null; file.value = ''; preview.classList.add('hidden'); };
+    byId('backupExport').addEventListener('click', function() {
+      try {
+        var backup = window.DataBackup.capture(localStorage, { persons:collectInputs().map(savedPerson), manualStrokes:manualStrokes,
+          relationship:byId('relationshipMode').value, tst:useTrueSolarTime() });
+        var blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json;charset=utf-8'});
+        var url = URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = 'name-harmony-backup-' + new Date().toISOString().slice(0,10) + '.json';
+        document.body.appendChild(link); link.click(); link.remove(); setTimeout(function() { URL.revokeObjectURL(url); },1000);
+        status.textContent = LL('備份已下載。', 'Backup downloaded.');
+      } catch (e) { status.textContent = e.message; }
+    });
+    file.addEventListener('change', function() {
+      pending = null; preview.classList.add('hidden'); status.textContent = '';
+      var chosen = file.files[0], id = ++readId;
+      if (!chosen) return;
+      if (chosen.size > window.DataBackup.MAX_BYTES) { status.textContent = LL('檔案超過 2 MB 上限。', 'File exceeds the 2 MB limit.'); file.value = ''; return; }
+      chosen.text().then(function(s) {
+        if (id !== readId) return;
+        pending = window.DataBackup.parse(s);
+        var d = pending.data;
+        byId('backupPreviewText').textContent = LL('備份時間：', 'Backup time: ') + new Date(pending.exportedAt).toLocaleString() + '\n' +
+          LL('歷史 ', 'History: ') + d.history.length + LL(' 筆；客戶檔案 ', '; profiles: ') + d.profiles.length +
+          LL(' 筆；品牌 ', '; brands: ') + d.brandList.length + LL(' 個；表單成員 ', '; form members: ') + d.currentPersons.length +
+          LL(' 位；手動筆劃 ', '; manual strokes: ') + Object.keys(d.manualStrokes).length +
+          LL(' 字；取名偏好：', '; naming preferences: ') + (d.namingPrefs ? LL('有', 'included') : LL('無', 'none')) + '\n' +
+          LL('關係模式：', 'Relationship: ') + window.ChartHarmony.modeName(d.settings.relationship) +
+          LL('；真太陽時：', '; true solar time: ') + (d.settings.tst ? LL('開', 'on') : LL('關', 'off'));
+        preview.classList.remove('hidden');
+      }).catch(function(e) { if (id === readId) { status.textContent = e.message; pending = null; file.value = ''; } });
+    });
+    byId('backupCancel').addEventListener('click', function() { cancel(); status.textContent = ''; });
+    byId('backupRestore').addEventListener('click', function() {
+      if (!pending) return;
+      try { window.DataBackup.restore(localStorage,pending); cancel(); window.location.reload(); }
+      catch (e) { status.textContent = e.message; }
+    });
   }
 
   /** 把存檔的成員資料填回表單（姓名、生日、時間、性別、出生地、血型），多出的成員自動新增 */
@@ -2474,6 +3224,10 @@
     extraCount = 0;
     // 注意：不能用 :nth-of-type，兩區之間的「和」分隔線也是 div
     var sections = document.querySelectorAll('#formSection .person-section');
+    sections.forEach(function(scope) {
+      scope.querySelectorAll('input').forEach(function(el) { el.value = ''; });
+      var label = scope.querySelector('.person-label'); if (label) label.textContent = label.dataset.default || label.textContent;
+    });
     (persons || []).forEach(function(p, i) {
       var scope;
       if (i < 2) {
@@ -2487,6 +3241,7 @@
         scope.querySelector('.en-input').value = p.en || '';
       }
       if (!scope) return;
+      var label = scope.querySelector('.person-label'); if (label && p.label) label.textContent = p.label;
       var parts = (p.birthday || '').split(' ');
       var set = function(sel, v) { var el = scope.querySelector(sel); if (el) el.value = v || ''; };
       set('.bday-input', parts[0]);
@@ -2501,13 +3256,14 @@
   function handleSave() {
     if (!currentData) return;
     var entry = {
+      relationship: document.getElementById('relationshipMode').value, tst: useTrueSolarTime(), manualStrokes: Object.assign({}, manualStrokes),
       persons: currentData.results.map(function(r){ return savedPerson(r.person); }),
       pairs: currentData.pairs.map(function(p){ return {a:p.a,b:p.b,mode:p.pair.mode,score:p.pair.score,tier:p.pair.tier}; }),
       time: new Date().toISOString()
     };
     var hist = loadHistory();
     hist.unshift(entry); if (hist.length > 20) hist = hist.slice(0, 20);
-    try { localStorage.setItem('name-harmony-v3', JSON.stringify(hist)); toast('已儲存！'); }
+    try { localStorage.setItem('name-harmony-v3', JSON.stringify(hist)); renderHistoryPanel(); toast('已儲存！'); }
     catch(e) { toast('儲存失敗'); }
   }
 
@@ -2516,6 +3272,7 @@
     if (!currentData) return;
     var profiles = loadProfiles();
     var entry = {
+      relationship: document.getElementById('relationshipMode').value, tst: useTrueSolarTime(), manualStrokes: Object.assign({}, manualStrokes),
       name: prompt('請為這份檔案命名（例：客戶張先生）', '') || ('未命名_' + new Date().toLocaleDateString()),
       time: new Date().toISOString(),
       persons: currentData.results.map(function(r) {
@@ -2530,9 +3287,10 @@
     if (profiles.length > 50) profiles = profiles.slice(0, 50);
     try {
       localStorage.setItem('name-harmony-profiles', JSON.stringify(profiles));
+      renderHistoryPanel();
       toast('已存檔：' + entry.name);
-      profileBtn.querySelector('span').textContent = '✅';
-      setTimeout(function() { profileBtn.querySelector('span').textContent = '💼'; }, 1500);
+      var profileButton = document.getElementById('profileSaveBtn');
+      if (profileButton) { profileButton.querySelector('span').textContent = '✅'; setTimeout(function() { profileButton.querySelector('span').textContent = '💼'; }, 1500); }
     } catch(e) { toast('存檔失敗'); }
   }
 
@@ -2673,6 +3431,18 @@
       html += '<p style="font-size:0.9rem;line-height:2;white-space:pre-line;">' + p.reading.summary + '</p>';
       html += '</div>';
     }
+    if (p.flying) {
+      html += '<div style="margin-top:var(--space-md);">';
+      html += '<h3 style="color:var(--color-gold-primary);font-size:0.95rem;margin-bottom:6px;">🕊️ ' + LL('雙人紫微飛化路徑圖與交互解讀', 'Two-Person Zi Wei Flying Path Diagram & Interactions') + '</h3>';
+      html += renderZiweiPairFlying(p.flying, idx);
+      html += '</div>';
+    }
+    if (p.compositeChart) {
+      html += '<div style="margin-top:var(--space-md);">';
+      html += '<h3 style="color:var(--color-gold-primary);font-size:0.95rem;margin-bottom:6px;">🌌 ' + LL('占星組合盤圖形、宮位與相位', 'Composite Chart Wheel, Houses & Aspects') + '</h3>';
+      html += renderCompositeChartBox(p.compositeChart);
+      html += '</div>';
+    }
 
     if (p.isSelf && p.selfResult) {
       var h = p.selfResult;
@@ -2719,7 +3489,7 @@
         var idx = parseInt(this.dataset.idx);
         var entry = loadHistory()[idx];
         if (!entry) return;
-        fillForm(entry.persons);
+        restoreEntry(entry);
         historyModal.classList.add('hidden');
         toast('已載入記錄，點擊「開始團隊和盤分析」重新分析');
       });

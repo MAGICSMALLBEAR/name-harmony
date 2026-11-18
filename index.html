@@ -175,6 +175,18 @@
           <span data-i18n="tstLabel">☀️ 時辰改用真太陽時（依出生地經度與均時差校正，適用八字與紫微）</span>
         </label>
 
+        <label class="tool-field" for="relationshipMode">
+          <span data-i18n="relationshipLabel">🤝 關係類型</span>
+          <select id="relationshipMode" class="form-input">
+            <option value="general" data-i18n="relationGeneral">一般關係</option>
+            <option value="romantic" data-i18n="relationRomantic">情侶</option>
+            <option value="spouses" data-i18n="relationSpouses">夫妻</option>
+            <option value="parentchild" data-i18n="relationParentchild">親子</option>
+            <option value="friends" data-i18n="relationFriends">朋友</option>
+            <option value="business" data-i18n="relationBusiness">合夥人</option>
+          </select>
+        </label>
+
         <!-- 新增成員按鈕 -->
         <button id="addPersonBtn" class="btn-add-person" type="button">
           <span>＋</span> <span data-i18n="addPersonBtn">新增成員（最多 5 人）</span>
@@ -210,6 +222,23 @@
           <span class="btn-icon">🔮</span>
           <span class="btn-text" data-i18n="manualStrokeBtn">重新分析</span>
         </button>
+      </div>
+
+      <div class="card form-card">
+        <h2 class="card-title" data-i18n="backupTitle">💾 資料備份與還原</h2>
+        <p data-i18n="backupNote">備份含姓名、生日與本機設定，請妥善保存；不含 AI 金鑰或對話。</p>
+        <div class="backup-actions">
+          <button id="backupExport" class="btn-action" type="button" data-i18n="backupExport">下載 JSON 備份</button>
+          <label class="btn-action" for="backupFile" data-i18n="backupImport">選擇備份檔</label>
+          <input id="backupFile" type="file" accept=".json,application/json" class="backup-file" aria-label="JSON backup">
+        </div>
+        <p id="backupStatus" role="status" aria-live="polite"></p>
+        <div id="backupPreview" class="hidden">
+          <p id="backupPreviewText"></p>
+          <p data-i18n="backupReplaceNote">還原會取代上述本機資料並重新載入頁面，請先下載目前的備份。</p>
+          <button id="backupRestore" class="btn-action" type="button" data-i18n="backupRestore">確認取代並還原</button>
+          <button id="backupCancel" class="btn-action" type="button" data-i18n="backupCancel">取消</button>
+        </div>
       </div>
 
       <!-- 取名工具 -->
@@ -439,10 +468,12 @@
   <script src="js/data/stroke-db.js"></script>
   <script src="js/data/s2t-map.js"></script>
   <script src="js/data/pinyin-db.js"></script>
+  <script src="js/data/dialect-db.js"></script>
   <script src="js/data/english-phonetics.js"></script>
   <script src="js/phonetics.js"></script>
   <script src="js/data/fortune-81.js"></script>
   <script src="js/zodiac-bazi.js"></script>
+  <script src="js/bazi-advanced.js"></script>
   <script src="js/name-generator.js"></script>
   <script src="js/share-card.js"></script>
   <script src="js/fun-extras.js"></script>
@@ -455,6 +486,7 @@
   <script src="js/lunar.js"></script>
   <script src="js/ziwei.js"></script>
   <script src="js/ziwei-reading.js"></script>
+  <script src="js/ziwei-flying.js"></script>
   <script src="js/vendor/astronomy.browser.min.js"></script>
   <script src="js/astrology.js"></script>
   <script src="js/professional.js"></script>
@@ -470,6 +502,8 @@
   <script src="js/naming-extensions.js"></script>
   <script src="js/harmony.js"></script>
   <script src="js/pair-harmony.js"></script>
+  <script src="js/chart-harmony.js"></script>
+  <script src="js/data-backup.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/l10n.js"></script>
   <script src="js/birth-place.js"></script>
