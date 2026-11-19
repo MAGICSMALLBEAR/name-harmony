@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 產生 js/data/dialect-db.js：
-1. 粵語（Jyutping 粵拼）：由 Unihan_Readings.txt (kCantonese) 擷取 stroke-db.js 5,616 字之讀音，以讀音分組壓縮。
-2. 台語（台羅 Tâi-lô）：以精選常見姓氏／命名用字優先，並結合萌典教育部閩南語辭典（dict-twblg.json / ext）擴充字音。
-3. 客語（四縣腔）：以精選常見姓氏／命名用字優先，並結合萌典教育部客家語辭典（dict-hakka.json）擴充四縣腔字音。
+1. 粵語（Jyutping 粵拼）：由 Unihan_Readings.txt (kCantonese) 擷取 stroke-db.js 5,616 字之讀音，附常見姓氏／命名多音候選。
+2. 台語（台羅 Tâi-lô）：姓氏／命名慣讀優先 + 教育部閩南語辭典（dict-twblg.json / ext），並保留文讀（:w）／白話（:b）多音候選。
+3. 客語（四縣腔）：姓氏／命名優先字表 + 教育部客家語辭典（dict-hakka.json）單字與詞尾音，附多音候選。
+4. 客語（海陸腔）：姓氏／命名優先字表 + 教育部客家語辭典（dict-hakka.json）海⃞ 單字與詞尾音，附多音候選。
 """
 import json
 import os
@@ -29,13 +30,25 @@ TAILO_TONE_MARKS = {
     '\u030d': 8,
 }
 
-HAKKA_SUP_TONES = {
-    '²⁴': 1,
-    '¹¹': 2,
-    '³¹': 3,
-    '⁵⁵': 4,
-    '²': 5,
-    '⁵': 6,
+# 四縣腔六聲（教育部客語拼音調值對應數字聲調 1–6）
+HAKKA_FOUR_TONES = {
+    '²⁴': 1,  # 陰平
+    '¹¹': 2,  # 陽平
+    '³¹': 3,  # 上聲
+    '⁵⁵': 4,  # 去聲
+    '²': 5,   # 陰入
+    '⁵': 6,   # 陽入
+}
+
+# 海陸腔七聲（教育部客語拼音調值對應數字聲調 1–7）
+HAKKA_HAILU_TONES = {
+    '⁵³': 1,  # 陰平
+    '⁵⁵': 2,  # 陽平
+    '²⁴': 3,  # 上聲
+    '¹¹': 4,  # 陰去
+    '³³': 5,  # 陽去
+    '⁵': 6,   # 陰入
+    '²': 7,   # 陽入
 }
 
 TAIWANESE_STARTER = {
@@ -55,7 +68,7 @@ TAIWANESE_STARTER = {
     '曹': 'tso5', '唐': 'tong5', '卓': 'toh4', '藍': 'na5', '石': 'tsioh8',
     '董': 'tang2', '紀': 'ki2', '連': 'lian5', '歐': 'au1', '程': 'ting5',
     '溫': 'un1', '温': 'un1', '涂': 'thoo5', '凃': 'thoo5', '白': 'peh8',
-    '史': 'su2', '史': 'su2', '韋': 'ui5', '嚴': 'giam5', '姚': 'iau5',
+    '史': 'su2', '韋': 'ui5', '嚴': 'giam5', '姚': 'iau5',
     '馮': 'pang5', '姜': 'kiunn1', '汪': 'ong1', '田': 'tian5', '康': 'khong1',
     '章': 'tsiong1', '鄒': 'tsoo1', '熊': 'him5', '陸': 'liok8', '孔': 'khong2',
     # 常用命名與避諱關鍵字
@@ -84,20 +97,178 @@ TAIWANESE_STARTER = {
     '健': 'kian7', '俊': 'tsun3', '彥': 'gian7', '廷': 'ting5', '涵': 'ham5',
     '潔': 'kiat4', '晴': 'tsing5', '晨': 'sin5', '語': 'gi2', '彤': 'tong5',
     '瑄': 'suan1', '琳': 'lim5', '琪': 'ki5', '瑤': 'iau5', '馨': 'hing1',
-    '蕾': 'lui2', '蓮': 'lian5', '蓉': 'iong5', '君': 'kun1', '豪': 'ho5',
-    '偉': 'ui2', '冠': 'kuan1', '廷': 'ting5', '哲': 'tiat4', '宥': 'iu7',
-    '宸': 'sin5', '品': 'phin2', '晴': 'tsing5', '妤': 'u5', '彤': 'tong5',
-    '博': 'phok4', '元': 'guan5', '仁': 'jin5', '達': 'tat8', '智': 'ti3',
-    '宗': 'tsong1', '宏': 'hong5', '毅': 'ge7', '靖': 'tsing7', '謙': 'khiam1',
-    '謙': 'khiam1', '誠': 'sing5', '潔': 'kiat4', '瑩': 'ing5', '珊': 'san1',
-    '珍': 'tin1', '珠': 'tsu1', '寶': 'po2', '晶': 'tsing1', '雪': 'seh4',
-    '霜': 'song1', '露': 'loo7', '霞': 'ha5', '虹': 'khong7', '雷': 'lui5',
-    '電': 'tian7', '陽': 'iong5', '陰': 'im1', '乾': 'khian5', '坤': 'khun1',
+    '蕾': 'lui2', '蓮': 'lian5', '蓉': 'iong5', '君': 'kun1', '冠': 'kuan1',
+    '宥': 'iu7', '宸': 'sin5', '品': 'phin2', '妤': 'u5', '博': 'phok4',
+    '元': 'guan5', '達': 'tat8', '宗': 'tsong1', '毅': 'ge7', '靖': 'tsing7',
+    '謙': 'khiam1', '瑩': 'ing5', '珍': 'tin1', '珠': 'tsu1', '寶': 'po2',
+    '晶': 'tsing1', '雪': 'seh4', '霜': 'song1', '露': 'loo7', '霞': 'ha5',
+    '虹': 'khong7', '雷': 'lui5', '電': 'tian7', '陽': 'iong5', '陰': 'im1',
+    '乾': 'khian5', '坤': 'khun1',
     '死': 'si2', '屎': 'sai2', '輸': 'su1', '衰': 'sue1', '龜': 'ku1',
     '豬': 'tu1', '狗': 'kau2', '猴': 'kau5', '破': 'phua3', '臭': 'tshau3',
     '哭': 'khau3', '慘': 'tsham2', '鬼': 'kui2', '傻': 'so5', '笨': 'pun7',
     '呆': 'gong7', '瘋': 'siau2', '小': 'sio2', '阿': 'a1', '公': 'kong1',
     '婆': 'po5', '哥': 'ko1', '爸': 'pe7', '漆': 'tshat4', '落': 'loh8'
+}
+
+# 常見姓氏與命名用字的台語文白異讀補充（w=文讀, b=白話）
+TAIWANESE_WENBAI = {
+    '陳': [('tan5', 'b'), ('tin5', 'w')],
+    '林': [('lim5', 'w'), ('na5', 'b')],
+    '黃': [('ng5', 'b'), ('hong5', 'w')],
+    '張': [('tiunn1', 'b'), ('tiong1', 'w')],
+    '吳': [('ngoo5', 'b'), ('goo5', 'w')],
+    '蔡': [('tshua3', 'b'), ('tshai3', 'w')],
+    '楊': [('iunn5', 'b'), ('iong5', 'w')],
+    '許': [('khoo2', 'b'), ('hi2', 'w')],
+    '鄭': [('tenn7', 'b'), ('ting7', 'w')],
+    '郭': [('kueh4', 'b'), ('kok4', 'w')],
+    '洪': [('ang5', 'b'), ('hong5', 'w')],
+    '賴': [('lua7', 'b'), ('lai7', 'w')],
+    '葉': [('iap8', 'w'), ('hioh8', 'b')],
+    '莊': [('tsng1', 'b'), ('tsong1', 'w')],
+    '江': [('kang1', 'b'), ('kong1', 'w')],
+    '潘': [('phuann1', 'b'), ('phuan1', 'w')],
+    '彭': [('phenn5', 'b'), ('phing5', 'w')],
+    '梁': [('niu5', 'b'), ('liong5', 'w')],
+    '趙': [('tio7', 'b'), ('tiau7', 'w')],
+    '柯': [('khua1', 'b'), ('kho1', 'w')],
+    '戴': [('te3', 'b'), ('tai3', 'w')],
+    '藍': [('na5', 'b'), ('lam5', 'w')],
+    '石': [('tsioh8', 'b'), ('sik8', 'w')],
+    '白': [('peh8', 'b'), ('pik8', 'w')],
+    '明': [('bing5', 'w'), ('mia5', 'b')],
+    '小': [('sio2', 'b'), ('siau2', 'w')],
+    '大': [('tai7', 'w'), ('tua7', 'b')],
+    '平': [('ping5', 'w'), ('penn5', 'b')],
+    '冬': [('tang1', 'b'), ('tong1', 'w')],
+    '夏': [('ha7', 'w'), ('he7', 'b')],
+    '龍': [('liong5', 'w'), ('ling5', 'b')],
+    '竹': [('tik4', 'w'), ('tik4', 'b')],
+    '山': [('san1', 'w'), ('suann1', 'b')],
+    '水': [('tsui2', 'b'), ('sui2', 'w')],
+    '火': [('hue2', 'b'), ('ho2', 'w')],
+    '木': [('bok8', 'w'), ('bak8', 'b')],
+    '天': [('thian1', 'w'), ('thinn1', 'b')],
+    '地': [('te7', 'b'), ('ti7', 'w')],
+    '月': [('gueh8', 'b'), ('guat8', 'w')],
+    '星': [('tshinn1', 'b'), ('sing1', 'w')],
+    '風': [('hong1', 'w'), ('huang1', 'b')],
+    '雨': [('hoo7', 'b'), ('u2', 'w')],
+    '花': [('hue1', 'b'), ('hua1', 'w')],
+    '草': [('tshau2', 'b'), ('tsho2', 'w')],
+    '光': [('kong1', 'w'), ('kng1', 'b')],
+    '成': [('sing5', 'w'), ('siann5', 'b')],
+    '家': [('ka1', 'w'), ('ke1', 'b')],
+    '正': [('tsing3', 'w'), ('tsiann3', 'b')],
+    '生': [('sing1', 'w'), ('senn1', 'b')],
+    '行': [('hing5', 'w'), ('kiann5', 'b')],
+    '樂': [('lok8', 'w'), ('gak8', 'w')],
+    '長': [('tiong5', 'w'), ('tng5', 'b'), ('tiong2', 'w')],
+    '重': [('tiong7', 'w'), ('tang7', 'b'), ('tiong5', 'w')],
+    '名': [('bing5', 'w'), ('mia5', 'b')],
+    '聲': [('sing1', 'w'), ('siann1', 'b')],
+    '香': [('hiong1', 'w'), ('phang1', 'b')],
+    '清': [('tshing1', 'w'), ('tshenn1', 'b')],
+    '青': [('tshing1', 'w'), ('tshenn1', 'b')],
+    '紅': [('hong5', 'w'), ('ang5', 'b')],
+    '飛': [('hui1', 'w'), ('pe1', 'b')],
+    '雪': [('seh4', 'b'), ('suat4', 'w')],
+    '雲': [('hun5', 'b'), ('un5', 'w')],
+    '松': [('siong5', 'w'), ('tsing5', 'b')],
+    '柏': [('pik4', 'w'), ('peh4', 'b')],
+    '芳': [('hong1', 'w'), ('phang1', 'b')],
+    '春': [('tshun1', 'w')],
+    '秋': [('tshiu1', 'w')],
+    '安': [('an1', 'w')],
+    '曾': [('tsan1', 'b'), ('tsing1', 'w')],
+    '落': [('loh8', 'b'), ('lok8', 'w')],
+}
+
+# 粵語常見姓氏與命名多音字（補足 Unihan kCantonese 單讀音）
+CANTONESE_VARIANTS = {
+    '樂': ['lok6', 'ngok6'],
+    '長': ['coeng4', 'zoeng2'],
+    '曾': ['zang1', 'cang4'],
+    '華': ['waa4', 'waa6'],
+    '行': ['hang4', 'hong4', 'hang6'],
+    '重': ['cung5', 'zung6', 'cung4'],
+    '解': ['gaai2', 'haai6'],
+    '區': ['keoi1', 'au1'],
+    '單': ['daan1', 'sin6'],
+    '仇': ['sau4', 'kau4'],
+    '查': ['caa4', 'zaa1'],
+    '任': ['jam6', 'jam4'],
+    '盛': ['sing6', 'sing4'],
+    '朝': ['ciu4', 'ziu1'],
+    '傳': ['cyun4', 'zyun6'],
+    '冠': ['gun1', 'gun3'],
+    '處': ['cyu3', 'cyu2'],
+    '參': ['caam1', 'sam1'],
+    '應': ['jing3', 'jing1'],
+    '寧': ['ning4', 'ning6'],
+    '柏': ['paak3', 'baak3'],
+    '校': ['haau6', 'gaau3'],
+    '率': ['seot1', 'leot6'],
+    '省': ['saang2', 'sing2'],
+    '稱': ['cing1', 'can3'],
+    '調': ['tiu4', 'diu6'],
+    '數': ['sou3', 'sou2'],
+    '差': ['caa1', 'caai1'],
+    '奇': ['kei4', 'gei1'],
+    '藏': ['cong4', 'zong6'],
+    '覺': ['gok3', 'gaau3'],
+    '強': ['koeng4', 'koeng5'],
+    '露': ['lou6', 'lau6'],
+    '好': ['hou2', 'hou3'],
+    '中': ['zung1', 'zung3'],
+    '正': ['zing3', 'zing1'],
+    '大': ['daai6', 'taai3'],
+    '少': ['siu2', 'siu3'],
+    '和': ['wo4', 'wo6'],
+    '分': ['fan1', 'fan6'],
+    '相': ['soeng1', 'soeng3'],
+    '發': ['faat3'],
+    '當': ['dong1', 'dong3'],
+    '興': ['hing1', 'hing3'],
+    '間': ['gaan1', 'gaan3'],
+    '鮮': ['sin1', 'sin2'],
+    '薄': ['bok6', 'bok3'],
+    '落': ['lok6', 'laai6'],
+    '宿': ['suk1', 'sau3'],
+    '角': ['gok3', 'luk6'],
+    '為': ['wai4', 'wai6'],
+    '更': ['gang1', 'gang3'],
+    '還': ['waan4', 'syun4'],
+    '難': ['naan4', 'naan6'],
+    '度': ['dou6', 'dok6'],
+    '都': ['dou1'],
+    '種': ['zung2', 'zung3'],
+    '空': ['hung1', 'hung3'],
+    '論': ['leon6', 'leon4'],
+    '量': ['loeng4', 'loeng6'],
+    '騎': ['ke4', 'kei4'],
+    '磨': ['mo4', 'mo6'],
+    '禁': ['gam3', 'gam1'],
+    '累': ['leoi6', 'leoi5'],
+    '喪': ['song1', 'song3'],
+    '蒙': ['mung4', 'mung2'],
+    '景': ['ging2', 'jing2'],
+    '員': ['jyun4', 'wan4'],
+    '秘': ['bei3', 'mat6'],
+    '令': ['ling6', 'ling4'],
+    '燕': ['jin3', 'jin1'],
+    '陸': ['luk6'],
+    '蓋': ['goi3', 'got3'],
+    '蔚': ['wai3', 'wat1'],
+    '逢': ['fung4', 'pung4'],
+    '折': ['zit3', 'sit6'],
+    '朴': ['pok3', 'piu4'],
+    '洗': ['sai2', 'sin2'],
+    '柏': ['paak3', 'baak3'],
+    '殷': ['jan1', 'jin1'],
+    '紀': ['gei2', 'gei3'],
+    '盛': ['sing6', 'sing4'],
 }
 
 HAKKA_STARTER = {
@@ -115,7 +286,7 @@ HAKKA_STARTER = {
     '范': 'fam4', '宋': 'sung4', '方': 'fong1', '鄧': 'then4', '杜': 'thu4',
     '溫': 'vun1', '温': 'vun1', '涂': 'thu2', '凃': 'thu2', '白': 'phak6',
     '馬': 'ma1', '唐': 'thong2', '藍': 'lam2', '石': 'sak6', '連': 'lien2',
-    '古': 'ku3', '鍾': 'chung1', '傅': 'fu4', '馮': 'fung2', '丁': 'ten1',
+    '古': 'ku3', '傅': 'fu4', '馮': 'fung2', '丁': 'ten1',
     # 常用命名與避諱關鍵字
     '明': 'min2', '華': 'fa2', '志': 'chii4', '豪': 'ho2', '文': 'vun2',
     '傑': 'khiet6', '宇': 'yi3', '軒': 'hien1', '恩': 'en1', '承': 'siin2',
@@ -151,6 +322,16 @@ HAKKA_STARTER = {
     '笨': 'pun4', '呆': 'ngoi2', '癲': 'tien1', '小': 'siau3', '阿': 'a1'
 }
 
+# 海陸腔常見姓氏與避諱關鍵字補強（教育部海陸腔拼音；數字調 1–7）
+HAKKA_HAILU_STARTER = {
+    '陳': 'chin2', '林': 'lim2', '黃': 'vong2', '張': 'zhong1', '李': 'li3',
+    '王': 'vong2', '吳': 'ng2', '蔡': 'cai4', '劉': 'liu2', '楊': 'rhong2',
+    '許': 'hi3', '鄭': 'chang5', '謝': 'cia5', '郭': 'gog6', '洪': 'fung2',
+    '邱': 'hiu1', '曾': 'zen1', '廖': 'liau5', '賴': 'lai5', '徐': 'ci2',
+    '周': 'zhiu1', '葉': 'rhab7', '蘇': 'su1', '莊': 'zong1', '呂': 'li1',
+    '温': 'vun1', '凃': 'tu2', '癲': 'dien1', '阿': 'a1',
+}
+
 
 def parse_tailo(syl):
     if not syl or syl.startswith('--'):
@@ -175,15 +356,11 @@ def parse_tailo(syl):
     return out if re.match(r'^[a-z]+[1-8]$', out) else None
 
 
-def parse_hakka_four(pinyin):
-    m = re.search(r'四⃞([^\s\u3000,;、/()（）文白替俗]+)', pinyin or '')
-    if not m:
-        return None
-    tok = re.sub(r'[-－].*$', '', m.group(1))
+def parse_hakka_syllable(tok, tone_map):
     tm = re.search(r'([¹²³⁴⁵⁶⁷⁸⁹⁰]+)$', tok)
     if not tm:
         return None
-    tone = HAKKA_SUP_TONES.get(tm.group(1))
+    tone = tone_map.get(tm.group(1))
     if tone is None:
         return None
     base = tok[:tm.start()].lower()
@@ -192,18 +369,72 @@ def parse_hakka_four(pinyin):
     return f'{base}{tone}'
 
 
+def parse_hakka_field(pinyin, marker, tone_map):
+    m = re.search(re.escape(marker) + r'([^\s\u3000,;、/()（）文白替俗]+)', pinyin or '')
+    if not m:
+        return None
+    tok = re.sub(r'[-－].*$', '', m.group(1))
+    return parse_hakka_syllable(tok, tone_map)
+
+
+def parse_hakka_compound_last(pinyin, marker, tone_map, char_len):
+    m = re.search(re.escape(marker) + r'([^\s\u3000,;、/()（）]+)', pinyin or '')
+    if not m:
+        return None
+    tok = re.sub(r'[-－]', '', m.group(1)).lower()
+    syls = re.findall(r'[a-z]+[¹²³⁴⁵⁶⁷⁸⁹⁰]+', tok)
+    if len(syls) != char_len or ''.join(syls) != tok:
+        return None
+    return parse_hakka_syllable(syls[-1], tone_map)
+
+
+def merge_variant_list(items, max_items=4):
+    """去重並保留優先順序，同時保留 w/b 標記。items: [(py, tag)]"""
+    out = []
+    idx_by_py = {}
+    for py, tag in items:
+        if not py:
+            continue
+        if py in idx_by_py:
+            if tag and not out[idx_by_py[py]][1]:
+                out[idx_by_py[py]] = (py, tag)
+            continue
+        idx_by_py[py] = len(out)
+        out.append((py, tag))
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def encode_variants(var_map):
+    encoded = {}
+    for ch, items in var_map.items():
+        clean = merge_variant_list(items)
+        if len(clean) >= 2:
+            encoded[ch] = '|'.join(f'{py}:{tag}' if tag else py for py, tag in clean)
+    return encoded
+
+
 def build_taiwanese(stroke_chars):
     result = {}
+    variants_raw = defaultdict(list)
+
     for ch, syl in TAIWANESE_STARTER.items():
         if ch in stroke_chars and re.match(r'^[a-z]+[1-8]$', syl):
             result[ch] = syl
+
+    for ch, pairs in TAIWANESE_WENBAI.items():
+        if ch in stroke_chars:
+            for py, tag in pairs:
+                if re.match(r'^[a-z]+[1-8]$', py):
+                    variants_raw[ch].append((py, tag))
 
     tw_sources = []
     for path in (TWBLG_JSON, TWBLG_EXT_JSON):
         if os.path.exists(path):
             tw_sources.append(json.load(open(path, encoding='utf-8')))
     if not tw_sources:
-        return result
+        return result, encode_variants(variants_raw)
 
     single_best = {}
     comp_cands = defaultdict(Counter)
@@ -216,15 +447,19 @@ def build_taiwanese(stroke_chars):
                 trs = (h.get('trs') or '').strip()
                 if not trs or trs.startswith('--'):
                     continue
-                first_part = re.split(r'[\s,/]+', trs)[0]
-                parsed = parse_tailo(first_part)
-                if not parsed:
-                    continue
                 r = h.get('reading', '')
-                rank = 4 if r == '文' else 3 if r == '' else 2 if r == '白' else 1
-                prev = single_best.get(t)
-                if prev is None or rank > prev[0]:
-                    single_best[t] = (rank, parsed)
+                tag = 'w' if r == '文' else 'b' if r == '白' else ''
+                parts = [p for p in re.split(r'[\s,/]+', trs) if p and not p.startswith('--')]
+                for idx, part in enumerate(parts):
+                    parsed = parse_tailo(part)
+                    if not parsed:
+                        continue
+                    variants_raw[t].append((parsed, tag))
+                    if idx == 0:
+                        rank = 4 if r == '文' else 3 if r == '' else 2 if r == '白' else 1
+                        prev = single_best.get(t)
+                        if prev is None or rank > prev[0]:
+                            single_best[t] = (rank, parsed)
 
     # 多字詞尾音備援（詞尾不發生前字變調，採高頻讀音）
     for src in tw_sources:
@@ -251,38 +486,67 @@ def build_taiwanese(stroke_chars):
     for ch, cnt in comp_cands.items():
         if ch not in result:
             result[ch] = cnt.most_common(1)[0][0]
-    return result
+
+    # 確保預設音永遠包含在多音候選清單裡（作為第一個非衝突候選或補齊）
+    for ch, items in list(variants_raw.items()):
+        if ch in result:
+            def_py = result[ch]
+            if not any(py == def_py for py, _ in items):
+                variants_raw[ch] = [(def_py, '')] + items
+    return result, encode_variants(variants_raw)
 
 
-def build_hakka(stroke_chars):
+def build_hakka_dialect(stroke_chars, starter, marker, tone_map, tone_regex):
     result = {}
-    for ch, syl in HAKKA_STARTER.items():
-        if ch in stroke_chars and re.match(r'^[a-z]+[1-6]$', syl):
+    variants_raw = defaultdict(list)
+    for ch, syl in starter.items():
+        if ch in stroke_chars and re.match(tone_regex, syl):
             result[ch] = syl
+
     if not os.path.exists(HAKKA_JSON):
-        return result
+        return result, {}
 
     hk_data = json.load(open(HAKKA_JSON, encoding='utf-8'))
     single_best = {}
+    comp_cands = defaultdict(Counter)
+
     for e in hk_data:
         t = e.get('title', '')
-        if len(t) != 1 or t not in stroke_chars:
-            continue
-        for h in e.get('heteronyms', []):
-            py = h.get('pinyin', '')
-            if '四⃞' not in py:
-                continue
-            parsed = parse_hakka_four(py)
-            if not parsed:
-                continue
-            rank = 3 if '文' in py else 1 if '白' in py else 2
-            prev = single_best.get(t)
-            if prev is None or rank > prev[0]:
-                single_best[t] = (rank, parsed)
+        if len(t) == 1 and t in stroke_chars:
+            for h in e.get('heteronyms', []):
+                py = h.get('pinyin', '')
+                if marker not in py:
+                    continue
+                parsed = parse_hakka_field(py, marker, tone_map)
+                if not parsed:
+                    continue
+                tag = 'w' if '文' in py else 'b' if '白' in py else ''
+                variants_raw[t].append((parsed, tag))
+                rank = 3 if tag == 'w' else 1 if tag == 'b' else 2
+                prev = single_best.get(t)
+                if prev is None or rank > prev[0]:
+                    single_best[t] = (rank, parsed)
+        elif 2 <= len(t) <= 4 and t[-1] in stroke_chars and all('\u4e00' <= c <= '\u9fff' for c in t):
+            for h in e.get('heteronyms', []):
+                py = h.get('pinyin', '')
+                if marker not in py:
+                    continue
+                parsed = parse_hakka_compound_last(py, marker, tone_map, len(t))
+                if parsed:
+                    comp_cands[t[-1]][parsed] += 1
 
     for ch, (_, syl) in single_best.items():
         result.setdefault(ch, syl)
-    return result
+    for ch, cnt in comp_cands.items():
+        if ch not in result:
+            result[ch] = cnt.most_common(1)[0][0]
+
+    for ch, items in list(variants_raw.items()):
+        if ch in result:
+            def_py = result[ch]
+            if not any(py == def_py for py, _ in items):
+                variants_raw[ch] = [(def_py, '')] + items
+    return result, encode_variants(variants_raw)
 
 
 def append_grouped_map(lines, group_var, target_var, data):
@@ -301,11 +565,21 @@ def append_grouped_map(lines, group_var, target_var, data):
     lines.append('  });')
 
 
+def append_variant_map(lines, var_name, data):
+    lines.append(f'  var {var_name} = {{')
+    items = [f"'{ch}':'{val}'" for ch, val in sorted(data.items())]
+    for i in range(0, len(items), 8):
+        comma = ',' if i + 8 < len(items) else ''
+        lines.append('    ' + ', '.join(items[i:i + 8]) + comma)
+    lines.append('  };')
+
+
 def main():
     txt = open(STROKE_JS, encoding='utf-8').read()
     chars = set(re.findall(r"'([\u4e00-\u9fff])':\d+", txt))
 
     jyutping = {}
+    yue_var_raw = defaultdict(list)
     for line in open(UNIHAN, encoding='utf-8'):
         if not line.startswith('U+'):
             continue
@@ -318,28 +592,86 @@ def main():
         readings = val.split()
         if readings:
             jyutping[c] = readings[0]
+            if len(readings) > 1:
+                for r in readings:
+                    yue_var_raw[c].append((r, ''))
 
-    taiwanese = build_taiwanese(chars)
-    hakka = build_hakka(chars)
+    for ch, rlist in CANTONESE_VARIANTS.items():
+        if ch in chars:
+            if ch in jyutping:
+                yue_var_raw[ch].append((jyutping[ch], ''))
+            for r in rlist:
+                if re.match(r'^[a-z]+[1-6]$', r):
+                    yue_var_raw[ch].append((r, ''))
+    yue_variants = encode_variants(yue_var_raw)
+
+    taiwanese, tw_variants = build_taiwanese(chars)
+    hakka, hak_variants = build_hakka_dialect(chars, HAKKA_STARTER, '四⃞', HAKKA_FOUR_TONES, r'^[a-z]+[1-6]$')
+    hakka_hailu, hhl_variants = build_hakka_dialect(chars, HAKKA_HAILU_STARTER, '海⃞', HAKKA_HAILU_TONES, r'^[a-z]+[1-7]$')
 
     lines = [
         '/**',
-        ' * 多語音韻字庫：',
-        f' * - 粵語（Jyutping 粵拼）：擷取自 Unihan_Readings.txt (kCantonese)，共 {len(jyutping)} 字',
-        f' * - 台語（台羅 Tâi-lô）：姓氏／命名優先字表 + 教育部閩南語辭典（萌典開放資料），共 {len(taiwanese)} 字',
-        f' * - 客語（四縣腔拼音）：姓氏／命名優先字表 + 教育部客家語辭典（萌典開放資料），共 {len(hakka)} 字',
+        ' * 多語音韻字庫（含文白異讀／多音候選與客語海陸腔）：',
+        f' * - 粵語（Jyutping 粵拼）：Unihan kCantonese，共 {len(jyutping)} 字（多音 {len(yue_variants)} 字）',
+        f' * - 台語（台羅 Tâi-lô）：姓氏／命名慣讀 + 教育部閩南語辭典，共 {len(taiwanese)} 字（文白／多音 {len(tw_variants)} 字）',
+        f' * - 客語（四縣腔）：姓氏／命名優先 + 教育部客家語辭典，共 {len(hakka)} 字（多音 {len(hak_variants)} 字）',
+        f' * - 客語（海陸腔）：姓氏／命名優先 + 教育部客家語辭典，共 {len(hakka_hailu)} 字（多音 {len(hhl_variants)} 字）',
         ' */',
         'window.DialectDB = (function() {'
     ]
     append_grouped_map(lines, 'BY_JYUTPING', 'JYUTPING', jyutping)
     append_grouped_map(lines, 'BY_TAILO', 'TAIWANESE', taiwanese)
     append_grouped_map(lines, 'BY_HAKKA', 'HAKKA', hakka)
-    lines.append('  return { JYUTPING: JYUTPING, TAIWANESE: TAIWANESE, HAKKA: HAKKA };')
-    lines.append('})();')
+    append_grouped_map(lines, 'BY_HAKKA_HAILU', 'HAKKA_HAILU', hakka_hailu)
+    append_variant_map(lines, 'VAR_YUE', yue_variants)
+    append_variant_map(lines, 'VAR_TW', tw_variants)
+    append_variant_map(lines, 'VAR_HAK', hak_variants)
+    append_variant_map(lines, 'VAR_HHL', hhl_variants)
+    lines.extend([
+        '  var DICTS = { yue: JYUTPING, tw: TAIWANESE, hak: HAKKA, hhl: HAKKA_HAILU };',
+        '  var VARIANTS = { yue: VAR_YUE, tw: VAR_TW, hak: VAR_HAK, hhl: VAR_HHL };',
+        '  function getVariants(lang, ch) {',
+        '    var raw = VARIANTS[lang] && VARIANTS[lang][ch];',
+        '    if (raw) {',
+        "      return raw.split('|').map(function(tok) {",
+        "        var parts = tok.split(':');",
+        "        return { py: parts[0], tag: parts[1] || '' };",
+        '      });',
+        '    }',
+        '    var single = DICTS[lang] && DICTS[lang][ch];',
+        "    return single ? [{ py: single, tag: '' }] : [];",
+        '  }',
+        '  function getReading(lang, ch, mode) {',
+        "    if (lang === 'tw' && (mode === 'wen' || mode === 'bai')) {",
+        "      var want = mode === 'wen' ? 'w' : 'b';",
+        '      var vars = getVariants(lang, ch);',
+        '      for (var i = 0; i < vars.length; i++) {',
+        '        if (vars[i].tag === want) return vars[i];',
+        '      }',
+        '    }',
+        '    var py = DICTS[lang] && DICTS[lang][ch];',
+        '    if (!py) return null;',
+        '    var all = getVariants(lang, ch);',
+        '    for (var j = 0; j < all.length; j++) {',
+        '      if (all[j].py === py) return all[j];',
+        '    }',
+        "    return { py: py, tag: '' };",
+        '  }',
+        '  return {',
+        '    JYUTPING: JYUTPING, TAIWANESE: TAIWANESE, HAKKA: HAKKA, HAKKA_HAILU: HAKKA_HAILU,',
+        '    VARIANTS: VARIANTS, getVariants: getVariants, getReading: getReading',
+        '  };',
+        '})();',
+    ])
 
     with open(OUT_JS, 'w', encoding='utf-8', newline='\n') as f:
         f.write('\n'.join(lines) + '\n')
-    print(f'Wrote {OUT_JS}: Cantonese={len(jyutping)}, Taiwanese={len(taiwanese)}, Hakka={len(hakka)}')
+    print(
+        f'Wrote {OUT_JS}: yue={len(jyutping)} (var {len(yue_variants)}), '
+        f'tw={len(taiwanese)} (var {len(tw_variants)}), '
+        f'hak={len(hakka)} (var {len(hak_variants)}), '
+        f'hhl={len(hakka_hailu)} (var {len(hhl_variants)})'
+    )
 
 
 if __name__ == '__main__':

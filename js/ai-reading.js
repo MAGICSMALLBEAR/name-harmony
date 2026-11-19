@@ -64,7 +64,7 @@ window.AiReading = (function() {
   }
 
   var SYSTEM = [
-    '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才、音韻與粵／台／客多語檢查）、靈數、八字（含格局／調候／從格／合化檢核）、易經、塔羅、紫微斗數（含十二宮宮干飛化、自化與運限疊飛）、西洋占星（含本命、交點／MC、行運與組合盤）、生肖星座血型、開運建議，以及多人之間的配對。',
+    '你是「姓名和盤」App 的命理整合顧問。使用者會提供 App 對一位或多位成員的分析結果，涵蓋姓名學（五格、三才、音韻與粵／台文白／客四縣海陸多語檢查）、靈數、八字（含格局／調候／從格／合化檢核）、易經、塔羅、紫微斗數（含十二宮宮干飛化、自化與運限疊飛）、西洋占星（含本命、交點／MC、行運與組合盤）、生肖星座血型、開運建議，以及多人之間的配對。',
     '你的工作是把這些系統的結果整合成一份讀得懂、用得上的解讀：',
     '1. 找出多個系統共同指向的特質與課題，說明是哪幾個系統、依據是什麼（引用結果中的具體數字、格局或星曜，例如「人格 23 劃」「紫微命宮天機」「命宮化忌入夫妻宮」）。',
     '2. 指出系統之間互相矛盾的地方，並說明可能的理解方式，不要硬湊成一致（例如八字調候與扶抑喜用衝突、從格或合化條件未足時要照實說明「條件未足／僅為候選」）。',
@@ -119,6 +119,16 @@ window.AiReading = (function() {
       repTotal: function(p) { return '合計 ' + p.n + ' 輪：輸入 ' + p.input + ' tokens、輸出 ' + p.output + ' tokens、耗時 ' + p.s + ' 秒、約 ' + p.cost + (p.unknown ? '（另有 ' + p.unknown + ' 輪中斷，費用不明）' : ''); },
       repHead: '| # | 類型 | 回覆模型 | 結束原因 | 輸入 | 快取寫入 | 快取讀取 | 輸出 | 首字（秒） | 耗時（秒） | 估算費用 |',
       repNote: '費用依官方定價估算（Claude 2026-09，含備援嘗試；DeepSeek 2026-10，依 UTC 時間區分尖峰／離峰，中國國定假日的離峰價未計入），實際金額以服務商後台帳單為準。本紀錄不含對話內容與金鑰。',
+      verifyTitle: function(p) { return '✅ 真實金鑰驗收清單（' + p.provider + '・' + p.passed + '/' + p.total + '）'; },
+      verifyDesc: '請用自備真實 API 金鑰依序完成以下 4 項驗收；前 3 項會依本次對話自動打勾，第 4 項核對帳單後手動勾選，再點「匯出驗收紀錄」。',
+      verifyStepGen: '1. 完成首輪「產生綜合解讀」（檢視回覆品質、tokens、首字延遲與估算費用）',
+      verifyStepCache: '2. 送出一題追問，確認「快取讀取」> 0（Prompt Caching 生效）',
+      verifyStepAbort: '3. 再追問一題中途按「停止」，接著再問一題確認對話可正常延續',
+      verifyStepBill: '4. 已對照官方平台帳單實際金額',
+      verifyBillPh: '帳單實付金額（例：US$0.042）',
+      verifyNotePh: '驗收備註（例：解讀自然、無重複幻覺）',
+      verifySave: '💾 儲存對帳紀錄', verifySaved: '已儲存至本機（僅存這台裝置，不含金鑰）',
+      verifySection: '驗收檢查項目', verifyBillLine: '官方帳單實付：', verifyNoteLine: '備註：',
       errAuth: '金鑰無效或已被撤銷，請更換金鑰。',
       errPermission: '這個金鑰沒有使用此模型的權限。',
       errRate: '請求太頻繁或額度已用完，請稍後再試。',
@@ -172,6 +182,16 @@ window.AiReading = (function() {
       repTotal: function(p) { return p.n + ' turns: ' + p.input + ' input tokens, ' + p.output + ' output tokens, ' + p.s + ' s, about ' + p.cost + (p.unknown ? ' (' + p.unknown + ' interrupted, not priced)' : ''); },
       repHead: '| # | Kind | Served by | Stop reason | Input | Cache write | Cache read | Output | First token (s) | Total (s) | Est. cost |',
       repNote: 'Costs are estimated from list prices (Claude: September 2026, including fallback attempts; DeepSeek: October 2026, peak/off-peak by UTC time, Chinese public-holiday off-peak rates not applied); your provider\'s bill is authoritative. This log contains no conversation content and no key.',
+      verifyTitle: function(p) { return '✅ Real API Key Verification Checklist (' + p.provider + ' · ' + p.passed + '/' + p.total + ')'; },
+      verifyDesc: 'Run through these 4 checks with your own API key. Steps 1–3 auto-detect from this session; check step 4 after comparing with your provider bill, then export the usage log.',
+      verifyStepGen: '1. Complete initial synthesis (check reply quality, tokens, first-token latency and estimated cost)',
+      verifyStepCache: '2. Ask a follow-up and confirm "cache read" > 0 (Prompt Caching active)',
+      verifyStepAbort: '3. Start another follow-up, click Stop mid-stream, then ask again to confirm the thread continues cleanly',
+      verifyStepBill: '4. Compared estimated cost against official provider billing dashboard',
+      verifyBillPh: 'Actual billed amount (e.g. US$0.042)',
+      verifyNotePh: 'Optional verification note',
+      verifySave: '💾 Save verification note', verifySaved: 'Saved locally (this device only; no keys stored)',
+      verifySection: 'Verification Checklist', verifyBillLine: 'Actual provider bill: ', verifyNoteLine: 'Note: ',
       errAuth: 'The API key is invalid or revoked. Please change it.',
       errPermission: 'This key is not allowed to use this model.',
       errRate: 'Rate limited or out of credit. Please try again later.',
@@ -240,7 +260,7 @@ window.AiReading = (function() {
   function panelToText(el) {
     var box = el.cloneNode(true);
     box.querySelectorAll('details').forEach(function(d) { d.open = true; });
-    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .rename-compare, .action-bar, .phonetics-custom-box, .dialect-custom-details, .zw-fly-pills, .zw-pair-controls, .astro-wheel-controls, .astro-transit-controls, .zw-scope-controls').forEach(function(n) { n.remove(); });
+    box.querySelectorAll('button, select, input, textarea, svg, canvas, img, script, style, .report-actions, .report-cert-stamp, .rename-compare, .action-bar, .phonetics-custom-box, .dialect-custom-details, .tw-mode-controls, .zw-fly-pills, .zw-pair-controls, .astro-wheel-controls, .astro-transit-controls, .zw-scope-controls').forEach(function(n) { n.remove(); });
     box.querySelectorAll('.hidden').forEach(function(n) { n.classList.remove('hidden'); });
     box.querySelectorAll('table').forEach(function(tb) {
       var rows = [].slice.call(tb.rows).map(function(tr) { return [].slice.call(tr.cells).map(function(c) { return c.textContent.replace(/\s+/g, ' ').trim(); }); });
@@ -350,22 +370,89 @@ window.AiReading = (function() {
   function money(c) { return c == null ? '?' : 'US$' + (c < 0.01 ? c.toFixed(4) : c.toFixed(3)); }
   function secs(ms) { return ms == null ? '—' : (ms / 1000).toFixed(1); }
 
+  var VERIFY_STORE = 'name-harmony-ai-verify';
+
+  function loadVerify(prov) {
+    var p = prov || provider;
+    try {
+      var all = JSON.parse(localStorage.getItem(VERIFY_STORE) || '{}');
+      var v = all && typeof all === 'object' ? all[p] : null;
+      if (v && typeof v === 'object') {
+        return {
+          billingChecked: !!v.billingChecked,
+          actualCost: String(v.actualCost || '').slice(0, 40),
+          note: String(v.note || '').slice(0, 120)
+        };
+      }
+    } catch (e) {}
+    return { billingChecked: false, actualCost: '', note: '' };
+  }
+
+  function saveVerify(prov, data) {
+    var p = prov || provider;
+    var clean = {
+      billingChecked: !!(data && data.billingChecked),
+      actualCost: String((data && data.actualCost) || '').trim().slice(0, 40),
+      note: String((data && data.note) || '').trim().slice(0, 120),
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      var all = JSON.parse(localStorage.getItem(VERIFY_STORE) || '{}');
+      if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+      all[p] = clean;
+      localStorage.setItem(VERIFY_STORE, JSON.stringify(all));
+    } catch (e) {}
+    return clean;
+  }
+
+  /** 評估真實金鑰驗收清單 4 步驟 */
+  function evaluateChecklist(list, manual) {
+    var arr = Array.isArray(list) ? list : [];
+    var m = manual || {};
+    var okTurn = function(x) { return x && x.stop && x.stop !== 'aborted' && x.stop !== 'error'; };
+    var genDone = arr.some(function(x) { return x.kind === 'analysis' && okTurn(x); });
+    var cacheHit = arr.some(function(x) { return x.kind !== 'analysis' && okTurn(x) && (x.cacheRead || 0) > 0; });
+    var abortIdx = -1;
+    arr.forEach(function(x, i) { if (abortIdx < 0 && x && x.stop === 'aborted') abortIdx = i; });
+    var abortOk = abortIdx >= 0 && arr.slice(abortIdx + 1).some(okTurn);
+    var billingOk = !!m.billingChecked;
+    var items = [
+      { id: 'gen', ok: genDone, label: t('verifyStepGen') },
+      { id: 'cache', ok: cacheHit, label: t('verifyStepCache') },
+      { id: 'abort', ok: abortOk, label: t('verifyStepAbort') },
+      { id: 'billing', ok: billingOk, label: t('verifyStepBill') }
+    ];
+    return {
+      items: items,
+      passed: items.filter(function(x) { return x.ok; }).length,
+      total: items.length,
+      actualCost: String(m.actualCost || '').trim(),
+      note: String(m.note || '').trim()
+    };
+  }
+
   /** 驗收紀錄（Markdown，只有數字，不含對話內容與金鑰） */
-  function usageReport(list, date) {
+  function usageReport(list, date, manual) {
     var tot = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ms: 0, cost: 0 }, unknown = 0;
     var rows = list.map(function(x, i) {
       ['input', 'cacheWrite', 'cacheRead', 'output', 'ms'].forEach(function(k) { tot[k] += x[k] || 0; });
       if (x.cost == null) unknown++; else tot.cost += x.cost;
       return '| ' + [i + 1, x.kind, x.model || '—', x.stop || '—', x.input, x.cacheWrite, x.cacheRead, x.output, secs(x.ttft), secs(x.ms), money(x.cost)].join(' | ') + ' |';
     });
-    return [
+    var chk = evaluateChecklist(list, manual || loadVerify(provider));
+    var lines = [
       '# ' + t('repTitle'), '',
       '- ' + t('repDate') + date,
       '- ' + t('repModel') + (provider === 'deepseek' ? 'DeepSeek ' + dsModel : MODEL + '（fallbacks: default）'),
       '- ' + t('repTotal')({ n: list.length, input: tot.input + tot.cacheWrite + tot.cacheRead, output: tot.output, s: secs(tot.ms), cost: money(tot.cost), unknown: unknown }), '',
       t('repHead'), '|' + new Array(12).join('---|'), rows.join('\n'), '',
-      '> ' + t('repNote'), ''
-    ].join('\n');
+      '## ' + t('verifySection') + ' (' + chk.passed + '/' + chk.total + ')', ''
+    ];
+    chk.items.forEach(function(it) { lines.push('- [' + (it.ok ? 'x' : ' ') + '] ' + it.label); });
+    if (chk.actualCost) lines.push('- ' + t('verifyBillLine') + chk.actualCost);
+    if (chk.note) lines.push('- ' + t('verifyNoteLine') + chk.note);
+    lines.push('', '> ' + t('repNote'), '');
+    return lines.join('\n');
   }
 
   function loadSdk() {
@@ -588,6 +675,31 @@ window.AiReading = (function() {
       (m.usage ? '<p class="tool-note ai-usage">' + esc(m.usage) + '</p>' : '') + '</div>';
   }
 
+  var verifyMsgKey = '';
+
+  function verifyHtml() {
+    var provLabel = provider === 'deepseek' ? 'DeepSeek' : 'Claude';
+    var manual = loadVerify(provider);
+    var chk = evaluateChecklist(turns, manual);
+    var wasOpen = !!(document.getElementById('aiVerifyDetails') && document.getElementById('aiVerifyDetails').open);
+    var html = '<details class="ai-verify-box" id="aiVerifyDetails"' + (wasOpen ? ' open' : '') + '>' +
+      '<summary>' + esc(t('verifyTitle')({ provider: provLabel, passed: chk.passed, total: chk.total })) + '</summary>' +
+      '<p class="tool-note">' + esc(t('verifyDesc')) + '</p><ul class="ai-verify-list">';
+    chk.items.forEach(function(it) {
+      if (it.id === 'billing') {
+        html += '<li><label class="ai-check"><input type="checkbox" id="aiVerifyBill"' + (manual.billingChecked ? ' checked' : '') + '> ' + esc(it.label) + '</label></li>';
+      } else {
+        html += '<li>' + (it.ok ? '✅ ' : '⬜ ') + esc(it.label) + '</li>';
+      }
+    });
+    html += '</ul><div class="tool-row">' +
+      '<input type="text" class="form-input" id="aiVerifyCost" maxlength="40" value="' + esc(manual.actualCost) + '" placeholder="' + esc(t('verifyBillPh')) + '" style="flex:1;">' +
+      '<input type="text" class="form-input" id="aiVerifyNote" maxlength="120" value="' + esc(manual.note) + '" placeholder="' + esc(t('verifyNotePh')) + '" style="flex:2;">' +
+      '</div><div class="tool-actions"><button type="button" class="btn-action btn-action-secondary ai-small" id="aiVerifySave">' + t('verifySave') + '</button>' +
+      (verifyMsgKey ? '<span class="tool-note" id="aiVerifyMsg">' + esc(t(verifyMsgKey)) + '</span>' : '') + '</div></details>';
+    return html;
+  }
+
   function render() {
     var box = document.getElementById('aiContent');
     if (!box) return;
@@ -595,7 +707,7 @@ window.AiReading = (function() {
     var draftText = draft ? draft.value : '';
     var html = '<p class="tool-desc">' + t('desc') + '</p>';
     html += '<div class="tool-row"><label class="tool-field" style="flex:1;"><span>' + t('provider') + '</span><select class="form-input" id="aiProvider"' + (busy ? ' disabled' : '') + '>' +
-      '<option value="claude">Claude（Anthropic）</option><option value="deepseek"' + (provider === 'deepseek' ? ' selected' : '') + '>DeepSeek</option></select></label>' +
+      '<option value="claude">Claude (Anthropic)</option><option value="deepseek"' + (provider === 'deepseek' ? ' selected' : '') + '>DeepSeek</option></select></label>' +
       (provider === 'deepseek' ? '<label class="tool-field" style="flex:1;"><span>' + t('dsModel') + '</span><select class="form-input" id="aiDsModel"' + (busy ? ' disabled' : '') + '>' +
         DS_MODELS.map(function(m) { return '<option value="' + m + '"' + (m === dsModel ? ' selected' : '') + '>' + esc(t('dsModelName')[m]) + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
     html += '<div class="ai-key">' + keyHtml() + '</div>';
@@ -624,6 +736,7 @@ window.AiReading = (function() {
       html += '<div class="ai-ask"><textarea class="form-input" id="aiAsk" rows="2" placeholder="' + t('askPh') + '"' + (busy ? ' disabled' : '') + '></textarea>' +
         '<button type="button" class="btn-download-img" id="aiSend"' + (busy ? ' disabled' : '') + '>' + t('send') + '</button></div>';
     }
+    html += verifyHtml();
     box.innerHTML = html;
     var newDraft = document.getElementById('aiAsk');
     if (newDraft && draftText) newDraft.value = draftText;
@@ -664,6 +777,13 @@ window.AiReading = (function() {
       document.body.appendChild(a);
       a.click();
       setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    } else if (id === 'aiVerifySave') {
+      var bill = document.getElementById('aiVerifyBill');
+      var cost = document.getElementById('aiVerifyCost');
+      var note = document.getElementById('aiVerifyNote');
+      saveVerify(provider, { billingChecked: bill && bill.checked, actualCost: cost ? cost.value : '', note: note ? note.value : '' });
+      verifyMsgKey = 'verifySaved';
+      render();
     } else if (id === 'aiSend') {
       followUp();
     }
@@ -680,11 +800,17 @@ window.AiReading = (function() {
         if (busy && stream) stream.abort();
         provider = e.target.value === 'deepseek' ? 'deepseek' : 'claude';
         try { localStorage.setItem(PROVIDER_STORE, provider); } catch (err) {}
-        messages = []; log = []; turns = []; notice = '';
+        messages = []; log = []; turns = []; notice = ''; verifyMsgKey = '';
         render();
       } else if (id === 'aiDsModel') {
         if (DS_MODELS.indexOf(e.target.value) >= 0) dsModel = e.target.value;
         try { localStorage.setItem(DS_MODEL_STORE, dsModel); } catch (err) {}
+      } else if (id === 'aiVerifyBill') {
+        var cEl = document.getElementById('aiVerifyCost');
+        var nEl = document.getElementById('aiVerifyNote');
+        saveVerify(provider, { billingChecked: e.target.checked, actualCost: cEl ? cEl.value : '', note: nEl ? nEl.value : '' });
+        verifyMsgKey = '';
+        render();
       }
     });
     box.addEventListener('keydown', function(e) {
@@ -702,14 +828,16 @@ window.AiReading = (function() {
     render();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  }
 
   return {
     render: render, reset: reset,
     // 測試用：tools/browser-smoke.js 以模擬的 SDK 檢查對話流程，不需要金鑰
     collectContext: collectContext, renderMarkdown: renderMarkdown, SYSTEM: SYSTEM, MODEL: MODEL,
-    usageStats: usageStats, usageReport: usageReport, PRICES: PRICES,
+    usageStats: usageStats, usageReport: usageReport, evaluateChecklist: evaluateChecklist, PRICES: PRICES,
     dsUsageStats: dsUsageStats, dsPeak: dsPeak, parseSSE: parseSSE, DS_PRICES: DS_PRICES, DS_MODELS: DS_MODELS,
     _turns: function() { return turns; },
     _useSdk: function(mod) { sdk = mod; },

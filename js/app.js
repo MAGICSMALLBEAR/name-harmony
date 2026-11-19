@@ -59,9 +59,11 @@
   var MAX_PERSONS = 5;
   // 使用者手動輸入的筆劃（字 → 筆劃）；筆劃庫沒收錄的字靠這個才分析得下去
   var manualStrokes = {};
-  // 自訂多音字／方言讀音覆蓋
+  // 自訂多音字／方言讀音覆蓋與台語文白偏好
   var customPinyin = {};
   var customDialects = {};
+  var twReadingMode = 'default';
+  function notifySync(reason) { if (window.CloudSync && window.CloudSync.markDirty) window.CloudSync.markDirty(reason); }
   // 吉數姓名推薦目前選擇的性別（'' 表示全部）
   var genGender = '';
   var matrixSystem = 'all';
@@ -73,22 +75,25 @@
     try { relationshipMode.value = window.ChartHarmony.modeKey(localStorage.getItem('name-harmony-relationship')); } catch (e) {}
     relationshipMode.addEventListener('change', function() {
       try { localStorage.setItem('name-harmony-relationship', this.value); } catch (e) {}
+      notifySync('relationship');
       if (currentData) { currentData.relationship = this.value; currentData.pairs = buildPairs(currentData.results); renderAll(); }
     });
-    initBackupUI();
     try { manualStrokes = window.DataBackup.strokes(JSON.parse(localStorage.getItem('name-harmony-strokes') || '{}')); } catch (e) {}
     try {
+      var savedTw = localStorage.getItem('name-harmony-tw-mode');
+      if (savedTw === 'wen' || savedTw === 'bai' || savedTw === 'default') twReadingMode = savedTw;
       if (window.Phonetics && window.Phonetics.sanitizePinyinMap) {
         customPinyin = window.Phonetics.sanitizePinyinMap(JSON.parse(localStorage.getItem('name-harmony-pinyin') || '{}'));
       }
       var rawDia = JSON.parse(localStorage.getItem('name-harmony-dialects') || '{}');
       if (window.Phonetics && window.Phonetics.sanitizeDialectMap && rawDia && typeof rawDia === 'object') {
-        ['yue','tw','hak'].forEach(function(k) {
+        ['yue','tw','hak','hhl'].forEach(function(k) {
           var m = window.Phonetics.sanitizeDialectMap(rawDia[k]);
           if (Object.keys(m).length) customDialects[k] = m;
         });
       }
     } catch (e) {}
+    initBackupUI();
     // 紫微運限：切換年份時只重算該區塊
     document.addEventListener('change', function(e) {
       var cl = e.target.classList;
@@ -120,7 +125,25 @@
         if (!sel.value) delete customPinyin[key];
         else customPinyin[key] = sel.value;
         try { localStorage.setItem('name-harmony-pinyin', JSON.stringify(customPinyin)); } catch (err) {}
+        notifySync('customPinyin');
         rerenderPhoneticsBox(box);
+        return;
+      }
+      if (sel && sel.classList && sel.classList.contains('dialect-select')) {
+        var dbox = sel.closest('.phonetics-detail');
+        var dctrl = sel.closest('.dialect-custom-ctrl');
+        var dwrap = dctrl ? dctrl.querySelector('.dialect-custom-wrap') : null;
+        if (sel.value === '__custom__') {
+          if (dwrap) dwrap.classList.remove('hidden');
+          return;
+        }
+        var dLang = sel.dataset.lang, dKey = sel.dataset.pos + ':' + sel.dataset.char;
+        if (!customDialects[dLang]) customDialects[dLang] = {};
+        if (!sel.value) delete customDialects[dLang][dKey];
+        else customDialects[dLang][dKey] = sel.value;
+        try { localStorage.setItem('name-harmony-dialects', JSON.stringify(customDialects)); } catch (err) {}
+        notifySync('customDialects');
+        rerenderPhoneticsBox(dbox);
         return;
       }
       if (sel && sel.classList && (sel.classList.contains('astro-minor-toggle') || sel.classList.contains('astro-nodes-toggle'))) {
@@ -217,7 +240,19 @@
           return;
         }
         try { localStorage.setItem('name-harmony-pinyin', JSON.stringify(customPinyin)); } catch (err) {}
+        notifySync('customPinyin');
         rerenderPhoneticsBox(pyBtn.closest('.phonetics-detail'));
+        return;
+      }
+      var twBtn = e.target.closest && e.target.closest('.tw-mode-btn');
+      if (twBtn) {
+        var nextMode = twBtn.dataset.twMode;
+        if (nextMode === 'default' || nextMode === 'wen' || nextMode === 'bai') {
+          twReadingMode = nextMode;
+          try { localStorage.setItem('name-harmony-tw-mode', twReadingMode); } catch (err) {}
+          notifySync('twMode');
+          rerenderPhoneticsBox(twBtn.closest('.phonetics-detail'));
+        }
         return;
       }
       var diaBtn = e.target.closest && e.target.closest('.dialect-apply-btn');
@@ -236,6 +271,7 @@
           return;
         }
         try { localStorage.setItem('name-harmony-dialects', JSON.stringify(customDialects)); } catch (err) {}
+        notifySync('customDialects');
         rerenderPhoneticsBox(diaBtn.closest('.phonetics-detail'));
       }
     });
@@ -244,6 +280,7 @@
       try { tstToggle.checked = localStorage.getItem('name-harmony-tst') === 'true'; } catch (e) {}
       tstToggle.addEventListener('change', function() {
         try { localStorage.setItem('name-harmony-tst', tstToggle.checked ? 'true' : 'false'); } catch (e) {}
+        notifySync('tst');
       });
     }
     analyzeBtn.addEventListener('click', function() { handleAnalyze(); });
@@ -446,6 +483,7 @@
         persons: persons,
         relationship: document.getElementById('relationshipMode').value,
         tst: useTrueSolarTime(),
+        twMode: twReadingMode,
         pro: isProMode,
         manualStrokes: manualStrokes,
         customPinyin: customPinyin,
@@ -465,6 +503,7 @@
       restoreEntry(shared);
       proModeToggle.checked = !!shared.pro;
       isProMode = !!shared.pro;
+      if (shared.twMode === 'wen' || shared.twMode === 'bai' || shared.twMode === 'default') twReadingMode = shared.twMode;
       if (shared.customPinyin) customPinyin = Object.assign({}, shared.customPinyin);
       if (shared.customDialects) customDialects = Object.assign({}, shared.customDialects);
       handleAnalyze();
@@ -1215,7 +1254,7 @@
   function renderPhonetics(cnParsed, enName, phIdx, isOpen) {
     var cn = cnParsed && window.Phonetics ? window.Phonetics.checkChinese(cnParsed, customPinyin) : null;
     var dialects = cnParsed && window.Phonetics && window.Phonetics.checkDialects
-      ? window.Phonetics.checkDialects(cnParsed, customDialects) : null;
+      ? window.Phonetics.checkDialects(cnParsed, customDialects, { twMode: twReadingMode }) : null;
     var en = enName && window.Phonetics ? window.Phonetics.checkEnglish(enName) : null;
     if (!cn && !en) return '';
     if (phIdx == null) phIdx = phoneticItems.push({ parsed: cnParsed, enName: enName }) - 1;
@@ -1261,26 +1300,55 @@
       cn.notes.forEach(function(t) { html += p('・' + T(t)); });
       if (!cn.homophones.length) html += p('✅ ' + LL('國語沒有發現常見的不雅諧音', 'No common unfortunate Mandarin homophones found'), 'var(--color-fortune-good)');
 
-      // 多語音韻檢查（粵語・台語・客語）
+      // 多語音韻檢查（粵語・台語・客語四縣／海陸）
       if (dialects && dialects.length) {
         html += '<div class="phonetics-dialect-box"><div style="font-size:0.76rem;color:var(--color-gold-primary);font-weight:700;margin-bottom:4px;">🌏 ' +
-          LL('多語音韻檢查（粵語・台語・客語）', 'Multi-dialect Checks (Cantonese, Taiwanese, Hakka)') + '</div>';
+          LL('多語音韻檢查（粵語・台語・客語四縣／海陸）', 'Multi-dialect Checks (Cantonese, Taiwanese, Hakka Sixian/Hailu)') + '</div>';
         dialects.forEach(function(d) {
-          html += '<div class="dialect-card"><div><strong>' + d.label + '</strong> <span style="color:' + gradeColor(d.grade) + ';">[' + T(d.grade) + ']</span></div>';
+          html += '<div class="dialect-card" data-dialect="' + d.key + '"><div class="dialect-card-head"><strong>' + d.label + '</strong> <span style="color:' + gradeColor(d.grade) + ';">[' + T(d.grade) + ']</span>';
+          if (d.key === 'tw') {
+            html += '<span class="tw-mode-controls">' +
+              [['default', LL('慣讀', 'Standard')], ['wen', LL('文讀', 'Literary')], ['bai', LL('白話', 'Colloquial')]].map(function(m) {
+                return '<button type="button" class="tw-mode-btn' + (twReadingMode === m[0] ? ' active' : '') + '" data-tw-mode="' + m[0] + '">' + m[1] + '</button>';
+              }).join('') + '</span>';
+          }
+          html += '</div>';
           html += '<div style="color:var(--color-gold-light);">' + d.readingText + '</div>';
           d.homophones.forEach(function(h) {
             html += '<div style="color:' + (h.level >= 2 ? 'var(--color-danger, #c0392b)' : 'var(--color-fortune-neutral)') + ';">⚠️ ' +
               LL('「' + h.text + '」在此語音近「' + h.word + '」（' + h.cat + '）', '"' + h.text + '" sounds like "' + h.word + '" (' + T(h.cat) + ')') + '</div>';
           });
           d.notes.forEach(function(n) { html += '<div style="color:var(--color-text-muted);">・' + n + '</div>'; });
-          // 若有未收錄字或想微調該語言讀音，提供自訂欄位
+          // 多音候選選單與自訂補填
+          var hasMulti = d.variants && d.variants.some(function(v) { return v && v.length > 1; });
           html += '<details class="dialect-custom-details" style="margin-top:3px;"><summary style="font-size:0.7rem;color:var(--color-text-muted);cursor:pointer;">' +
-            LL('自訂／補填' + d.label.split('（')[0] + '讀音', 'Customize ' + d.label.split(' ')[0] + ' readings') + '</summary><div class="phonetics-custom-row">';
+            (hasMulti
+              ? LL('切換多音／自訂' + d.label.split('（')[0] + '讀音', 'Switch variants / customize ' + d.label.split(' ')[0] + ' readings')
+              : LL('自訂／補填' + d.label.split('（')[0] + '讀音', 'Customize ' + d.label.split(' ')[0] + ' readings')) +
+            '</summary><div class="phonetics-custom-row">';
+          var phHint = d.key === 'yue' ? 'can4' : d.key === 'tw' ? 'tan5' : d.key === 'hhl' ? 'chin2' : 'chin2';
           d.chars.forEach(function(ch, i) {
-            var cur = (customDialects[d.key] && (customDialects[d.key][i + ':' + ch] || customDialects[d.key][ch])) || (d.sylls[i] ? d.sylls[i].py : '');
-            html += '<span class="phonetics-char-ctrl dialect-custom-ctrl"><strong>' + ch + '</strong>' +
-              '<input type="text" class="dialect-custom-input" maxlength="10" size="6" value="' + cur + '" placeholder="' + (d.key === 'yue' ? 'can4' : d.key === 'tw' ? 'tan5' : 'chin2') + '">' +
-              '<button type="button" class="dialect-apply-btn" data-lang="' + d.key + '" data-char="' + ch + '" data-pos="' + i + '">' + LL('套用', 'Apply') + '</button></span>';
+            var curCustom = (customDialects[d.key] && (customDialects[d.key][i + ':' + ch] || customDialects[d.key][ch])) || '';
+            var curShown = curCustom || (d.sylls[i] ? d.sylls[i].py : '');
+            var vars = (d.variants && d.variants[i]) || [];
+            html += '<span class="phonetics-char-ctrl dialect-custom-ctrl"><strong>' + ch + '</strong>';
+            if (vars.length > 1) {
+              var isPreset = !curCustom || vars.some(function(v) { return v.py === curCustom; });
+              html += '<select class="dialect-select" data-lang="' + d.key + '" data-char="' + ch + '" data-pos="' + i + '" aria-label="' + LL(ch + ' ' + d.label + ' 讀音', d.label + ' reading for ' + ch) + '">';
+              html += '<option value=""' + (!curCustom ? ' selected' : '') + '>' + LL('預設', 'Default') + (d.sylls[i] && !curCustom ? ' (' + d.sylls[i].py + ')' : '') + '</option>';
+              vars.forEach(function(v) {
+                var tagTxt = v.tag === 'w' ? LL(' 文', ' lit.') : v.tag === 'b' ? LL(' 白', ' col.') : '';
+                html += '<option value="' + v.py + '"' + (curCustom === v.py ? ' selected' : '') + '>' + v.py + tagTxt + '</option>';
+              });
+              html += '<option value="__custom__"' + (!isPreset ? ' selected' : '') + '>' + LL('自訂…', 'Custom…') + '</option></select>';
+              html += '<span class="dialect-custom-wrap' + (isPreset ? ' hidden' : '') + '">' +
+                '<input type="text" class="dialect-custom-input" maxlength="10" size="6" value="' + curShown + '" placeholder="' + phHint + '">' +
+                '<button type="button" class="dialect-apply-btn" data-lang="' + d.key + '" data-char="' + ch + '" data-pos="' + i + '">' + LL('套用', 'Apply') + '</button></span>';
+            } else {
+              html += '<input type="text" class="dialect-custom-input" maxlength="10" size="6" value="' + curShown + '" placeholder="' + phHint + '">' +
+                '<button type="button" class="dialect-apply-btn" data-lang="' + d.key + '" data-char="' + ch + '" data-pos="' + i + '">' + LL('套用', 'Apply') + '</button>';
+            }
+            html += '</span>';
           });
           html += '</div></details></div>';
         });
@@ -1507,6 +1575,8 @@
     if (hasErr) { manualStrokeError.textContent = '請輸入有效筆劃(1-64)'; manualStrokeError.classList.remove('hidden'); return; }
     // 記住這次輸入的筆劃，再跑一次分析；analyzeOne 會把它們一起送進五格計算
     Object.keys(entered).forEach(function(c) { manualStrokes[c] = entered[c]; });
+    try { localStorage.setItem('name-harmony-strokes', JSON.stringify(manualStrokes)); } catch (e) {}
+    notifySync('manualStrokes');
     manualStrokeCard.classList.add('hidden');
     handleAnalyze();
   }
@@ -1537,6 +1607,8 @@
     if (window.I18N) window.I18N.apply(window.I18N.getLang());
   }
   function rerenderLang() {
+    if (window.CloudSync && window.CloudSync.render) window.CloudSync.render();
+    if (window.AiReading) window.AiReading.render();
     if (currentData) currentData.pairs = buildPairs(currentData.results);
     renderAll(true);
   }
@@ -3175,6 +3247,43 @@
     fillForm(entry.persons || []);
   }
 
+  function currentBackupState() {
+    return {
+      persons: collectInputs().map(savedPerson),
+      manualStrokes: manualStrokes,
+      customPinyin: customPinyin,
+      customDialects: customDialects,
+      relationship: document.getElementById('relationshipMode').value,
+      tst: useTrueSolarTime(),
+      twMode: twReadingMode
+    };
+  }
+
+  function applySyncedBackup(backup) {
+    if (!backup || !backup.data) return;
+    var d = backup.data;
+    manualStrokes = Object.assign({}, d.manualStrokes || {});
+    customPinyin = Object.assign({}, d.customPinyin || {});
+    customDialects = {};
+    ['yue', 'tw', 'hak', 'hhl'].forEach(function(k) {
+      if (d.customDialects && d.customDialects[k] && Object.keys(d.customDialects[k]).length) {
+        customDialects[k] = Object.assign({}, d.customDialects[k]);
+      }
+    });
+    twReadingMode = (d.settings && d.settings.twMode) || 'default';
+    if (d.settings) {
+      var relEl = document.getElementById('relationshipMode');
+      if (relEl) relEl.value = window.ChartHarmony.modeKey(d.settings.relationship);
+      var tstEl = document.getElementById('tstToggle');
+      if (tstEl) tstEl.checked = !!d.settings.tst;
+    }
+    if (d.currentPersons && d.currentPersons.length) fillForm(d.currentPersons);
+    if (window.NamingTools && window.NamingTools.render) window.NamingTools.render();
+    if (window.NamingExtensions && window.NamingExtensions.render) window.NamingExtensions.render();
+    if (currentData) renderAll(true);
+    else renderHistoryPanel();
+  }
+
   function initBackupUI() {
     var pending = null, readId = 0;
     var byId = function(id) { return document.getElementById(id); };
@@ -3182,8 +3291,7 @@
     var cancel = function() { readId++; pending = null; file.value = ''; preview.classList.add('hidden'); };
     byId('backupExport').addEventListener('click', function() {
       try {
-        var backup = window.DataBackup.capture(localStorage, { persons:collectInputs().map(savedPerson), manualStrokes:manualStrokes,
-          relationship:byId('relationshipMode').value, tst:useTrueSolarTime() });
+        var backup = window.DataBackup.capture(localStorage, currentBackupState());
         var blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json;charset=utf-8'});
         var url = URL.createObjectURL(blob), link = document.createElement('a');
         link.href = url; link.download = 'name-harmony-backup-' + new Date().toISOString().slice(0,10) + '.json';
@@ -3200,11 +3308,14 @@
         if (id !== readId) return;
         pending = window.DataBackup.parse(s);
         var d = pending.data;
+        var diaCount = Object.keys(d.customDialects || {}).reduce(function(sum, k) { return sum + Object.keys(d.customDialects[k] || {}).length; }, 0);
         byId('backupPreviewText').textContent = LL('備份時間：', 'Backup time: ') + new Date(pending.exportedAt).toLocaleString() + '\n' +
           LL('歷史 ', 'History: ') + d.history.length + LL(' 筆；客戶檔案 ', '; profiles: ') + d.profiles.length +
-          LL(' 筆；品牌 ', '; brands: ') + d.brandList.length + LL(' 個；表單成員 ', '; form members: ') + d.currentPersons.length +
+          LL(' 筆；品牌 ', '; brands: ') + d.brandList.length + LL(' 個；品牌回饋 ', '; brand feedback: ') + (d.brandFeedback ? d.brandFeedback.length : 0) +
+          LL(' 筆；表單成員 ', '; form members: ') + d.currentPersons.length +
           LL(' 位；手動筆劃 ', '; manual strokes: ') + Object.keys(d.manualStrokes).length +
-          LL(' 字；取名偏好：', '; naming preferences: ') + (d.namingPrefs ? LL('有', 'included') : LL('無', 'none')) + '\n' +
+          LL(' 字；自訂讀音 ', '; custom readings: ') + (Object.keys(d.customPinyin || {}).length + diaCount) +
+          LL(' 項；取名偏好：', '; naming preferences: ') + (d.namingPrefs ? LL('有', 'included') : LL('無', 'none')) + '\n' +
           LL('關係模式：', 'Relationship: ') + window.ChartHarmony.modeName(d.settings.relationship) +
           LL('；真太陽時：', '; true solar time: ') + (d.settings.tst ? LL('開', 'on') : LL('關', 'off'));
         preview.classList.remove('hidden');
@@ -3216,6 +3327,9 @@
       try { window.DataBackup.restore(localStorage,pending); cancel(); window.location.reload(); }
       catch (e) { status.textContent = e.message; }
     });
+    if (window.CloudSync && window.CloudSync.init) {
+      window.CloudSync.init({ getState: currentBackupState, onApplied: applySyncedBackup });
+    }
   }
 
   /** 把存檔的成員資料填回表單（姓名、生日、時間、性別、出生地、血型），多出的成員自動新增 */
@@ -3263,7 +3377,7 @@
     };
     var hist = loadHistory();
     hist.unshift(entry); if (hist.length > 20) hist = hist.slice(0, 20);
-    try { localStorage.setItem('name-harmony-v3', JSON.stringify(hist)); renderHistoryPanel(); toast('已儲存！'); }
+    try { localStorage.setItem('name-harmony-v3', JSON.stringify(hist)); notifySync('history'); renderHistoryPanel(); toast('已儲存！'); }
     catch(e) { toast('儲存失敗'); }
   }
 
@@ -3287,6 +3401,7 @@
     if (profiles.length > 50) profiles = profiles.slice(0, 50);
     try {
       localStorage.setItem('name-harmony-profiles', JSON.stringify(profiles));
+      notifySync('profiles');
       renderHistoryPanel();
       toast('已存檔：' + entry.name);
       var profileButton = document.getElementById('profileSaveBtn');

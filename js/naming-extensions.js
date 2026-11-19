@@ -125,8 +125,20 @@ window.NamingExtensions = (function() {
       toneLine: '調性：',
       domainsBy: function(p) { return '網域' + (p.slug ? '（以拼音 ' + esc(p.slug) + ' 查詢）' : '') + '：'; },
       domain: { taken: '已被註冊', free: '查無登記，可能可註冊', error: '查詢失敗', pending: '查詢中…' },
-      tmLink: '™ 查台灣商標', twLink: '🌐 查 .com.tw',
-      brandNote: '網域以各登記處的 RDAP 即時查詢；「查無登記」仍可能是保留字或溢價網域，購買前請到註冊商確認。商標沒有開放查詢介面，請到智慧財產局檢索系統查相同或近似商標。.tw 網域 TWNIC 不開放瀏覽器直接查詢，請用連結。',
+      tmLink: '™ 查台灣商標', tmUsLink: '™ 查美國商標', twLink: '🌐 查 .com.tw',
+      brandNote: '網域以各登記處的 RDAP 即時查詢；「查無登記」仍可能是保留字或溢價網域，購買前請到註冊商確認。商標沒有開放查詢介面，請到智慧財產局（或美國 USPTO）檢索系統查相同或近似商標。.tw 網域 TWNIC 不開放瀏覽器直接查詢，請用連結。',
+      // 品牌調性本機回饋
+      fbHeading: '📝 調性評分回饋', fbPrivacy: '🔒 僅存於本機（未經授權不上傳；若啟用雲端同步則隨個人備份同步）',
+      fbMatchBtn: '👍 調性判斷準確', fbOtherLabel: '更像：', fbNotePh: '簡短原因（選填，最多 80 字）',
+      fbSaveBtn: '📌 記錄建議調性', fbSavedMatch: '已記錄：調性判斷準確（僅存本機）',
+      fbSavedOther: function(p) { return '已記錄：建議歸類為「' + p.tone + '」（僅存本機）'; },
+      fbBoxTitle: function(p) { return '📝 品牌調性本機回饋紀錄（' + p.n + ' 筆）'; },
+      fbEmpty: '尚未記錄任何回饋。對初篩結果點選「調性判斷準確」或指定更貼近的調性，即可累積自己的校準樣本。',
+      fbStats: function(p) { return '累計 ' + p.total + ' 筆・符合預期 ' + p.matched + ' 筆（命中率 ' + p.rate + '%）・建議改判 ' + p.mismatched + ' 筆'; },
+      fbExportJson: '📥 匯出 JSON', fbExportMd: '📄 匯出 Markdown', fbClear: '🗑️ 清除回饋',
+      fbVerdictMatch: '準確', fbVerdictOther: function(p) { return '改判→' + p.tone; }, fbDel: '刪除',
+      fbRepTitle: '品牌調性本機回饋紀錄', fbRepDate: '匯出日期', fbRepPrivacy: '資料來源為本機紀錄，未經使用者匯出或同步前不上傳伺服器。',
+      fbRepHead: '| 時間 | 品牌名 | 語種 | 查詢調性 | 系統最高調性 | 回饋判定 | 建議調性 | 分數 | 備註 |',
 
       // 人格
       bfTitle: '🧠 名字與自我人格對照',
@@ -278,8 +290,19 @@ window.NamingExtensions = (function() {
       toneLine: 'Tone: ',
       domainsBy: function(p) { return 'Domains' + (p.slug ? ' (checked as pinyin ' + esc(p.slug) + ')' : '') + ':'; },
       domain: { taken: 'registered', free: 'no record — may be available', error: 'lookup failed', pending: 'checking…' },
-      tmLink: '™ Taiwan trademarks', twLink: '🌐 Check .com.tw',
-      brandNote: 'Domains are checked live via each registry\'s RDAP; "no record" can still be a reserved or premium domain, so confirm with a registrar before buying. Trademarks have no public lookup API — search Taiwan IPO\'s database for identical or similar marks. TWNIC does not allow browser lookups of .tw domains; use the link.',
+      tmLink: '™ Taiwan trademarks', tmUsLink: '™ US USPTO trademarks', twLink: '🌐 Check .com.tw',
+      brandNote: 'Domains are checked live via each registry\'s RDAP; "no record" can still be a reserved or premium domain, so confirm with a registrar before buying. Trademarks have no public lookup API — search Taiwan IPO or USPTO databases for identical or similar marks. TWNIC does not allow browser lookups of .tw domains; use the link.',
+      fbHeading: '📝 Tone Score Feedback', fbPrivacy: '🔒 Stored locally only (never uploaded unless you enable your own cloud sync)',
+      fbMatchBtn: '👍 Tone matches', fbOtherLabel: 'Feels more like:', fbNotePh: 'Optional note (max 80 chars)',
+      fbSaveBtn: '📌 Save suggestion', fbSavedMatch: 'Saved locally: tone judgment matches',
+      fbSavedOther: function(p) { return 'Saved locally: suggested tone "' + p.tone + '"'; },
+      fbBoxTitle: function(p) { return '📝 Local Brand Tone Feedback (' + p.n + ')'; },
+      fbEmpty: 'No local feedback recorded yet. Rate a brand result above to collect your own calibration samples.',
+      fbStats: function(p) { return p.total + ' entries · matched ' + p.matched + ' (' + p.rate + '%) · suggested changes ' + p.mismatched; },
+      fbExportJson: '📥 Export JSON', fbExportMd: '📄 Export Markdown', fbClear: '🗑️ Clear feedback',
+      fbVerdictMatch: 'Matched', fbVerdictOther: function(p) { return 'Suggested → ' + p.tone; }, fbDel: 'Remove',
+      fbRepTitle: 'Local Brand Tone Feedback Log', fbRepDate: 'Exported', fbRepPrivacy: 'Recorded locally on this device; never uploaded without explicit user export or sync.',
+      fbRepHead: '| Time | Brand | Kind | Selected Tone | Top Predicted | Verdict | Preferred Tone | Score | Note |',
 
       bfTitle: '🧠 Name vs. Self-Rated Personality',
       bfDesc: 'A 10-item Big Five self-reflection (for fun and reflection, not a psychological assessment). Read it alongside the playful MBTI estimate in the name analysis.',
@@ -786,7 +809,9 @@ window.NamingExtensions = (function() {
       '<div class="tool-actions"><button type="button" class="btn-download-img" id="brandCompareGo">' + tr('cmpGo') + '</button>' +
       '<button type="button" class="btn-action btn-action-secondary" id="brandCompareClear">' + tr('cmpClear') + '</button></div>' +
       '<div id="brandCompareResult"></div></div>';
+    html += '<div id="brandFeedbackBox" class="tool-compare"></div>';
     el.innerHTML = html;
+    renderBrandFeedback();
     if (s.ran) runBrand(true);
     if (s.cmpRan) runCompare(true);
   }
@@ -815,9 +840,21 @@ window.NamingExtensions = (function() {
     }
     html += '<div class="tool-actions">' +
       '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://twtmsearch.tipo.gov.tw/">' + tr('tmLink') + '</a>' +
+      '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://tmsearch.uspto.gov/">' + tr('tmUsLink') + '</a>' +
       (r.slug ? '<a class="btn-action btn-action-secondary" target="_blank" rel="noopener" href="https://www.twnic.tw/whois_n.php?query=' + encodeURIComponent(r.slug + '.com.tw') + '">' + tr('twLink') + '</a>' : '') +
       '<button type="button" class="btn-action btn-action-secondary" id="brandAdd">' + tr('cmpAdd') + '</button></div><p class="tool-msg" id="brandAddMsg"></p>';
+    var curTone = val('brandTone') || 'trust';
+    var otherDefault = TONES.filter(function(k) { return k !== curTone; })[0] || 'trust';
+    html += '<div class="brand-fb-form"><div class="tool-line"><strong>' + tr('fbHeading') + '</strong> <small class="tool-meta">' + tr('fbPrivacy') + '</small></div>' +
+      '<div class="tool-actions">' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandFbMatch">' + tr('fbMatchBtn') + '</button>' +
+      '<label class="brand-fb-inline"><span>' + tr('fbOtherLabel') + '</span><select id="brandFbTone" class="form-input">' +
+      TONES.map(function(k) { return '<option value="' + k + '"' + (k === otherDefault ? ' selected' : '') + '>' + tr('tone.' + k) + '</option>'; }).join('') + '</select></label>' +
+      '<input id="brandFbNote" class="form-input brand-fb-note" maxlength="80" placeholder="' + esc(tr('fbNotePh')) + '">' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandFbOther">' + tr('fbSaveBtn') + '</button>' +
+      '</div><p class="tool-msg" id="brandFbMsg"></p></div>';
     html += '<p class="tool-note">' + tr('brandNote') + '</p>';
+    state.brand.lastResult = { name: r.name, kind: r.kind, score: r.score, selectedTone: curTone };
     out.innerHTML = html + '</div>';
     if (!r.slug || cached) return;
     state.brand.domains = null;
@@ -916,6 +953,173 @@ window.NamingExtensions = (function() {
   }
   function saveCmpList(list) {
     try { localStorage.setItem(CMP_STORE, JSON.stringify(list)); } catch (e) {}
+    if (window.CloudSync && window.CloudSync.markDirty) window.CloudSync.markDirty('brandList');
+  }
+
+  // ============ 品牌調性本機回饋 ============
+
+  var FB_STORE = 'name-harmony-brand-feedback', FB_MAX = 200;
+
+  function cleanText(s, max) {
+    return String(s == null ? '' : s).replace(/[<>\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max);
+  }
+
+  function sanitizeBrandFeedback(list) {
+    if (!Array.isArray(list)) return [];
+    var seen = {}, out = [];
+    list.forEach(function(item) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+      var name = cleanText(item.name, 60);
+      if (!name) return;
+      var time = cleanText(item.time, 40);
+      if (!time || !Number.isFinite(Date.parse(time))) time = new Date().toISOString();
+      var id = cleanText(item.id, 60) || (time + '|' + name.toLowerCase());
+      if (seen[id]) return;
+      seen[id] = true;
+      var sel = TONES.indexOf(item.selectedTone) >= 0 ? item.selectedTone : 'trust';
+      var verdict = item.verdict === 'other' ? 'other' : 'match';
+      var pref = TONES.indexOf(item.preferredTone) >= 0 ? item.preferredTone : sel;
+      var kind = ['zh', 'en', 'mix'].indexOf(item.kind) >= 0 ? item.kind : 'mix';
+      var pred = Array.isArray(item.predictedTones)
+        ? item.predictedTones.filter(function(t) { return TONES.indexOf(t) >= 0; }).slice(0, 4)
+        : [];
+      var sc = typeof item.score === 'number' && Number.isFinite(item.score) ? Math.max(0, Math.min(100, Math.round(item.score))) : 0;
+      out.push({
+        id: id, time: time, name: name, kind: kind, selectedTone: sel, predictedTones: pred,
+        verdict: verdict, preferredTone: pref, score: sc, note: cleanText(item.note, 80)
+      });
+    });
+    return out.sort(function(a, b) { return Date.parse(b.time) - Date.parse(a.time); }).slice(0, FB_MAX);
+  }
+
+  function loadBrandFeedback() {
+    try { return sanitizeBrandFeedback(JSON.parse(localStorage.getItem(FB_STORE) || '[]')); } catch (e) { return []; }
+  }
+
+  function saveBrandFeedback(list) {
+    var clean = sanitizeBrandFeedback(list);
+    try { localStorage.setItem(FB_STORE, JSON.stringify(clean)); } catch (e) {}
+    if (window.CloudSync && window.CloudSync.markDirty) window.CloudSync.markDirty('brandFeedback');
+    return clean;
+  }
+
+  function summarizeBrandFeedback(list) {
+    var clean = sanitizeBrandFeedback(list);
+    var matched = 0, byPreferred = { trust: 0, warm: 0, bold: 0, calm: 0 };
+    clean.forEach(function(x) {
+      if (x.verdict === 'match') matched++;
+      if (byPreferred[x.preferredTone] != null) byPreferred[x.preferredTone]++;
+    });
+    return {
+      total: clean.length,
+      matched: matched,
+      mismatched: clean.length - matched,
+      rate: clean.length ? Math.round(matched * 100 / clean.length) : 0,
+      byPreferred: byPreferred
+    };
+  }
+
+  function brandFeedbackReport(list, date, format) {
+    var clean = sanitizeBrandFeedback(list);
+    var sum = summarizeBrandFeedback(clean);
+    if (format === 'json') {
+      return JSON.stringify({
+        format: 'name-harmony-brand-feedback', version: 1, exportedAt: date,
+        summary: sum, entries: clean
+      }, null, 2);
+    }
+    var md = function(s) { return String(s || '').replace(/\|/g, '\\|'); };
+    var lines = [
+      '# ' + tr('fbRepTitle'), '',
+      '- ' + tr('fbRepDate') + tr('colon') + date,
+      '- ' + tr('fbStats', sum),
+      '- ' + tr('fbRepPrivacy'), '',
+      tr('fbRepHead'),
+      '|---|---|---|---|---|---|---|---|---|'
+    ];
+    clean.forEach(function(x) {
+      var preds = x.predictedTones.map(function(t) { return tr('tone.' + t); }).join(' / ') || '—';
+      var vText = x.verdict === 'match' ? tr('fbVerdictMatch') : tr('fbVerdictOther', { tone: tr('tone.' + x.preferredTone) });
+      lines.push('| ' + [
+        x.time.slice(0, 16).replace('T', ' '), md(x.name), x.kind, tr('tone.' + x.selectedTone),
+        md(preds), md(vText), tr('tone.' + x.preferredTone), x.score, md(x.note || '—')
+      ].join(' | ') + ' |');
+    });
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  function predictedTonesFor(name) {
+    var fits = TONES.map(function(t) { return sumPts(scoreBrand(name, t).items, true); });
+    var max = Math.max.apply(null, fits);
+    return max > 0 ? TONES.filter(function(t, i) { return fits[i] === max; }) : [];
+  }
+
+  function recordBrandFeedback(verdict) {
+    var last = state.brand.lastResult;
+    if (!last || !last.name) return;
+    var preferred = verdict === 'other' ? (val('brandFbTone') || last.selectedTone) : last.selectedTone;
+    if (TONES.indexOf(preferred) < 0) preferred = last.selectedTone;
+    var note = cleanText(val('brandFbNote'), 80);
+    var now = new Date().toISOString();
+    var entry = {
+      id: now + '|' + last.name.toLowerCase(),
+      time: now,
+      name: last.name,
+      kind: last.kind || 'mix',
+      selectedTone: last.selectedTone,
+      predictedTones: predictedTonesFor(last.name),
+      verdict: verdict === 'other' ? 'other' : 'match',
+      preferredTone: preferred,
+      score: last.score,
+      note: note
+    };
+    var list = loadBrandFeedback();
+    list.unshift(entry);
+    saveBrandFeedback(list);
+    var noteEl = document.getElementById('brandFbNote');
+    if (noteEl) noteEl.value = '';
+    var msg = document.getElementById('brandFbMsg');
+    if (msg) msg.textContent = verdict === 'other' ? tr('fbSavedOther', { tone: tr('tone.' + preferred) }) : tr('fbSavedMatch');
+    renderBrandFeedback();
+  }
+
+  function renderBrandFeedback() {
+    var box = document.getElementById('brandFeedbackBox');
+    if (!box) return;
+    var list = loadBrandFeedback();
+    var sum = summarizeBrandFeedback(list);
+    var html = '<h4 class="tool-subtitle">' + esc(tr('fbBoxTitle', { n: sum.total })) + '</h4>';
+    if (!list.length) {
+      html += '<p class="tool-note">' + esc(tr('fbEmpty')) + '</p>';
+      box.innerHTML = html;
+      return;
+    }
+    html += '<p class="tool-line">' + esc(tr('fbStats', sum)) + '</p>';
+    html += '<div class="brand-fb-list">' + list.slice(0, 12).map(function(x) {
+      var badge = x.verdict === 'match' ? tr('fbVerdictMatch') : tr('fbVerdictOther', { tone: tr('tone.' + x.preferredTone) });
+      return '<div class="brand-fb-row"><span><strong>' + esc(x.name) + '</strong> (' + esc(tr('tone.' + x.selectedTone)) + ' · ' + x.score + ') — ' + esc(badge) +
+        (x.note ? ' · <em>' + esc(x.note) + '</em>' : '') + '</span>' +
+        '<button type="button" class="btn-action btn-action-secondary brand-fb-del" data-fb-id="' + esc(x.id) + '">' + esc(tr('fbDel')) + '</button></div>';
+    }).join('') + '</div>';
+    html += '<div class="tool-actions">' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandFbExportJson">' + tr('fbExportJson') + '</button>' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandFbExportMd">' + tr('fbExportMd') + '</button>' +
+      '<button type="button" class="btn-action btn-action-secondary" id="brandFbClear">' + tr('fbClear') + '</button></div>';
+    box.innerHTML = html;
+  }
+
+  function exportBrandFeedback(format) {
+    var list = loadBrandFeedback();
+    if (!list.length) return;
+    var isJson = format === 'json';
+    var content = brandFeedbackReport(list, today(), isJson ? 'json' : 'md');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: (isJson ? 'application/json' : 'text/markdown') + ';charset=utf-8' }));
+    a.download = 'brand-tone-feedback-' + today() + (isJson ? '.json' : '.md');
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
   /** 單一結果的「加入比較」 */
@@ -1359,6 +1563,16 @@ window.NamingExtensions = (function() {
       else if (id === 'brandCompareClear') { document.getElementById('brandCompareInput').value = ''; state.brand.listText = ''; state.brand.cmpRan = false; state.brand.cmp = null; saveCmpList([]); document.getElementById('brandCompareResult').innerHTML = ''; }
       else if (id === 'brandExport') exportCompare(false);
       else if (id === 'brandCopy') exportCompare(true);
+      else if (id === 'brandFbMatch') recordBrandFeedback('match');
+      else if (id === 'brandFbOther') recordBrandFeedback('other');
+      else if (id === 'brandFbExportJson') exportBrandFeedback('json');
+      else if (id === 'brandFbExportMd') exportBrandFeedback('md');
+      else if (id === 'brandFbClear') { saveBrandFeedback([]); renderBrandFeedback(); }
+      else if (e.target && e.target.classList && e.target.classList.contains('brand-fb-del')) {
+        var delId = e.target.getAttribute('data-fb-id');
+        saveBrandFeedback(loadBrandFeedback().filter(function(x) { return x.id !== delId; }));
+        renderBrandFeedback();
+      }
       else if (id === 'bfGo') runPersonality();
       else if (id === 'familyGo') runFamily();
       else if (id === 'familyReport') printFamilyReport();
@@ -1379,6 +1593,7 @@ window.NamingExtensions = (function() {
     trendEnglish: trendEnglish, trendChinese: trendChinese,
     scoreBrand: scoreBrand, brandSlug: brandSlug, checkDomains: checkDomains,
     parseBrandCandidates: parseBrandCandidates, compareBrands: compareBrands, brandDecisionSummary: brandDecisionSummary,
+    sanitizeBrandFeedback: sanitizeBrandFeedback, summarizeBrandFeedback: summarizeBrandFeedback, brandFeedbackReport: brandFeedbackReport,
     scoreBigFive: scoreBigFive, FACTORS: FACTORS,
     getPrefs: getPrefs, applyPrefs: applyPrefs, toneLabel: toneLabel,
     checkFamily: checkFamily, parseFamilyCandidates: parseFamilyCandidates, rankFamily: rankFamily, familyReportHtml: familyReportHtml

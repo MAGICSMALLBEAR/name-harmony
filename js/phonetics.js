@@ -313,6 +313,12 @@ window.Phonetics = (function() {
       ['si3', '死／屎', '不吉'], ['su1', '輸', '不吉'], ['soi1', '衰', '不吉'], ['pho4', '破', '不吉'],
       ['pun4', '笨', '貶義'], ['ngoi2', '呆', '貶義'], ['chhu4', '臭', '貶義'], ['kieu3', '狗', '貶義'],
       ['chu1', '豬', '貶義'], ['kui3', '鬼', '不吉'], ['tien1', '癲', '貶義'], ['kui1', '龜', '貶義']
+    ],
+    hhl: [
+      ['si3', '死', '不吉'], ['shi3', '屎', '粗俗'], ['shu1', '輸', '不吉'], ['coi1', '衰', '不吉'],
+      ['soi1', '衰', '不吉'], ['po4', '破', '不吉'], ['bun4', '笨', '貶義'], ['ngoi2', '呆', '貶義'],
+      ['chiu4', '臭', '貶義'], ['gieu3', '狗', '貶義'], ['zhu1', '豬', '貶義'], ['gui3', '鬼', '不吉'],
+      ['dien1', '癲', '貶義'], ['gui1', '龜', '貶義']
     ]
   };
 
@@ -356,33 +362,61 @@ window.Phonetics = (function() {
     return hits.sort(function(a, b) { return b.level - a.level; });
   }
 
+  function getDialectVariants(lang, ch) {
+    var DB = window.DialectDB;
+    if (!DB || !ch) return [];
+    if (DB.getVariants) return DB.getVariants(lang, ch);
+    var map = lang === 'yue' ? DB.JYUTPING : lang === 'tw' ? DB.TAIWANESE : lang === 'hak' ? DB.HAKKA : lang === 'hhl' ? DB.HAKKA_HAILU : null;
+    return map && map[ch] ? [{ py: map[ch], tag: '' }] : [];
+  }
+
+  function formatDialectTag(tag) {
+    if (tag === 'w') return L(' 文', ' lit.');
+    if (tag === 'b') return L(' 白', ' col.');
+    return '';
+  }
+
   /**
-   * 多語音韻檢查：粵語（Unihan 5,616 字）、台語（台羅基礎字表）、客語（四縣腔基礎字表）
+   * 多語音韻檢查：粵語、台語（含文白異讀切換）、客語四縣腔、客語海陸腔
    * @param parsed ChineseNumerology.analyze().parsed
-   * @param customDialects 可選：{ yue?:{}, tw?:{}, hak?:{} }
+   * @param customDialects 可選：{ yue?:{}, tw?:{}, hak?:{}, hhl?:{} }
+   * @param options 可選：{ twMode?: 'default' | 'wen' | 'bai' }
    */
-  function checkDialects(parsed, customDialects) {
+  function checkDialects(parsed, customDialects, options) {
     var DB = window.DialectDB;
     if (!parsed || !DB) return null;
     var chars = parsed.surnameChars.concat(parsed.givenNameChars);
+    var twMode = (options && (options.twMode === 'wen' || options.twMode === 'bai')) ? options.twMode : 'default';
     var specs = [
       { key: 'yue', nameZh: '粵語（粵拼 Jyutping）', nameEn: 'Cantonese (Jyutping)', dict: DB.JYUTPING, starter: false,
         entering: function(s) { return /[ptk]$/.test(s.base); } },
       { key: 'tw', nameZh: '台語（台羅 Tâi-lô）', nameEn: 'Taiwanese Hokkien (Tâi-lô)', dict: DB.TAIWANESE, starter: true,
         entering: function(s) { return s.tone === 4 || s.tone === 8 || /[ptkh]$/.test(s.base); } },
       { key: 'hak', nameZh: '客語（四縣腔）', nameEn: 'Hakka (Sixian)', dict: DB.HAKKA, starter: true,
-        entering: function(s) { return s.tone === 5 || s.tone === 6 || /[ptk]$/.test(s.base); } }
+        entering: function(s) { return s.tone === 5 || s.tone === 6 || /[ptk]$/.test(s.base); } },
+      { key: 'hhl', nameZh: '客語（海陸腔）', nameEn: 'Hakka (Hailu)', dict: DB.HAKKA_HAILU, starter: true,
+        entering: function(s) { return s.tone === 6 || s.tone === 7 || /[ptk]$/.test(s.base); } }
     ];
 
     return specs.map(function(sp) {
       var custom = sanitizeDialectMap(customDialects && customDialects[sp.key]);
+      var variants = chars.map(function(c) { return getDialectVariants(sp.key, c); });
+      var tags = [];
       var sylls = chars.map(function(c, i) {
-        var raw = custom[i + ':' + c] || custom[c] || (sp.dict && sp.dict[c]) || null;
-        return raw ? splitDialectPy(raw) : null;
+        var customRaw = custom[i + ':' + c] || custom[c] || null;
+        if (customRaw) {
+          var matchedVar = variants[i].filter(function(v) { return v.py === customRaw; })[0];
+          tags.push(matchedVar && matchedVar.tag ? matchedVar.tag : 'custom');
+          return splitDialectPy(customRaw);
+        }
+        var rec = DB.getReading ? DB.getReading(sp.key, c, sp.key === 'tw' ? twMode : 'default') : (sp.dict && sp.dict[c] ? { py: sp.dict[c], tag: '' } : null);
+        tags.push(rec && rec.tag ? rec.tag : '');
+        return rec && rec.py ? splitDialectPy(rec.py) : null;
       });
       var covered = sylls.filter(Boolean).length;
       var readingText = chars.map(function(c, i) {
-        return c + (sylls[i] ? ' (' + sylls[i].py + ')' : L('（未收錄）', ' (unlisted)'));
+        if (!sylls[i]) return c + L('（未收錄）', ' (unlisted)');
+        return c + ' (' + sylls[i].py + formatDialectTag(tags[i]) + ')';
       }).join(' ');
       var homophones = findDialectHomophones(sylls, chars, DIALECT_BAD[sp.key]);
       var notes = [];
@@ -398,8 +432,8 @@ window.Phonetics = (function() {
         notes.push(L('尾字屬入聲韻尾，叫起來收音較短促', 'Ends on an entering tone, giving a crisp, clipped ending'));
       }
       if (sp.starter && covered < chars.length) {
-        notes.push(L('基礎字表已收錄 ' + covered + '/' + chars.length + ' 字（逐步擴充中），未收錄字可手動補填讀音',
-          'Starter lexicon covers ' + covered + '/' + chars.length + ' characters (expanding progressively); unlisted characters can be entered manually'));
+        notes.push(L('字庫已收錄 ' + covered + '/' + chars.length + ' 字，未收錄字可手動補填讀音',
+          'Lexicon covers ' + covered + '/' + chars.length + ' characters; unlisted characters can be entered manually'));
       }
       var severe = homophones.some(function(h) { return h.level >= 2; });
       var grade = severe ? '需注意' : homophones.length ? '尚可' : (covered === chars.length ? '良好' : '部分收錄');
@@ -408,6 +442,9 @@ window.Phonetics = (function() {
         label: L(sp.nameZh, sp.nameEn),
         chars: chars,
         sylls: sylls,
+        tags: tags,
+        variants: variants,
+        twMode: sp.key === 'tw' ? twMode : undefined,
         covered: covered,
         total: chars.length,
         readingText: readingText,
@@ -496,6 +533,7 @@ window.Phonetics = (function() {
   return {
     checkChinese: checkChinese,
     checkDialects: checkDialects,
+    getDialectVariants: getDialectVariants,
     checkEnglish: checkEnglish,
     findHomophones: findHomophones,
     splitPy: splitPy,

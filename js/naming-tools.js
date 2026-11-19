@@ -251,6 +251,7 @@ window.NamingTools = (function() {
       if (p) localStorage.setItem(PREF_KEY, JSON.stringify(p));
       else localStorage.removeItem(PREF_KEY);
     } catch (e) {}
+    if (window.CloudSync && window.CloudSync.markDirty) window.CloudSync.markDirty('namingPrefs');
     prefMsg = p ? t('prefSaved') : t('prefCleared');
     renderPrefs();
   }
@@ -268,6 +269,7 @@ window.NamingTools = (function() {
 
   function clearPrefs() {
     try { localStorage.removeItem(PREF_KEY); } catch (e) {}
+    if (window.CloudSync && window.CloudSync.markDirty) window.CloudSync.markDirty('namingPrefs');
     prefMsg = t('prefCleared');
     renderPrefs();
   }

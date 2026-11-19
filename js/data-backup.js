@@ -39,7 +39,9 @@ window.DataBackup = (function() {
     obj(v,'settings');
     var mode = v.relationship || 'general';
     if (window.ChartHarmony.modeKey(mode) !== mode || typeof v.tst !== 'boolean') fail('settings');
-    return { relationship: mode, tst: v.tst };
+    var twMode = v.twMode == null ? 'default' : v.twMode;
+    if (['default','wen','bai'].indexOf(twMode) < 0) fail('settings.twMode');
+    return { relationship: mode, tst: v.tst, twMode: twMode };
   }
   function entry(v, profile) {
     obj(v,'entry');
@@ -62,6 +64,33 @@ window.DataBackup = (function() {
     if (!window.NamingTools || !window.NamingTools.sanitizePrefs) fail('namingPrefs');
     return window.NamingTools.sanitizePrefs(v);
   }
+  function cleanBrandFeedback(v) {
+    if (v == null) return [];
+    arr(v, 200, 'brandFeedback');
+    var tones = ['trust', 'warm', 'bold', 'calm'];
+    return v.map(function(item) {
+      obj(item, 'brandFeedback.item');
+      var name = str(item.name || '', 60, 'brandFeedback.name').trim();
+      if (!name) fail('brandFeedback.name');
+      var time = date(item.time, 'brandFeedback.time');
+      var id = str(item.id || (time + '|' + name.toLowerCase()), 60, 'brandFeedback.id');
+      var sel = item.selectedTone || 'trust';
+      var pref = item.preferredTone || sel;
+      var verdict = item.verdict || 'match';
+      var kind = item.kind || 'mix';
+      if (tones.indexOf(sel) < 0 || tones.indexOf(pref) < 0 || ['match', 'other'].indexOf(verdict) < 0 || ['zh', 'en', 'mix'].indexOf(kind) < 0) fail('brandFeedback.enum');
+      var pred = arr(item.predictedTones || [], 4, 'brandFeedback.predictedTones').map(function(t) {
+        if (tones.indexOf(t) < 0) fail('brandFeedback.predictedTones');
+        return t;
+      });
+      var sc = item.score == null ? 0 : item.score;
+      if (typeof sc !== 'number' || !Number.isFinite(sc) || sc < 0 || sc > 100) fail('brandFeedback.score');
+      return {
+        id: id, time: time, name: name, kind: kind, selectedTone: sel, predictedTones: pred,
+        verdict: verdict, preferredTone: pref, score: Math.round(sc), note: str(item.note || '', 80, 'brandFeedback.note')
+      };
+    });
+  }
   function validate(v) {
     obj(v,'root'); if (v.format !== FORMAT || v.version !== VERSION) fail('format/version');
     var d = obj(v.data,'data'), state = settings(d.settings), current = arr(d.currentPersons || [],5,'currentPersons').map(person);
@@ -69,7 +98,10 @@ window.DataBackup = (function() {
       history: arr(d.history,20,'history').map(function(e) { return entry(e,false); }),
       profiles: arr(d.profiles,50,'profiles').map(function(e) { return entry(e,true); }),
       namingPrefs: prefs(d.namingPrefs), brandList: arr(d.brandList,8,'brandList').map(function(s) { return str(s,60,'brandList'); }),
-      settings: state, manualStrokes: strokes(d.manualStrokes), currentPersons: current
+      brandFeedback: cleanBrandFeedback(d.brandFeedback),
+      settings: state, manualStrokes: strokes(d.manualStrokes),
+      customPinyin: cleanPyMap(d.customPinyin), customDialects: cleanDialectMaps(d.customDialects),
+      currentPersons: current
     } };
   }
   function parse(text) {
@@ -79,10 +111,19 @@ window.DataBackup = (function() {
   }
   function read(storage,key,fallback) { var s = storage.getItem(key); return s == null ? fallback : JSON.parse(s); }
   function capture(storage, state) {
+    state = state || {};
+    var twRaw = state.twMode || (storage.getItem && storage.getItem('name-harmony-tw-mode')) || 'default';
+    var twMode = ['default','wen','bai'].indexOf(twRaw) >= 0 ? twRaw : 'default';
+    var py = state.customPinyin != null ? state.customPinyin : read(storage,'name-harmony-pinyin',{});
+    var dia = state.customDialects != null ? state.customDialects : read(storage,'name-harmony-dialects',{});
     return validate({ format:FORMAT, version:VERSION, exportedAt:new Date().toISOString(), data: {
       history:read(storage,'name-harmony-v3',[]), profiles:read(storage,'name-harmony-profiles',[]),
       namingPrefs:read(storage,'name-harmony-naming-prefs',null), brandList:read(storage,'name-harmony-brand-list',[]),
-      settings:{ relationship:state.relationship || 'general', tst:!!state.tst }, manualStrokes:state.manualStrokes || {}, currentPersons:state.persons || []
+      brandFeedback:read(storage,'name-harmony-brand-feedback',[]),
+      settings:{ relationship:state.relationship || 'general', tst:!!state.tst, twMode:twMode },
+      manualStrokes:state.manualStrokes != null ? state.manualStrokes : read(storage,'name-harmony-strokes',{}),
+      customPinyin:py, customDialects:dia,
+      currentPersons:state.persons || []
     } });
   }
   function restore(storage, backup) {
@@ -90,9 +131,14 @@ window.DataBackup = (function() {
     var changes = {
       'name-harmony-v3':JSON.stringify(d.history), 'name-harmony-profiles':JSON.stringify(d.profiles),
       'name-harmony-naming-prefs': d.namingPrefs ? JSON.stringify(d.namingPrefs) : null,
-      'name-harmony-brand-list':JSON.stringify(d.brandList), 'name-harmony-relationship':d.settings.relationship,
+      'name-harmony-brand-list':JSON.stringify(d.brandList),
+      'name-harmony-brand-feedback':JSON.stringify(d.brandFeedback || []),
+      'name-harmony-relationship':d.settings.relationship,
       'name-harmony-tst':String(d.settings.tst),
+      'name-harmony-tw-mode':d.settings.twMode || 'default',
       'name-harmony-strokes':JSON.stringify(d.manualStrokes),
+      'name-harmony-pinyin':JSON.stringify(d.customPinyin || {}),
+      'name-harmony-dialects':JSON.stringify(d.customDialects || {}),
       'name-harmony-restored-draft':JSON.stringify({persons:d.currentPersons, relationship:d.settings.relationship,tst:d.settings.tst,manualStrokes:d.manualStrokes})
     };
     var keys = Object.keys(changes), previous = {};
@@ -161,7 +207,7 @@ window.DataBackup = (function() {
   function cleanDialectMaps(v) {
     var out = {};
     if (!v || typeof v !== 'object' || Array.isArray(v)) return out;
-    ['yue', 'tw', 'hak'].forEach(function(lang) {
+    ['yue', 'tw', 'hak', 'hhl'].forEach(function(lang) {
       if (!v[lang]) return;
       if (window.Phonetics && window.Phonetics.sanitizeDialectMap) {
         var m = window.Phonetics.sanitizeDialectMap(v[lang]);
@@ -211,6 +257,7 @@ window.DataBackup = (function() {
       t: st.tst
     };
     if (state.pro) payload.pro = true;
+    if (state.twMode === 'wen' || state.twMode === 'bai') payload.twm = state.twMode;
     if (Object.keys(usedStrokes).length) payload.m = usedStrokes;
     if (Object.keys(usedPy).length) payload.py = usedPy;
     if (Object.keys(usedDia).length) payload.dy = usedDia;
@@ -223,11 +270,12 @@ window.DataBackup = (function() {
     if (v.v !== 1) fail('shareVersion');
     var ps = arr(v.p, 5, 'persons').map(person);
     if (!ps.length) fail('persons');
-    var st = settings({ relationship: v.r || 'general', tst: !!v.t });
+    var st = settings({ relationship: v.r || 'general', tst: !!v.t, twMode: v.twm || 'default' });
     return {
       persons: ps,
       relationship: st.relationship,
       tst: st.tst,
+      twMode: st.twMode,
       pro: !!v.pro,
       manualStrokes: strokes(v.m),
       customPinyin: cleanPyMap(v.py),
@@ -235,5 +283,5 @@ window.DataBackup = (function() {
     };
   }
   return { capture:capture, parse:parse, validate:validate, restore:restore, strokes:strokes,
-    encodeShare:encodeShare, decodeShare:decodeShare, MAX_BYTES:MAX_BYTES };
+    cleanBrandFeedback:cleanBrandFeedback, encodeShare:encodeShare, decodeShare:decodeShare, MAX_BYTES:MAX_BYTES };
 })();

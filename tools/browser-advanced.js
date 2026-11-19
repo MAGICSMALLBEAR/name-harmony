@@ -30,7 +30,8 @@ const assert = require('assert/strict');
     async function ready(){for(let i=0;i<100;i++){if(await evaluate("document.readyState === 'complete' && !!window.ChartHarmony && !!window.NamingTools"))return;await new Promise(r=>setTimeout(r,100));}throw new Error('Page load timeout');}
     await ready();
     initialState = await evaluate(`JSON.stringify(Object.fromEntries(['name-harmony-v3','name-harmony-profiles','name-harmony-relationship','name-harmony-tst',
-      'name-harmony-strokes','name-harmony-pinyin','name-harmony-dialects','name-harmony-restored-draft','name-harmony-naming-prefs','name-harmony-brand-list','name-harmony-lang'].map(k=>[k,localStorage.getItem(k)])))`);
+      'name-harmony-tw-mode','name-harmony-strokes','name-harmony-pinyin','name-harmony-dialects','name-harmony-restored-draft','name-harmony-naming-prefs',
+      'name-harmony-brand-list','name-harmony-brand-feedback','name-harmony-ai-verify','name-harmony-sync-cfg','name-harmony-sync-token','name-harmony-sync-pending','name-harmony-lang'].map(k=>[k,localStorage.getItem(k)])))`);
     const result=await evaluate(`(async()=>{
       const $=id=>document.getElementById(id), check=(v,m)=>{if(!v)throw new Error(m);};
       const change=(el,v)=>{el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}));};
@@ -94,14 +95,33 @@ const assert = require('assert/strict');
       const aiCtx = AiReading.collectContext();
       check(aiCtx.includes('格局取用') && aiCtx.includes('運限飛化') && aiCtx.includes('粵語') && !aiCtx.includes('套用讀音'), 'AI context updated and UI controls stripped');
       const phDetail = document.querySelector('.phonetics-detail');
-      check(!!phDetail && phDetail.querySelectorAll('.dialect-card').length === 3, 'multi-dialect phonetics cards');
+      check(!!phDetail && phDetail.querySelectorAll('.dialect-card').length === 4, 'multi-dialect phonetics cards (4 dialects incl. Hailu)');
       phDetail.open = true;
-      const customSel = phDetail.querySelector('.pinyin-select');
+      // 台語文讀／白話切換與多音候選下拉選單
+      const twWenBtn = phDetail.querySelector('.tw-mode-btn[data-tw-mode="wen"]');
+      check(!!twWenBtn, 'Taiwanese literary mode button');
+      twWenBtn.click();
+      check(document.querySelector('.phonetics-detail').textContent.includes('siau2'), 'Taiwanese literary reading applied (小 -> siau2)');
+      document.querySelector('.phonetics-detail .tw-mode-btn[data-tw-mode="bai"]').click();
+      check(document.querySelector('.phonetics-detail').textContent.includes('mia5'), 'Taiwanese colloquial reading applied (明 -> mia5)');
+      document.querySelector('.phonetics-detail .tw-mode-btn[data-tw-mode="default"]').click();
+      const diaSel = document.querySelector('.phonetics-detail .dialect-select[data-lang="tw"]');
+      check(!!diaSel && diaSel.options.length >= 3, 'dialect variant dropdown rendered');
+      const customSel = document.querySelector('.phonetics-detail .pinyin-select');
       customSel.value = '__custom__'; customSel.dispatchEvent(new Event('change', { bubbles: true }));
-      const phInput = phDetail.querySelector('.pinyin-custom-input');
+      const phInput = document.querySelector('.phonetics-detail .pinyin-custom-input');
       phInput.value = 'chen4';
-      phDetail.querySelector('.pinyin-apply-btn').click();
+      document.querySelector('.phonetics-detail .pinyin-apply-btn').click();
       check(document.querySelector('.phonetics-detail').open && document.querySelector('.phonetics-detail').textContent.includes('chen 四聲'), 'custom pronunciation applied in place');
+      // AI 真實金鑰驗收清單互動
+      document.querySelector('.tab-btn[data-tab="ai"]').click();
+      const aiVerify = $('aiVerifyDetails');
+      check(!!aiVerify && aiVerify.textContent.includes('真實金鑰驗收清單'), 'AI verification checklist rendered');
+      aiVerify.open = true;
+      $('aiVerifyBill').checked = true; $('aiVerifyBill').dispatchEvent(new Event('change', { bubbles: true }));
+      $('aiVerifyCost').value = 'US$0.032'; $('aiVerifyNote').value = 'ok';
+      $('aiVerifySave').click();
+      check(JSON.parse(localStorage.getItem('name-harmony-ai-verify')).claude.billingChecked === true, 'AI verify saved locally');
       document.querySelector('.tab-btn[data-tab="matrix"]').click();
       change($('matrixSystem'),'bazi'); change($('resultRelationship'),'business');
       check($('relationshipMode').value==='business' && $('matrixSystem').value==='bazi','relationship sync');
@@ -119,9 +139,13 @@ const assert = require('assert/strict');
       const advEn = document.querySelector('.bazi-advanced-detail');
       const flyEn = document.querySelector('.zw-flying-detail');
       const astroEn = document.querySelector('.astro-natal-box');
+      const aiVerifyEn = $('aiVerifyDetails');
+      const cloudEn = $('cloudSyncBox');
       check(advEn && !/[一-鿿]/.test(advEn.textContent), 'English advanced bazi UI');
       check(flyEn && !/[一-鿿]/.test(flyEn.textContent), 'English ziwei flying UI');
       check(astroEn && !/[一-鿿]/.test(astroEn.textContent), 'English natal astrology UI');
+      check(aiVerifyEn && !/[一-鿿]/.test(aiVerifyEn.textContent), 'English AI verification checklist UI');
+      check(cloudEn && !/[一-鿿]/.test(cloudEn.textContent), 'English cloud sync UI');
       $('langToggle').click();
       $('backBtn').click(); document.querySelectorAll('.btime-input')[1].value=''; $('analyzeBtn').click();
       change($('matrixSystem'),'ziwei'); check(!document.querySelector('#matrixContent .analysis-mode-badge'),'unknown time must not invent Zi Wei');
@@ -129,6 +153,41 @@ const assert = require('assert/strict');
       change($('matrixSystem'),'bazi'); check($('matrixContent').textContent.includes('7/8'),'partial pillars');
       check(document.querySelectorAll('.bazi-advanced-detail')[1].textContent.includes('缺時辰'), 'advanced bazi partial hour note');
       $('backBtn').click();
+      // 測試品牌調性本機回饋（零未授權上傳）
+      $('toolBrand').parentElement.open = true;
+      $('brandName').value = 'Luma'; $('brandTone').value = 'calm';
+      $('brandGo').click();
+      check(!!$('brandFbMatch') && !!$('brandFbOther'), 'brand feedback buttons rendered');
+      $('brandFbMatch').click();
+      $('brandFbTone').value = 'warm'; $('brandFbNote').value = 'soft sound'; $('brandFbOther').click();
+      check(JSON.parse(localStorage.getItem('name-harmony-brand-feedback')).length === 2, 'brand feedback saved locally');
+      check($('brandFeedbackBox').textContent.includes('50%'), 'brand feedback hit rate rendered');
+      // 測試雲端同步（模擬 GitHub 私密 Gist API，不發真實網路請求）
+      const mockGists = {};
+      CloudSync._setFetch(async (url, opts = {}) => {
+        const mk = (s, b, h = {}) => ({ ok: s >= 200 && s < 300, status: s, headers: { get: k => h[k.toLowerCase()] || '' }, text: async () => typeof b === 'string' ? b : JSON.stringify(b) });
+        if (url.endsWith('/user')) return mk(200, { login: 'edge-tester' }, { 'x-oauth-scopes': 'gist' });
+        if (url.includes('/gists?per_page=')) return mk(200, Object.values(mockGists));
+        if (url.endsWith('/gists') && opts.method === 'POST') {
+          const body = JSON.parse(opts.body);
+          if (body.public !== false) throw new Error('Gist must be private');
+          const id = 'b1c2d3e4f5a60718293b';
+          mockGists[id] = { id, public: false, files: body.files };
+          return mk(201, mockGists[id]);
+        }
+        const m = new RegExp('/gists/([a-f0-9]+)$', 'i').exec(url);
+        if (m && (!opts.method || opts.method === 'GET')) return mk(200, mockGists[m[1]]);
+        if (m && opts.method === 'PATCH') { mockGists[m[1]].files = JSON.parse(opts.body).files; return mk(200, mockGists[m[1]]); }
+        return mk(404, { message: 'Not Found' });
+      });
+      $('cloudSyncDetails').open = true;
+      $('cloudSyncToken').value = 'ghp_mock_browser_token';
+      $('cloudSyncConnect').click();
+      for (let i = 0; i < 60 && !$('cloudSyncDisconnect'); i++) await new Promise(r => setTimeout(r, 30));
+      check(!!$('cloudSyncDisconnect') && $('cloudSyncBox').textContent.includes('@edge-tester'), 'cloud sync connected via private Gist');
+      $('cloudSyncDisconnect').click();
+      check(!!$('cloudSyncToken') && !CloudSync.getToken(), 'cloud sync disconnected and token cleared');
+      CloudSync._setFetch(null);
       let exportedBlob;
       const originalURL=URL.createObjectURL;
       URL.createObjectURL=blob=>{exportedBlob=blob;return originalURL(blob);};

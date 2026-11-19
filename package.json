@@ -1,0 +1,7 @@
+{
+  "name": "name-harmony",
+  "private": true,
+  "scripts": {
+    "test": "node tools/test-naming.js && node tools/test-advanced.js"
+  }
+}

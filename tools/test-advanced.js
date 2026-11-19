@@ -134,10 +134,10 @@ const sharePayload = {
     { cn:'龘樂明', en:'Alex', birthday:'1990-05-15 10:30', place:'custom:25.03,121.56,Asia/Taipei', gender:'male', blood:'A', label:'甲方' },
     { cn:'林小美', en:'Mary', birthday:'1992-03-20', place:'taipei', gender:'female', blood:'O', label:'乙方' }
   ],
-  relationship: 'spouses', tst: true, pro: true,
+  relationship: 'spouses', tst: true, twMode: 'wen', pro: true,
   manualStrokes: { '龘': 48, '無': 12 },
   customPinyin: { '1:樂': 'yue4', '0:王': 'wang2' },
-  customDialects: { tw: { '0:龘': 'tap8', '0:王': 'ong5' } }
+  customDialects: { tw: { '0:龘': 'tap8', '0:王': 'ong5' }, hhl: { '0:龘': 'dab7' } }
 };
 const shareToken = Backup.encodeShare(sharePayload);
 assert(typeof shareToken === 'string' && /^[A-Za-z0-9\-_]+$/.test(shareToken));
@@ -145,14 +145,46 @@ const decodedShare = Backup.decodeShare(shareToken);
 assert.equal(decodedShare.persons.length, 2);
 assert.equal(decodedShare.relationship, 'spouses');
 assert.equal(decodedShare.tst, true);
+assert.equal(decodedShare.twMode, 'wen');
 assert.equal(decodedShare.pro, true);
 assert.equal(decodedShare.manualStrokes['龘'], 48);
 assert.equal(decodedShare.manualStrokes['無'], undefined);
 assert.equal(decodedShare.customPinyin['1:樂'], 'yue4');
 assert.equal(decodedShare.customPinyin['0:王'], undefined);
 assert.equal(decodedShare.customDialects.tw['0:龘'], 'tap8');
+assert.equal(decodedShare.customDialects.hhl['0:龘'], 'dab7');
 assert.throws(() => Backup.decodeShare('not!valid@token'));
 assert.throws(() => Backup.decodeShare('A'.repeat(9000)));
+// 驗證 JSON 備份包含 customPinyin / customDialects / brandFeedback / twMode，並相容舊版 v1 備份
+const richStore = storage({
+  'name-harmony-v3': '[]', 'name-harmony-profiles': '[]', 'name-harmony-brand-list': '["森月"]',
+  'name-harmony-brand-feedback': JSON.stringify([{ id: 'fb1', time: '2026-11-19T01:00:00.000Z', name: '森月', kind: 'zh', selectedTone: 'calm', predictedTones: ['calm'], verdict: 'match', preferredTone: 'calm', score: 90, note: '自然感好' }]),
+  'name-harmony-pinyin': JSON.stringify({ '1:樂': 'yue4' }),
+  'name-harmony-dialects': JSON.stringify({ tw: { '1:小': 'siau2' }, hhl: { '0:陳': 'chin2' } }),
+  'name-harmony-tw-mode': 'bai',
+  'name-harmony-ai-key': 'sk-ant-secret', 'name-harmony-ai-key-deepseek': 'sk-ds-secret', 'name-harmony-sync-token': 'ghp_secret'
+});
+const richBackup = Backup.capture(richStore, { persons: [{ cn: '陳小明', en: 'Sam', birthday: '1990-05-15', place: 'taipei', gender: 'male', blood: 'A', label: '甲方' }], relationship: 'friends', tst: false, manualStrokes: { '龘': 48 } });
+const richJson = JSON.stringify(richBackup);
+assert(!richJson.includes('sk-ant-secret') && !richJson.includes('sk-ds-secret') && !richJson.includes('ghp_secret'), 'Backup excludes all API & sync tokens');
+assert.equal(richBackup.data.settings.twMode, 'bai');
+assert.equal(richBackup.data.customPinyin['1:樂'], 'yue4');
+assert.equal(richBackup.data.customDialects.hhl['0:陳'], 'chin2');
+assert.equal(richBackup.data.brandFeedback.length, 1);
+const targetStore = storage({ 'name-harmony-ai-key': 'keep-ai', 'name-harmony-sync-token': 'keep-gh' });
+Backup.restore(targetStore, Backup.parse(richJson));
+assert.equal(targetStore.getItem('name-harmony-tw-mode'), 'bai');
+assert.equal(JSON.parse(targetStore.getItem('name-harmony-pinyin'))['1:樂'], 'yue4');
+assert.equal(JSON.parse(targetStore.getItem('name-harmony-dialects')).hhl['0:陳'], 'chin2');
+assert.equal(JSON.parse(targetStore.getItem('name-harmony-brand-feedback')).length, 1);
+assert.equal(targetStore.getItem('name-harmony-ai-key'), 'keep-ai');
+assert.equal(targetStore.getItem('name-harmony-sync-token'), 'keep-gh');
+// 舊版備份（無 twMode / customPinyin / customDialects / brandFeedback）相容檢查
+const legacyRaw = JSON.parse(richJson);
+delete legacyRaw.data.settings.twMode; delete legacyRaw.data.customPinyin; delete legacyRaw.data.customDialects; delete legacyRaw.data.brandFeedback;
+const legacyParsed = Backup.parse(JSON.stringify(legacyRaw));
+assert.equal(legacyParsed.data.settings.twMode, 'default');
+assert.equal(legacyParsed.data.brandFeedback.length, 0);
 console.log('✓ JSON 備份與可還原分享連結編解碼、欄位過濾、金鑰排除與寫入失敗回復');
 ['vendor/astronomy.browser.min','astrology','lunar','ziwei','ziwei-reading','ziwei-flying'].forEach(load);
 const Astro = ctx.Astrology;
@@ -282,10 +314,15 @@ assert(!/[一-鿿]/.test(enCompStr), 'English Composite leftover: ' + enCompStr.
 const Ph = ctx.Phonetics;
 const DB = ctx.DialectDB;
 assert(Object.keys(DB.TAIWANESE).length > 2500, 'Expanded Taiwanese lexicon > 2500');
-assert(Object.keys(DB.HAKKA).length > 3000, 'Expanded Hakka lexicon > 3000');
+assert(Object.keys(DB.HAKKA).length > 3400, 'Expanded Hakka Sixian lexicon > 3400');
+assert(Object.keys(DB.HAKKA_HAILU).length > 3400, 'Expanded Hakka Hailu lexicon > 3400');
 assert(Object.values(DB.TAIWANESE).every(v => !!Ph.splitDialectPy(v)), 'Every Taiwanese syllable valid');
-assert(Object.values(DB.HAKKA).every(v => !!Ph.splitDialectPy(v)), 'Every Hakka syllable valid');
-assert('陳林黃蔡賴謝蘇郭'.split('').every(c => DB.JYUTPING[c] && DB.TAIWANESE[c] && DB.HAKKA[c]), 'Major surnames in all dialects');
+assert(Object.values(DB.HAKKA).every(v => !!Ph.splitDialectPy(v)), 'Every Hakka Sixian syllable valid');
+assert(Object.values(DB.HAKKA_HAILU).every(v => !!Ph.splitDialectPy(v)), 'Every Hakka Hailu syllable valid');
+assert('陳林黃蔡賴謝蘇郭'.split('').every(c => DB.JYUTPING[c] && DB.TAIWANESE[c] && DB.HAKKA[c] && DB.HAKKA_HAILU[c]), 'Major surnames in all 4 dialects');
+assert(DB.getVariants('tw', '小').some(v => v.tag === 'w' && v.py === 'siau2') && DB.getVariants('tw', '小').some(v => v.tag === 'b' && v.py === 'sio2'), 'TW wen/bai variants for 小');
+assert(DB.getVariants('yue', '樂').some(v => v.py === 'lok6') && DB.getVariants('yue', '樂').some(v => v.py === 'ngok6'), 'Cantonese polyphone variants for 樂');
+assert(DB.getVariants('hhl', '長').length >= 2, 'Hailu Hakka multi-readings for 長');
 const parsedLe = ctx.ChineseNumerology.analyze('王樂明').parsed;
 const phDefault = Ph.checkChinese(parsedLe);
 const phCustom = Ph.checkChinese(parsedLe, { '1:樂': 'yue4' });
@@ -293,14 +330,182 @@ assert.equal(phDefault.sylls[1].py, 'le4');
 assert.equal(phCustom.sylls[1].py, 'yue4');
 assert.equal(phCustom.customApplied[1], true);
 assert.equal(Object.keys(Ph.sanitizePinyinMap({ '0:樂': 'yue4', 'bad': '123', '樂': 'bad9' })).length, 1);
-const diaMing = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳明華').parsed);
-assert.equal(diaMing.length, 3);
-assert(diaMing.every(d => d.covered === 3));
+const parsedChen = ctx.ChineseNumerology.analyze('陳小明').parsed;
+const diaDef = Ph.checkDialects(parsedChen);
+assert.equal(diaDef.length, 4);
+assert(diaDef.every(d => d.covered === 3));
+assert.equal(diaDef[1].sylls[0].py, 'tan5');
+assert.equal(diaDef[1].sylls[1].py, 'sio2');
+assert.equal(diaDef[1].sylls[2].py, 'bing5');
+const diaWen = Ph.checkDialects(parsedChen, null, { twMode: 'wen' });
+assert.equal(diaWen[1].sylls[0].py, 'tin5');
+assert.equal(diaWen[1].sylls[1].py, 'siau2');
+const diaBai = Ph.checkDialects(parsedChen, null, { twMode: 'bai' });
+assert.equal(diaBai[1].sylls[0].py, 'tan5');
+assert.equal(diaBai[1].sylls[2].py, 'mia5');
+assert(diaDef[3].key === 'hhl' && diaDef[3].sylls[0].py === 'chin2', 'Hailu Hakka check works');
 const diaRare = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳龘明', { '龘': 48 }).parsed);
 assert.equal(diaRare[1].covered, 2);
 const diaTrap = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳阿婆').parsed);
 assert(diaTrap[1].homophones.some(h => h.word === '阿婆'));
-const diaOverride = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳龘明', { '龘': 48 }).parsed, { tw: { '1:龘': 'tap8' } });
+const diaHailuTrap = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳死明').parsed);
+assert(diaHailuTrap[3].homophones.some(h => h.word === '死'));
+const diaOverride = Ph.checkDialects(ctx.ChineseNumerology.analyze('陳龘明', { '龘': 48 }).parsed, { tw: { '1:龘': 'tap8' }, hhl: { '1:龘': 'dab7' } });
 assert.equal(diaOverride[1].covered, 3);
 assert.equal(diaOverride[1].sylls[1].py, 'tap8');
-console.log('✓ 組合盤深化、多音字指定、粵台客擴充字庫與中英文無殘留檢查');
+assert.equal(diaOverride[3].sylls[1].py, 'dab7');
+// 英文模式四方言無殘留中文（排除姓名漢字與諧音參考詞本身）
+const enDiaStr = diaWen.map(d => d.label + ' ' + ctx.L10N.t(d.grade) + ' ' + d.notes.join(' ')).join('\n');
+assert(!/[一-鿿]/.test(enDiaStr), 'English dialect labels/notes leftover: ' + enDiaStr.match(/.{0,20}[一-鿿].{0,20}/));
+console.log('✓ 組合盤深化、多音字指定、粵台文白／客語四縣海陸字庫與中英文無殘留檢查');
+
+// 品牌調性本機回饋 + AI 驗收清單 + GitHub 私密 Gist 雲端同步（非同步測試）
+['data/english-phonetics','data/english-translit','data/name-chars','data/char-element','foreign-name','baby-name','naming-extensions','ai-reading','cloud-sync'].forEach(load);
+const NE = ctx.NamingExtensions;
+const fbClean = NE.sanitizeBrandFeedback([
+  { id: 'a1', time: '2026-11-19T01:00:00.000Z', name: '森月', kind: 'zh', selectedTone: 'calm', predictedTones: ['calm'], verdict: 'match', preferredTone: 'calm', score: 92, note: 'OK' },
+  { id: 'a2', time: '2026-11-19T02:00:00.000Z', name: 'Luma', kind: 'en', selectedTone: 'trust', predictedTones: ['warm'], verdict: 'other', preferredTone: 'calm', score: 78, note: '<bad>' },
+  { id: 'a2', time: '2026-11-19T02:00:00.000Z', name: 'Luma', kind: 'en', selectedTone: 'trust', predictedTones: ['warm'], verdict: 'other', preferredTone: 'calm', score: 78, note: 'dup' }
+]);
+assert.equal(fbClean.length, 2);
+assert.equal(fbClean[0].note, 'bad');
+const fbSum = NE.summarizeBrandFeedback(fbClean);
+assert.equal(fbSum.total, 2); assert.equal(fbSum.matched, 1); assert.equal(fbSum.rate, 50); assert.equal(fbSum.byPreferred.calm, 2);
+const fbJson = JSON.parse(NE.brandFeedbackReport(fbClean, '2026-11-19', 'json'));
+assert.equal(fbJson.entries.length, 2);
+const fbMd = NE.brandFeedbackReport(fbClean, '2026-11-19', 'md');
+assert(fbMd.includes('Luma') && fbMd.includes('50%'));
+const AI = ctx.AiReading;
+const chk0 = AI.evaluateChecklist([], {});
+assert.equal(chk0.passed, 0);
+const chkFull = AI.evaluateChecklist([
+  { kind: 'analysis', stop: 'end_turn', input: 1000, cacheWrite: 500, cacheRead: 0, output: 300, ttft: 500, ms: 2000, cost: 0.02 },
+  { kind: 'follow-up', stop: 'end_turn', input: 50, cacheWrite: 0, cacheRead: 1200, output: 200, ttft: 400, ms: 1500, cost: 0.01 },
+  { kind: 'follow-up', stop: 'aborted', input: 0, cacheWrite: 0, cacheRead: 0, output: 0, ttft: 300, ms: 600, cost: null },
+  { kind: 'follow-up', stop: 'end_turn', input: 60, cacheWrite: 0, cacheRead: 1400, output: 180, ttft: 350, ms: 1400, cost: 0.01 }
+], { billingChecked: true, actualCost: 'US$0.041', note: 'Matches console' });
+assert.equal(chkFull.passed, 4);
+const aiRep = AI.usageReport([
+  { kind: 'analysis', model: 'claude-opus-5', stop: 'end_turn', input: 1000, cacheWrite: 0, cacheRead: 0, output: 200, ttft: 500, ms: 2000, cost: 0.01 }
+], '2026-11-19', { billingChecked: true, actualCost: 'US$0.010', note: 'OK' });
+assert(aiRep.includes('US$0.010') && aiRep.includes('[x]'));
+
+(async () => {
+  const CS = ctx.CloudSync;
+  // 1. 雙向合併測試
+  const mkBackup = (exportedAt, patch) => Backup.validate({
+    format: 'name-harmony-backup', version: 1, exportedAt,
+    data: Object.assign({
+      history: [], profiles: [], namingPrefs: null, brandList: [], brandFeedback: [],
+      settings: { relationship: 'general', tst: false, twMode: 'default' },
+      manualStrokes: {}, customPinyin: {}, customDialects: {}, currentPersons: []
+    }, patch)
+  });
+  const locB = mkBackup('2026-11-19T10:00:00.000Z', {
+    history: [{ time: '2026-11-19T09:00:00.000Z', persons: [{ cn: '陳小明', en: '', birthday: '', place: '', gender: '', blood: '', label: '甲' }], pairs: [] }],
+    profiles: [{ name: '王家', time: '2026-11-19T09:30:00.000Z', persons: [{ cn: '王大明', en: '', birthday: '', place: '', gender: '', blood: '', label: '甲' }], pairs: [] }],
+    brandList: ['森月', 'Luma'],
+    brandFeedback: [{ id: 'f1', time: '2026-11-19T09:00:00.000Z', name: '森月', kind: 'zh', selectedTone: 'calm', predictedTones: ['calm'], verdict: 'match', preferredTone: 'calm', score: 90, note: '' }],
+    manualStrokes: { '龘': 48 }, customPinyin: { '1:樂': 'yue4' }, customDialects: { hhl: { '0:陳': 'chin2' } }
+  });
+  const remB = mkBackup('2026-11-19T08:00:00.000Z', {
+    history: [{ time: '2026-11-18T09:00:00.000Z', persons: [{ cn: '林大維', en: '', birthday: '', place: '', gender: '', blood: '', label: '甲' }], pairs: [] }],
+    profiles: [
+      { name: '王家', time: '2026-11-18T08:00:00.000Z', persons: [{ cn: '王舊名', en: '', birthday: '', place: '', gender: '', blood: '', label: '甲' }], pairs: [] },
+      { name: '林家', time: '2026-11-18T08:00:00.000Z', persons: [{ cn: '林小美', en: '', birthday: '', place: '', gender: '', blood: '', label: '甲' }], pairs: [] }
+    ],
+    brandList: ['luma', '青禾'],
+    brandFeedback: [{ id: 'f2', time: '2026-11-18T08:00:00.000Z', name: '青禾', kind: 'zh', selectedTone: 'calm', predictedTones: ['calm'], verdict: 'match', preferredTone: 'calm', score: 88, note: '' }],
+    manualStrokes: { '靐': 39 }, customDialects: { tw: { '0:陳': 'tin5' } }
+  });
+  const merged = CS.mergeBackups(locB, remB).backup;
+  assert.equal(merged.data.history.length, 2);
+  assert.equal(merged.data.profiles.length, 2);
+  assert.equal(merged.data.profiles.find(p => p.name === '王家').persons[0].cn, '王大明');
+  assert.equal(JSON.stringify(merged.data.brandList), JSON.stringify(['森月', 'Luma', '青禾']));
+  assert.equal(merged.data.brandFeedback.length, 2);
+  assert.equal(merged.data.manualStrokes['龘'], 48);
+  assert.equal(merged.data.manualStrokes['靐'], 39);
+  assert.equal(merged.data.customDialects.hhl['0:陳'], 'chin2');
+  assert.equal(merged.data.customDialects.tw['0:陳'], 'tin5');
+  // 全新空裝置連線時取雲端設定與表單
+  const emptyLoc = mkBackup('2026-11-19T12:00:00.000Z', {});
+  const remoteWithPrefs = mkBackup('2026-11-18T12:00:00.000Z', {
+    settings: { relationship: 'spouses', tst: true, twMode: 'wen' },
+    currentPersons: [{ cn: '林小美', en: 'Mia', birthday: '', place: '', gender: '', blood: '', label: '甲' }]
+  });
+  const freshMerged = CS.mergeBackups(emptyLoc, remoteWithPrefs).backup;
+  assert.equal(freshMerged.data.settings.relationship, 'spouses');
+  assert.equal(freshMerged.data.currentPersons[0].cn, '林小美');
+
+  // 2. GitHub 私密 Gist API 模擬：未設定零請求、自動建立、次裝置自動尋找合併、排除金鑰、401 清除、離線佇列
+  let fetchCalls = 0;
+  const fakeGists = {};
+  const mockFetch = async (url, opts = {}) => {
+    fetchCalls++;
+    const auth = opts.headers && opts.headers.Authorization;
+    const mkRes = (status, body, headersMap = {}) => ({
+      ok: status >= 200 && status < 300,
+      status,
+      headers: { get: k => headersMap[k.toLowerCase()] || '' },
+      text: async () => typeof body === 'string' ? body : JSON.stringify(body)
+    });
+    if (auth === 'Bearer bad-token') return mkRes(401, { message: 'Bad credentials' });
+    if (auth === 'Bearer no-scope') return mkRes(200, { login: 'demo' }, { 'x-oauth-scopes': 'repo' });
+    if (url.endsWith('/user')) return mkRes(200, { login: 'sync-tester' }, { 'x-oauth-scopes': 'gist' });
+    if (url.includes('/gists?per_page=')) return mkRes(200, Object.values(fakeGists));
+    if (url.endsWith('/gists') && opts.method === 'POST') {
+      const payload = JSON.parse(opts.body);
+      assert.equal(payload.public, false, 'Must always create private Gist');
+      const content = payload.files[CS.SYNC_FILE].content;
+      assert(!content.includes('sk-ant-topsecret') && !content.includes('ghp_valid'), 'Synced Gist excludes AI keys and GitHub token');
+      const id = 'a1b2c3d4e5f60718293a';
+      fakeGists[id] = { id, public: false, files: { [CS.SYNC_FILE]: { content } } };
+      return mkRes(201, fakeGists[id]);
+    }
+    const m = /\/gists\/([a-f0-9]+)$/i.exec(url);
+    if (m && (!opts.method || opts.method === 'GET')) {
+      return fakeGists[m[1]] ? mkRes(200, fakeGists[m[1]]) : mkRes(404, { message: 'Not Found' });
+    }
+    if (m && opts.method === 'PATCH') {
+      const payload = JSON.parse(opts.body);
+      fakeGists[m[1]].files[CS.SYNC_FILE].content = payload.files[CS.SYNC_FILE].content;
+      return mkRes(200, fakeGists[m[1]]);
+    }
+    return mkRes(404, { message: 'Not Found' });
+  };
+  CS._setFetch(mockFetch);
+  CS._clearMem();
+  const dev1 = storage({
+    'name-harmony-v3': JSON.stringify(locB.data.history),
+    'name-harmony-ai-key': 'sk-ant-topsecret'
+  });
+  assert.equal(CS.markDirty('history', dev1), false, 'No sync when disconnected');
+  assert.equal(fetchCalls, 0, 'Zero network requests when disconnected');
+  await assert.rejects(() => CS.connect({ token: 'no-scope', storage: dev1 }), /gist/i);
+  await assert.rejects(() => CS.connect({ token: 'bad-token', storage: dev1 }));
+  assert.equal(CS.getToken(dev1), '', '401 clears token');
+  const conn1 = await CS.connect({ token: 'ghp_valid', remember: true, autoSync: true, storage: dev1, state: { persons: [], relationship: 'general', tst: false } });
+  assert.equal(conn1.created, true);
+  assert.equal(CS.loadConfig(dev1).gistId, 'a1b2c3d4e5f60718293a');
+  // 第二台裝置連線自動找到同一個私密 Gist 並雙向合併
+  CS._clearMem();
+  const dev2 = storage({ 'name-harmony-brand-list': JSON.stringify(['青禾']) });
+  const conn2 = await CS.connect({ token: 'ghp_valid', remember: true, autoSync: true, storage: dev2, state: { persons: [], relationship: 'general', tst: false } });
+  assert.equal(conn2.restored, true);
+  assert.equal(JSON.parse(dev2.getItem('name-harmony-v3')).length, 1);
+  assert.equal(JSON.stringify(JSON.parse(dev2.getItem('name-harmony-brand-list'))), JSON.stringify(['青禾']));
+  // 離線佇列測試
+  ctx.navigator = { onLine: false };
+  const callsBeforeOffline = fetchCalls;
+  assert.equal(CS.markDirty('brandList', dev2), true);
+  assert(CS.getPending(dev2) && CS.getPending(dev2).pending);
+  assert.equal(fetchCalls, callsBeforeOffline, 'Offline markDirty makes zero network calls');
+  ctx.navigator = { onLine: true };
+  await CS.flushPending(dev2);
+  assert.equal(CS.getPending(dev2), null, 'Online flush clears pending queue');
+  CS.disconnect(dev2);
+  assert.equal(CS.getToken(dev2), '');
+  assert.equal(JSON.parse(dev2.getItem('name-harmony-v3')).length, 1, 'Disconnect preserves local data');
+  console.log('✓ 品牌調性本機回饋、AI 驗收清單與 GitHub 私密 Gist 雙向合併／離線佇列／金鑰排除');
+})().catch(e => { console.error(e); process.exitCode = 1; });
